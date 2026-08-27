@@ -1,0 +1,29 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+  line-height: 1.6;
+}
+
+body {
+  margin: 0;
+  padding: 2rem;
+  max-width: 48rem;
+  margin-inline: auto;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+nav a.active {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+code {
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
