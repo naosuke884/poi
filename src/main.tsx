@@ -1,8 +1,9 @@
+import "@mantine/core/styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { MantineProvider } from "@mantine/core";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
-import "./styles.css";
 
 const router = createRouter({
   routeTree,
@@ -20,7 +21,9 @@ const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   createRoot(rootElement).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <MantineProvider defaultColorScheme="auto">
+        <RouterProvider router={router} />
+      </MantineProvider>
     </StrictMode>,
   );
 }

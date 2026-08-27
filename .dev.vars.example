@@ -1,0 +1,7 @@
+# cp .dev.vars.example .dev.vars して値を埋める (本番は `wrangler secret put <NAME>`)
+# openssl rand -base64 32 などで生成
+BETTER_AUTH_SECRET=change-me-to-a-random-32-byte-string
+# Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client (Web application)
+# Authorized redirect URI: http://localhost:5173/api/auth/callback/google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

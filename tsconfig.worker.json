@@ -19,5 +19,5 @@
     "outDir": "./node_modules/.tmp/worker-types",
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo"
   },
-  "include": ["worker", "worker-configuration.d.ts"]
+  "include": ["worker", "worker-configuration.d.ts", "better-auth.config.ts"]
 }

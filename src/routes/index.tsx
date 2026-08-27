@@ -1,3 +1,4 @@
+import { Code, Stack, Text, Title } from "@mantine/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "@/lib/api";
 
@@ -12,12 +13,12 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { message } = Route.useLoaderData();
   return (
-    <main>
-      <h1>poi</h1>
-      <p>TanStack Router + Hono + Cloudflare Workers</p>
-      <p>
-        API says: <code>{message}</code>
-      </p>
-    </main>
+    <Stack>
+      <Title>poi</Title>
+      <Text>TanStack Router + Hono + Better Auth (Google) + D1 + Mantine on Cloudflare Workers</Text>
+      <Text>
+        API says: <Code>{message}</Code>
+      </Text>
+    </Stack>
   );
 }

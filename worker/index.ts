@@ -1,10 +1,44 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
+import { createAuth, type Auth, type Session } from "./auth";
 
-const app = new Hono<{ Bindings: Env }>();
+type AppEnv = {
+  Bindings: Env;
+  Variables: {
+    auth: Auth;
+    user: Session["user"] | null;
+    session: Session["session"] | null;
+  };
+};
 
-const api = new Hono<{ Bindings: Env }>()
+// リクエストごとに Better Auth インスタンスを生成し、セッションを解決する
+const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
+  const auth = createAuth(c.env, new URL(c.req.url).origin);
+  c.set("auth", auth);
+  const result = await auth.api.getSession({ headers: c.req.raw.headers });
+  c.set("user", result?.user ?? null);
+  c.set("session", result?.session ?? null);
+  await next();
+});
+
+// ログイン必須ルート用ガード
+const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
+  if (!c.get("user")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  await next();
+});
+
+const app = new Hono<AppEnv>();
+
+app.use("/api/*", authMiddleware);
+
+// Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)
+app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
+
+const api = new Hono<AppEnv>()
   .get("/hello", (c) => c.json({ message: "Hello from Hono on Cloudflare Workers!" }))
-  .get("/time", (c) => c.json({ now: new Date().toISOString() }));
+  .get("/me", requireAuth, (c) => c.json({ user: c.get("user")! }));
 
 app.route("/api", api);
 

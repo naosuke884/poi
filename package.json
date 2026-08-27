@@ -9,10 +9,19 @@
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
     "typecheck": "wrangler types && tsc --build",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "auth:schema": "npx @better-auth/cli@latest generate --config better-auth.config.ts --output worker/db/schema.ts -y",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply poi --local",
+    "db:migrate:remote": "wrangler d1 migrations apply poi --remote"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.7.2",
+    "@mantine/core": "^9.5.2",
+    "@mantine/hooks": "^9.5.2",
     "@tanstack/react-router": "^1.170.32",
+    "better-auth": "^1.7.2",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.13.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
@@ -25,12 +34,18 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
+    "drizzle-kit": "^0.31.10",
+    "postcss": "^8.5.26",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "wrangler": "^4.127.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true,
-    "workerd@1.20260826.1": true
+    "workerd@1.20260826.1": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true
   }
 }
