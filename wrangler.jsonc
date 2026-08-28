@@ -25,6 +25,9 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
+  // カスタムドメインで公開する場合はコメントを外す (ゾーンが同じアカウントにあること)。
+  // 未設定なら https://poi.<account>.workers.dev で公開される
+  // "routes": [{ "pattern": "poi.example.com", "custom_domain": true }],
   "observability": {
     "enabled": true
   }

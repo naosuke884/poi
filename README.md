@@ -269,19 +269,54 @@ Authorized redirect URI に `http://localhost:5173/api/auth/callback/google` を
 
 ## 本番デプロイ
 
-```sh
-npx wrangler login
-npx wrangler d1 create poi            # 出力の database_id を wrangler.jsonc に反映
-npm run db:migrate:remote
-npx wrangler secret put BETTER_AUTH_SECRET
-npx wrangler secret put GOOGLE_CLIENT_ID
-npx wrangler secret put GOOGLE_CLIENT_SECRET
-npm run deploy
-```
+「環境横断で使える」ための本番 URL を用意する手順。初回は 1〜7 をすべて、2 回目以降は 7 だけでよい。
 
-本番の redirect URI `https://<your-domain>/api/auth/callback/google` も Google 側に登録する。
-`BETTER_AUTH_URL` は未設定ならリクエストの origin が使われる (カスタムドメインを固定したい場合のみ設定)。
+1. Cloudflare にログイン
+   ```sh
+   npx wrangler login
+   ```
+2. D1 を作成し、出力された `database_id` を `wrangler.jsonc` の `d1_databases[0].database_id` に貼る
+   ```sh
+   npx wrangler d1 create poi
+   ```
+3. 本番 D1 にマイグレーションを適用
+   ```sh
+   npm run db:migrate:remote
+   ```
+4. Secrets を登録 (`.dev.vars` の値と同じ名前。値はリポジトリに入れない)
+   ```sh
+   openssl rand -base64 32 | npx wrangler secret put BETTER_AUTH_SECRET
+   npx wrangler secret put GOOGLE_CLIENT_ID
+   npx wrangler secret put GOOGLE_CLIENT_SECRET
+   ```
+5. Google Cloud Console > APIs & Services > Credentials > 使っている OAuth クライアントに
+   本番の redirect URI `https://<本番ドメイン>/api/auth/callback/google` を追加する
+   (`poi.<account>.workers.dev` でも、カスタムドメインでもよい。両方使うなら両方登録)
+6. (任意) カスタムドメイン: `wrangler.jsonc` の `routes` のコメントを外してドメインを書く
+   (ゾーンが同じ Cloudflare アカウントにあること)
+7. ビルドしてデプロイ
+   ```sh
+   npm run deploy
+   ```
 
+### デプロイ後の確認
+
+- `https://<本番ドメイン>/` → `/login` にリダイレクト → Google でログインできる
+- メモを作成 → 別端末 (スマホなど) で同じアカウントでログイン → 同じメモが見える
+- `https://<本番ドメイン>/api/memos` (未ログイン) → `401 {"error":"Unauthorized"}`
+- `https://<本番ドメイン>/sw.js` / `/manifest.webmanifest` → 200。Chrome DevTools > Application で SW が登録され、
+  Lighthouse の PWA installable が通る (HTTPS が必要なので本番でしか確認できない)
+- Cloudflare ダッシュボード > Workers & Pages > poi > Logs で毎時 `[memo sweep] deleted N ...` が出る
+- `git status` でシークレットが含まれていないこと (`.dev.vars*` は `.gitignore` 済み)
+
+### 補足
+
+- `BETTER_AUTH_URL` は未設定ならリクエストの origin が使われる (`worker/auth.ts`)。
+  `workers.dev` とカスタムドメインの両方でログインを許可したい場合はそのままでよい。
+  1 つの origin に固定したい (別 origin からの Cookie を拒否したい) 場合だけ `wrangler secret put BETTER_AUTH_URL` で設定する。
+- Better Auth の `trustedOrigins` は既定で `baseURL` の origin だけなので、上記の挙動と一致する。
+- `wrangler.jsonc` は `wrangler deploy` 時にも読まれるため、`database_id` は必ず本物に置き換えること
+  (ダミーのままだと `binding DB ... database_id not found` でデプロイに失敗する)。
 ## スキーマを変更するとき
 
 1. Better Auth のプラグイン追加など → `npm run auth:schema`
