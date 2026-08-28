@@ -1,33 +1,34 @@
-import { useState } from "react";
 import { Affix, Button, Notification } from "@mantine/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 /**
- * Service Worker を登録し、新バージョンが有効化されたら「更新があります」のバナーを出す。
+ * Service Worker を登録し、新バージョンが待機状態になったら「更新があります」のバナーを出す。
  *
- * vite.config.ts で registerType: "autoUpdate" にしているので新しい SW は待機せず即座に有効化されるが、
- * 既定の挙動 (その場で window.location.reload()) だと編集中のメモが飛びかねないので、
- * onNeedReload で自動リロードを止めてユーザーにリロードしてもらう。
- * (MemoEditor の beforeunload により、未保存の変更があればリロード時に確認が出る)
+ * vite.config.ts は registerType: "prompt"。新しい SW はユーザーが「リロード」を押すまで待機し、
+ * 旧 SW とその precache は残るので、開いたままのページが遅延読み込みするチャンクが消えることはない。
+ * (autoUpdate だと新 SW が即時有効化 + 旧キャッシュ削除され、開きっぱなしの旧ページが壊れうる)
+ * 「リロード」で updateServiceWorker(true) → 新 SW が skipWaiting → controllerchange でリロードされる。
+ * MemoEditor の beforeunload により、未保存の変更があればリロード時に確認が出る。
  */
 export function PwaUpdateBanner() {
-  const [needReload, setNeedReload] = useState(false);
-  useRegisterSW({
-    onNeedReload: () => setNeedReload(true),
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
     onRegisterError: (error) => console.error("[pwa] service worker registration failed", error),
   });
 
-  if (!needReload) return null;
+  if (!needRefresh) return null;
 
   return (
     <Affix position={{ bottom: 16, right: 16 }}>
       <Notification
         title="更新があります"
         withBorder
-        onClose={() => setNeedReload(false)}
+        onClose={() => setNeedRefresh(false)}
         closeButtonProps={{ "aria-label": "閉じる" }}
       >
-        <Button size="xs" mt="xs" onClick={() => window.location.reload()}>
+        <Button size="xs" mt="xs" onClick={() => void updateServiceWorker(true)}>
           リロード
         </Button>
       </Notification>

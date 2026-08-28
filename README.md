@@ -161,10 +161,10 @@ npx wrangler d1 execute poi --local --command "
   - `/api/*` は **キャッシュしない**。`runtimeCaching` を一切定義していないので precache 対象外のリクエストは
     SW を素通りしてネットワークへ行く (NetworkOnly 相当)。認証付きレスポンスがキャッシュされないよう、
     `/api` 向けの `runtimeCaching` は今後も追加しないこと
-- 更新: `registerType: "autoUpdate"` で新しい SW は待機せず即座に有効化される (`skipWaiting` + `clientsClaim`)。
-  既定の「その場で自動リロード」は編集中のメモが飛びかねないので `onNeedReload` で止め、
-  `src/components/PwaUpdateBanner.tsx` が右下に「更新があります」+「リロード」ボタンを出す
-  (未保存の変更があれば `MemoEditor` の `beforeunload` で確認が出る)
+- 更新: `registerType: "prompt"`。新しい SW はユーザーが「リロード」を押すまで待機する。
+  autoUpdate (即時有効化 + 旧キャッシュ削除) だと開いたままの旧ページの遅延チャンクが消えて壊れうるため。
+  `src/components/PwaUpdateBanner.tsx` が `needRefresh` を見て右下に「更新があります」+「リロード」ボタンを出し、
+  押すと `updateServiceWorker(true)` → 新 SW 有効化 → リロード (未保存の変更があれば `MemoEditor` の `beforeunload` で確認が出る)
 
 ### ローカルで確認する
 

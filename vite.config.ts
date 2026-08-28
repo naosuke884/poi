@@ -17,9 +17,10 @@ export default defineConfig({
     // PWA: manifest.webmanifest と Service Worker (sw.js) を dist/client に生成する。
     // cloudflare() がクライアントを dist/client に出力した後 (closeBundle) に動くので、この順で置く
     VitePWA({
-      // 新しい SW を待機させず即座に有効化する (skipWaiting + clientsClaim)。
-      // 有効化後のリロードは自動では行わず、PwaUpdateBanner が「更新があります」を出す (onNeedReload)
-      registerType: "autoUpdate",
+      // 新しい SW はユーザーが「リロード」を押すまで待機させる (prompt)。
+      // autoUpdate (skipWaiting + clientsClaim) だと旧 precache が即座に消え、開いたままの旧ページの
+      // 遅延チャンク読み込みが失敗しうるため。PwaUpdateBanner が needRefresh を見てバナーを出す
+      registerType: "prompt",
       // SW の登録は src/components/PwaUpdateBanner.tsx の useRegisterSW で行うので、登録スクリプトは注入しない
       injectRegister: null,
       manifest: {
