@@ -1,5 +1,7 @@
 import { Hono } from "hono";
+import { createDb } from "./db";
 import { memoRoutes } from "./memo/routes";
+import { deleteExpiredMemos } from "./memo/sweep";
 import { authMiddleware, type AppEnv } from "./middleware";
 
 const app = new Hono<AppEnv>();
@@ -24,4 +26,18 @@ app.notFound((c) => {
 
 export type ApiType = typeof api;
 
-export default app;
+// Cron Trigger (wrangler.jsonc の triggers.crons) から呼ばれ、期限切れメモを物理削除する。
+// 削除件数は console.log に出す (observability が有効なので Workers Logs で確認できる)。
+// ローカルでの確認手順は README「期限切れメモの自動削除 (Cron)」を参照。
+const scheduled: ExportedHandlerScheduledHandler<Env> = async (controller, env) => {
+  const now = new Date(controller.scheduledTime);
+  const deleted = await deleteExpiredMemos(createDb(env.DB), now);
+  console.log(
+    `[memo sweep] deleted ${deleted} expired memo(s) (cron: ${controller.cron}, scheduledTime: ${now.toISOString()})`,
+  );
+};
+
+export default {
+  fetch: app.fetch,
+  scheduled,
+} satisfies ExportedHandler<Env>;

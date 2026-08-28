@@ -7,7 +7,10 @@
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    // /__scheduled は `wrangler dev --test-scheduled` で Cron をローカル実行するための経路。
+    // 静的アセット (SPA フォールバック) より先に Worker に渡さないと届かないのでここに含める
+    // (本番では Worker の notFound → SPA フォールバックになるだけで動作は変わらない)
+    "run_worker_first": ["/api/*", "/__scheduled"]
   },
   "d1_databases": [
     {
@@ -18,6 +21,10 @@
       "migrations_dir": "drizzle"
     }
   ],
+  // 期限切れメモの物理削除 (worker/index.ts の scheduled ハンドラ) を毎時 0 分に実行する
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
   "observability": {
     "enabled": true
   }

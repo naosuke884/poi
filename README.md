@@ -19,16 +19,17 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   ├── lib/memo.ts           # 残り日数 / 表示タイトル / 日付フォーマットなどのヘルパー
 │   └── routeTree.gen.ts      # 自動生成 (編集不要)
 ├── worker/
-│   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/memos
+│   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/memos。scheduled ハンドラ (Cron) もここ
 │   ├── middleware.ts         # authMiddleware (セッション解決) / requireAuth (401 ガード)
 │   ├── auth.ts               # createAuth(env): Better Auth + Drizzle(D1) + Google
 │   ├── db/schema.ts          # Drizzle スキーマ (Better Auth CLI が生成。手で編集しない)
 │   ├── db/memo.ts            # Drizzle スキーマ (アプリ独自: memo テーブル)
 │   ├── memo/constants.ts     # メモの保持期間 (30 日) / 文字数上限。src/ からも参照
 │   ├── memo/routes.ts        # メモ CRUD API (/api/memos)。zod でバリデーション
+│   ├── memo/sweep.ts         # 期限切れメモの物理削除 (deleteExpiredMemos)。Cron から呼ぶ
 │   └── env.d.ts              # シークレットの型を Env にマージ
 ├── drizzle/                  # マイグレーション SQL (drizzle-kit generate の出力)
-├── wrangler.jsonc            # Workers 設定 (assets + SPA fallback + D1)
+├── wrangler.jsonc            # Workers 設定 (assets + SPA fallback + D1 + Cron Trigger)
 ├── better-auth.config.ts     # Better Auth CLI 用 (スキーマ生成)
 ├── drizzle.config.ts
 ├── postcss.config.cjs        # Mantine 用 PostCSS
@@ -41,6 +42,8 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
   - `/api/auth/*` … Better Auth のハンドラ
   - それ以外は `authMiddleware` でセッション解決済み。`requireAuth` で 401 ガード
   - `/api/memos` … メモ CRUD (下記)
+- `/__scheduled` … `wrangler dev --test-scheduled` で Cron をローカル実行するための経路 (下記)。
+  静的アセットに取られないよう `run_worker_first` に含めている (本番では SPA フォールバックになるだけ)
 - それ以外 … 静的アセットがあればそれを返し、無ければ `index.html` (SPA フォールバック)
 
 ### 画面
@@ -85,6 +88,55 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
   (`content` は 1〜20,000 文字、`title` は 200 文字まで。上限は `worker/memo/constants.ts`)
 - バリデーションエラーは `400 { error: "Bad Request", issues: [...] }` (zod の issues)
 - フロントからは `src/lib/api.ts` の `api.memos.$get()` / `api.memos[":id"].$patch(...)` などを型付きで呼べる
+
+## 期限切れメモの自動削除 (Cron)
+
+API 側の `expiresAt > now` フィルタは「見えなくする」だけで行は DB に残るため、
+Cron Trigger で物理削除して「1 ヶ月で必ず消える」を保証する。
+
+- `wrangler.jsonc` の `triggers.crons` (`"0 * * * *"`: 毎時 0 分) で起動
+- `worker/index.ts` の `scheduled` ハンドラが `worker/memo/sweep.ts` の `deleteExpiredMemos(db, now)` を呼び、
+  `DELETE FROM memo WHERE expires_at <= now` を実行する (`now` は `controller.scheduledTime`)
+- 削除件数を `[memo sweep] deleted N expired memo(s) ...` と `console.log` に出す
+  (`observability` が有効なので本番では Workers Logs で確認できる)
+
+### ローカルで確認する
+
+`npm run dev` (Vite) では `--test-scheduled` が使えないので、`wrangler dev` を直接起動する。
+`wrangler.jsonc` は `assets.directory` を持たない (Vite プラグインが補う) ため `--assets dist/client` を渡す。
+`.wrangler/deploy/config.json` によるビルド済み設定へのリダイレクトは `--config` を明示すると無効になり、
+`worker/index.ts` を wrangler 自身がバンドルするので `/__scheduled` のミドルウェアが有効になる
+(ビルド済み設定は `no_bundle` のためミドルウェアが挟まらず `/__scheduled` が動かない)。
+
+```sh
+npm run build   # dist/client (アセット) を作る。Worker 自体は wrangler が worker/index.ts から直接バンドルする
+
+# 期限切れ (expires_at = 0) と期限内 (+1 日) のメモを 1 件ずつ入れる
+# (memo.user_id は user.id への FK なので、ログイン済みユーザーの id を使うか、テスト用の user を先に入れる)
+npx wrangler d1 execute poi --local --command "
+  INSERT INTO user (id, name, email, email_verified, created_at, updated_at)
+    VALUES ('cron-test-user', 'cron', 'cron-test@example.com', 1, strftime('%s','now')*1000, strftime('%s','now')*1000);
+  INSERT INTO memo (id, user_id, title, content, created_at, updated_at, expires_at) VALUES
+    ('cron-expired', 'cron-test-user', 'expired', 'x', 0, 0, 0),
+    ('cron-valid',   'cron-test-user', 'valid',   'y', 0, 0, strftime('%s','now')*1000 + 86400000);"
+
+npx wrangler dev --config wrangler.jsonc --assets dist/client --test-scheduled   # http://localhost:8787
+```
+
+別ターミナルで Cron を発火させ、期限切れの行だけ消えることを確認する。
+
+```sh
+curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"
+# => Ran scheduled event
+#    wrangler dev 側のログ: [memo sweep] deleted 1 expired memo(s) (cron: 0 * * * *, scheduledTime: ...)
+
+npx wrangler d1 execute poi --local --command "SELECT id FROM memo WHERE id LIKE 'cron-%';"
+# => cron-valid だけ残る
+
+# 後片付け
+npx wrangler d1 execute poi --local --command "
+  DELETE FROM memo WHERE user_id = 'cron-test-user'; DELETE FROM user WHERE id = 'cron-test-user';"
+```
 
 ## 初回セットアップ
 
