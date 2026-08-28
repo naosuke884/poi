@@ -13,7 +13,7 @@
     "deploy": "npm run build && wrangler deploy",
     "typecheck": "wrangler types && tsc --build",
     "cf-typegen": "wrangler types",
-    "auth:schema": "npx @better-auth/cli@latest generate --config better-auth.config.ts --output worker/db/schema.ts -y",
+    "auth:schema": "npx auth@1.7.2 generate --config better-auth.config.ts --output worker/db/schema.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply poi --local",
     "db:migrate:remote": "wrangler d1 migrations apply poi --remote"
