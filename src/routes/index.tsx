@@ -1,5 +1,6 @@
 import {
   Alert,
+  Anchor,
   Badge,
   Button,
   Card,
@@ -132,9 +133,17 @@ function MemoCard({ memo, onDelete }: { memo: MemoListItem; onDelete: () => void
     <Card withBorder radius="md" padding="md">
       <Stack gap="xs" h="100%">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Text fw={600} lineClamp={2} style={{ wordBreak: "break-word" }} miw={0}>
+          <Anchor
+            // component={Link} だと params の型が付かないので renderRoot で Link を渡す
+            renderRoot={(props) => <Link to="/memos/$id" params={{ id: memo.id }} {...props} />}
+            fw={600}
+            c="inherit"
+            lineClamp={2}
+            style={{ wordBreak: "break-word" }}
+            miw={0}
+          >
             {memoDisplayTitle(memo)}
-          </Text>
+          </Anchor>
           <Badge
             color={warning ? "orange" : "gray"}
             variant={warning ? "filled" : "light"}

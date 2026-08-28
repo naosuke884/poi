@@ -36,3 +36,15 @@ export function formatDateTime(value: string | number | Date): string {
     minute: "2-digit",
   });
 }
+
+// GET /api/memos/:id のレスポンス型 (編集画面用)
+export type MemoDetail = InferResponseType<(typeof api.memos)[":id"]["$get"], 200>["memo"];
+
+/** 期限日など日付だけの表示用フォーマット (YYYY/MM/DD、端末のタイムゾーン) */
+export function formatDate(value: string | number | Date): string {
+  return new Date(value).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}

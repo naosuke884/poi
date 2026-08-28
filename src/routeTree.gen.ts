@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MemosIdRouteImport } from './routes/memos/$id'
 import { Route as MemosNewRouteImport } from './routes/memos/new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MemosIdRoute = MemosIdRouteImport.update({
+  id: '/memos/$id',
+  path: '/memos/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MemosNewRoute = MemosNewRouteImport.update({
   id: '/memos/new',
   path: '/memos/new',
@@ -32,30 +38,34 @@ const MemosNewRoute = MemosNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/memos/$id': typeof MemosIdRoute
   '/memos/new': typeof MemosNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/memos/$id': typeof MemosIdRoute
   '/memos/new': typeof MemosNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/memos/$id': typeof MemosIdRoute
   '/memos/new': typeof MemosNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/memos/new'
+  fullPaths: '/' | '/login' | '/memos/$id' | '/memos/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/memos/new'
-  id: '__root__' | '/' | '/login' | '/memos/new'
+  to: '/' | '/login' | '/memos/$id' | '/memos/new'
+  id: '__root__' | '/' | '/login' | '/memos/$id' | '/memos/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  MemosIdRoute: typeof MemosIdRoute
   MemosNewRoute: typeof MemosNewRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/memos/$id': {
+      id: '/memos/$id'
+      path: '/memos/$id'
+      fullPath: '/memos/$id'
+      preLoaderRoute: typeof MemosIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/memos/new': {
       id: '/memos/new'
       path: '/memos/new'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  MemosIdRoute: MemosIdRoute,
   MemosNewRoute: MemosNewRoute,
 }
 export const routeTree = rootRouteImport

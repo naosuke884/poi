@@ -9,12 +9,14 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   │   ├── __root.tsx        #   AppShell レイアウト + ヘッダー
 │   │   ├── index.tsx         #   /          メモ一覧 (要ログイン: beforeLoad でガード)
 │   │   ├── login.tsx         #   /login     (Google でログイン)
-│   │   └── memos/new.tsx     #   /memos/new メモ作成 (編集画面は #4 で実装。今はプレースホルダー)
+│   │   ├── memos/new.tsx     #   /memos/new メモ作成 (最初の入力で POST → /memos/$id へ replace 遷移)
+│   │   └── memos/$id.tsx     #   /memos/:id メモ編集 (自動保存)。404 は notFoundComponent
 │   ├── components/UserMenu.tsx
+│   ├── components/MemoEditor.tsx # 作成・編集で共有するエディタ (debounce 自動保存 / 保存状態 / 期限表示)
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
 │   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ)
-│   ├── lib/memo.ts           # 残り日数 / 表示タイトルなど一覧用のヘルパー
+│   ├── lib/memo.ts           # 残り日数 / 表示タイトル / 日付フォーマットなどのヘルパー
 │   └── routeTree.gen.ts      # 自動生成 (編集不要)
 ├── worker/
 │   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/memos
@@ -45,14 +47,27 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 
 | Path         | 内容                                                                                   |
 | ------------ | -------------------------------------------------------------------------------------- |
-| `/`          | メモ一覧 (要ログイン)。タイトル (無ければ本文の先頭行) / 更新日時 / 残り日数を表示。削除は確認ダイアログ付き |
+| `/`          | メモ一覧 (要ログイン)。タイトル (無ければ本文の先頭行) / 更新日時 / 残り日数を表示。カードのタイトルから編集画面へ。削除は確認ダイアログ付き |
 | `/login`     | Google でログイン。`?redirect=` があればログイン後にそこへ戻る                            |
-| `/memos/new` | メモ作成 (#4 で実装予定。現状はプレースホルダー)                                          |
+| `/memos/new` | メモ作成 (要ログイン)。最初の入力で `POST /api/memos` し、`/memos/:id` へ `replace` 遷移       |
+| `/memos/:id` | メモ編集 (要ログイン)。期限切れ・存在しない id は 404 表示 (`notFoundComponent`)          |
 
 - ログイン必須ページは `beforeLoad` で `src/lib/require-login.ts` の `requireLogin` を呼ぶ
   (未ログインなら `/login?redirect=<元の URL>` へ)
 - 残り日数は `expiresAt` から `src/lib/memo.ts` の `remainingDays` で算出し、
   3 日以下 (`MEMO_EXPIRY_WARNING_DAYS`) は警告色で表示する
+
+### メモ編集画面 (`src/components/MemoEditor.tsx`)
+
+- 保存ボタンは無く、入力停止から 1 秒 (`AUTOSAVE_DELAY_MS`) 後に自動保存する
+  - 新規 (`/memos/new`) は最初の入力で `POST`、以降は `PATCH`。保存中に入力があれば完了後に続けて保存する
+  - `POST` 直後の `/memos/$id` への遷移でエディタは作り直されるが、遷移中の入力とカーソル位置は
+    モジュール内の `handoff` 経由で新しいエディタに引き継ぐ
+  - 本文が空の間は保存しない (API が `content` を 1 文字以上要求するため)
+- 保存状態を右上に表示: 未保存の変更があります / 保存中… / 保存済み / 保存に失敗 (「再試行」ボタン付き)。
+  未保存の間はタブを閉じる・リロード時に `beforeunload` で確認を出す
+- 期限日を「このメモは YYYY/MM/DD に消えます」と表示 (`expiresAt` を `formatDate` で整形)
+- タイトル / 本文の `maxLength` と文字数カウンタは `worker/memo/constants.ts` の上限を使う
 
 ## メモ API (`/api/memos`)
 
