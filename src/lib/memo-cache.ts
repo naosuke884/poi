@@ -20,9 +20,14 @@ const memoKey = (userId: string, id: string) => `${memoKeyPrefix(userId)}${id}`;
 export type CachedMemoList = { memos: MemoListItem[]; cachedAt: number };
 export type CachedMemo = { memo: MemoDetail; cachedAt: number };
 
-export function readCachedMemoList(userId: string): CachedMemoList | null {
+// サーバ側の「未期限切れのみ」と同じ条件。オフラインでも期限を過ぎたメモは見せない
+const notExpired = (memo: { expiresAt: string }, now: number) =>
+  new Date(memo.expiresAt).getTime() > now;
+
+export function readCachedMemoList(userId: string, now = Date.now()): CachedMemoList | null {
   const cached = readJson<CachedMemoList>(listKey(userId));
-  return cached && Array.isArray(cached.memos) ? cached : null;
+  if (!cached || !Array.isArray(cached.memos)) return null;
+  return { ...cached, memos: cached.memos.filter((m) => notExpired(m, now)) };
 }
 
 export function writeCachedMemoList(userId: string, memos: MemoListItem[], now = Date.now()): void {
@@ -35,9 +40,10 @@ export function writeCachedMemoList(userId: string, memos: MemoListItem[], now =
   }
 }
 
-export function readCachedMemo(userId: string, id: string): CachedMemo | null {
+export function readCachedMemo(userId: string, id: string, now = Date.now()): CachedMemo | null {
   const cached = readJson<CachedMemo>(memoKey(userId, id));
-  return cached && cached.memo && cached.memo.id === id ? cached : null;
+  if (!cached || !cached.memo || cached.memo.id !== id) return null;
+  return notExpired(cached.memo, now) ? cached : null;
 }
 
 export function writeCachedMemo(userId: string, memo: MemoDetail, now = Date.now()): void {
