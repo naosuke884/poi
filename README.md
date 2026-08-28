@@ -101,6 +101,6 @@ npm run deploy
 ## スキーマを変更するとき
 
 1. Better Auth のプラグイン追加など → `npm run auth:schema`
-   (アプリ独自のテーブルは `worker/db/schema.ts` に直接追加)
+   (アプリ独自のテーブルは `worker/db/memo.ts` など別ファイルに追加し、`drizzle.config.ts` の `schema` に含める)
 2. `npm run db:generate` → `drizzle/` に SQL が生成される
 3. `npm run db:migrate:local` / `db:migrate:remote`
