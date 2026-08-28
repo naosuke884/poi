@@ -8,6 +8,13 @@
       "when": 1787856125270,
       "tag": "0000_petite_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787910234202,
+      "tag": "0001_abnormal_grandmaster",
+      "breakpoints": true
     }
   ]
 }

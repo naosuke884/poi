@@ -17,7 +17,9 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 ├── worker/
 │   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/hello, /api/me
 │   ├── auth.ts               # createAuth(env): Better Auth + Drizzle(D1) + Google
-│   ├── db/schema.ts          # Drizzle スキーマ (Better Auth CLI が生成)
+│   ├── db/schema.ts          # Drizzle スキーマ (Better Auth CLI が生成。手で編集しない)
+│   ├── db/memo.ts            # Drizzle スキーマ (アプリ独自: memo テーブル)
+│   ├── memo/constants.ts     # メモの保持期間 (30 日) 定数。src/ からも参照
 │   └── env.d.ts              # シークレットの型を Env にマージ
 ├── drizzle/                  # マイグレーション SQL (drizzle-kit generate の出力)
 ├── wrangler.jsonc            # Workers 設定 (assets + SPA fallback + D1)
