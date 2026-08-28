@@ -4,7 +4,8 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 1 つの Cloudflare Worker で動かす構成。
 
 アプリは「板」1 枚: ログインすると 1 つの Textarea があり、書いた内容は自動保存される。
-行ごとに「書いてから 30 日」で消える (行単位で期限を持ち、Cron が行単位で削除する)。
+空行 (改行 2 つ) で区切った「セクション」ごとに「書いてから 30 日」で消える
+(セクション単位で期限を持ち、Cron がセクション単位で削除する)。
 
 ```
 ├── .github/workflows/
@@ -24,7 +25,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
 │   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ。オフラインはキャッシュしたユーザーで通す)
-│   ├── lib/board.ts          # 行の分割 / 結合、保存時に行 id を引き継ぐ diff (diffLines)、日付フォーマット
+│   ├── lib/board.ts          # セクションの分割 / 結合、保存時に id を引き継ぐ diff (diffSections)、日付フォーマット
 │   ├── lib/board-cache.ts    # オフライン閲覧用の板のキャッシュ (localStorage、ユーザー id ごと)
 │   ├── lib/session-cache.ts  # オフライン起動用にログイン中ユーザーをキャッシュ
 │   ├── lib/local-storage.ts  # localStorage の try/catch ラッパー
@@ -38,10 +39,10 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   ├── middleware.ts         # authMiddleware (セッション解決) / requireAuth (401 ガード)
 │   ├── auth.ts               # createAuth(env): Better Auth + Drizzle(D1) + Google
 │   ├── db/schema.ts          # Drizzle スキーマ (Better Auth CLI が生成。手で編集しない)
-│   ├── db/memo.ts            # Drizzle スキーマ (アプリ独自: memo テーブル = 板の 1 行)
-│   ├── memo/constants.ts     # 行の保持期間 (30 日) / 板の文字数・行数上限。src/ からも参照
+│   ├── db/memo.ts            # Drizzle スキーマ (アプリ独自: memo テーブル = 板の 1 セクション)
+│   ├── memo/constants.ts     # セクションの保持期間 (30 日) / 区切り文字列 / 板の文字数・セクション数上限。src/ からも参照
 │   ├── memo/routes.ts        # 板 API (GET / PUT /api/board)。zod でバリデーション
-│   ├── memo/sweep.ts         # 期限切れの行の物理削除 (deleteExpiredMemos)。Cron から呼ぶ
+│   ├── memo/sweep.ts         # 期限切れのセクションの物理削除 (deleteExpiredMemos)。Cron から呼ぶ
 │   └── env.d.ts              # シークレットの型を Env にマージ
 ├── drizzle/                  # マイグレーション SQL (drizzle-kit generate の出力)
 ├── wrangler.jsonc            # Workers 設定 (assets + SPA fallback + D1 + Cron Trigger)
@@ -75,46 +76,50 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 
 ### 板 (`src/components/Board.tsx`)
 
+- 板のテキストは空行 1 つ (`SECTION_SEPARATOR = "\n\n"`) で「セクション」に区切る (`src/lib/board.ts` の `splitSections`)。
+  セクションの中の単独の改行はそのまま内容に含める。区切りは `"\n\n"` ちょうどで、分割と結合 (`joinSections`) が
+  必ず往復するようそれ以外は変えない (空行が 2 つ以上続いた分の改行は次のセクションの先頭に付く / 空のセクションになる)
 - 保存ボタンは無く、入力停止から 1 秒 (`AUTOSAVE_DELAY_MS`) 後に `PUT /api/board` で丸ごと保存する。
   保存中に入力があれば完了後に続けて保存する
-- 行の id は Textarea には持たせず、保存時に「前回保存した行」と現在のテキストを行単位で突き合わせて決める
-  (`src/lib/board.ts` の `diffLines`)。内容がそのままの行は LCS で対応付け、対応が取れなかった区間では
-  消えた行と増えた行を順に 1 対 1 で組にして「書き換えた行」とみなし id を引き継ぐ (= 期限を維持する)。
-  余った増えた行は `id: null` で新しい行になる
+- セクションの id は Textarea には持たせず、保存時に「前回保存したセクション」と現在のテキストをセクション単位で
+  突き合わせて決める (`src/lib/board.ts` の `diffSections`)。内容がそのままのセクションは LCS で対応付け、
+  対応が取れなかった区間では消えたものと増えたものを順に 1 対 1 で組にして「書き換えたセクション」とみなし
+  id を引き継ぐ (= 期限を維持する)。余った増えたものは `id: null` で新しいセクションになる
 - 保存状態を右上に表示: 未保存の変更があります / 保存中… / 保存済み / 保存に失敗 (「再試行」ボタン付き) /
   オフラインです。オンライン復帰後に再保存してください (「再試行」付き。`online` イベントでも自動再送。下記「オフライン時の挙動」)。
   未保存の間はタブを閉じる・リロード時に `beforeunload` で確認を出す
-- 左上に「各行は書いてから 30 日で消えます (次に消えるのは YYYY/MM/DD)」を表示
-  (保存済みの行の `expiresAt` の最小値を `formatDate` で整形)
+- 左上に「空行で区切った各セクションは書いてから 30 日で消えます (次に消えるのは YYYY/MM/DD)」を表示
+  (保存済みのセクションの `expiresAt` の最小値を `formatDate` で整形)
 - Textarea の `maxLength` と文字数カウンタは `worker/memo/constants.ts` の `BOARD_MAX_LENGTH` を使う。
-  行数が `BOARD_MAX_LINES` を超えると保存せずエラー表示
+  セクション数が `BOARD_MAX_SECTIONS` を超えると保存せずエラー表示
 
 ## 板 API (`/api/board`)
 
-すべて `requireAuth` (未ログインは 401)。自分の行だけを扱い、期限切れの行は無い扱い。
+すべて `requireAuth` (未ログインは 401)。自分のセクションだけを扱い、期限切れのセクションは無い扱い。
 
 | Method | Path         | 内容                                                                                   |
 | ------ | ------------ | -------------------------------------------------------------------------------------- |
-| GET    | `/api/board` | 板の全行 (`position`, `createdAt` 昇順、未期限切れのみ)                                   |
-| PUT    | `/api/board` | 板を丸ごと置き換える。保存後の全行を返す                                                |
+| GET    | `/api/board` | 板の全セクション (`position`, `createdAt` 昇順、未期限切れのみ)                           |
+| PUT    | `/api/board` | 板を丸ごと置き換える。保存後の全セクションを返す                                        |
 
-- `PUT` のリクエストボディ: `{ lines: { id: string \| null, content: string }[] }`
-  (`content` は改行を含まない 1 行。空行も 1 行。板全体で 20,000 文字 / 1,000 行まで。上限は `worker/memo/constants.ts`)
-- `PUT` の処理: `id` が自分の既存の行と一致すれば `content` / `position` だけ更新 (`createdAt` / `expiresAt` は維持 = 延命しない。
-  変化が無い行は触らない)。それ以外は `expiresAt = createdAt + 30 日` で新規作成。送られてこなかった既存の行は削除。
+- `PUT` のリクエストボディ: `{ sections: { id: string \| null, content: string }[] }`
+  (`content` は 1 セクション分のテキスト。単独の改行は含んでよいが、区切りの空行 `"\n\n"` と CR は不可。空でも 1 セクション。
+  板全体で 20,000 文字 / 1,000 セクションまで。上限と区切りは `worker/memo/constants.ts`)
+- `PUT` の処理: `id` が自分の既存のセクションと一致すれば `content` / `position` だけ更新 (`createdAt` / `expiresAt` は維持 = 延命しない。
+  変化が無いセクションは触らない)。それ以外は `expiresAt = createdAt + 30 日` で新規作成。送られてこなかった既存のセクションは削除。
   すべて `db.batch` で 1 トランザクションとして実行する
 - バリデーションエラーは `400 { error: "Bad Request", issues: [...] }` (zod の issues)
 - フロントからは `src/lib/api.ts` の `api.board.$get()` / `api.board.$put({ json })` を型付きで呼べる
 
-## 期限切れの行の自動削除 (Cron)
+## 期限切れのセクションの自動削除 (Cron)
 
 API 側の `expiresAt > now` フィルタは「見えなくする」だけで DB には残るため、
-Cron Trigger で物理削除して「1 ヶ月で必ず消える」を保証する。削除は行単位 (`memo` テーブルの 1 行 = 板の 1 行)。
+Cron Trigger で物理削除して「1 ヶ月で必ず消える」を保証する。削除はセクション単位 (`memo` テーブルの 1 行 = 板の 1 セクション)。
 
 - `wrangler.jsonc` の `triggers.crons` (`"0 * * * *"`: 毎時 0 分) で起動
 - `worker/index.ts` の `scheduled` ハンドラが `worker/memo/sweep.ts` の `deleteExpiredMemos(db, now)` を呼び、
   `DELETE FROM memo WHERE expires_at <= now` を実行する (`now` は `controller.scheduledTime`)
-- 削除件数を `[memo sweep] deleted N expired line(s) ...` と `console.log` に出す
+- 削除件数を `[memo sweep] deleted N expired section(s) ...` と `console.log` に出す
   (`observability` が有効なので本番では Workers Logs で確認できる)
 
 ### ローカルで確認する
@@ -128,7 +133,7 @@ Cron Trigger で物理削除して「1 ヶ月で必ず消える」を保証す�
 ```sh
 npm run build   # dist/client (アセット) を作る。Worker 自体は wrangler が worker/index.ts から直接バンドルする
 
-# 期限切れ (expires_at = 0) と期限内 (+1 日) の行を 1 件ずつ入れる
+# 期限切れ (expires_at = 0) と期限内 (+1 日) のセクションを 1 件ずつ入れる
 # (memo.user_id は user.id への FK なので、ログイン済みユーザーの id を使うか、テスト用の user を先に入れる)
 npx wrangler d1 execute poi --local --command "
   INSERT INTO user (id, name, email, email_verified, created_at, updated_at)
@@ -140,7 +145,7 @@ npx wrangler d1 execute poi --local --command "
 npx wrangler dev --config wrangler.jsonc --assets dist/client --test-scheduled   # http://localhost:8787
 ```
 
-別ターミナルで Cron を発火させ、期限切れの行だけ消えることを確認する。
+別ターミナルで Cron を発火させ、期限切れのセクションだけ消えることを確認する。
 
 ```sh
 curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"
@@ -204,7 +209,8 @@ HTTPS でデプロイした環境で実機 / DevTools から確認する。
   オフライン → オンラインに戻った瞬間に `router.invalidate()` で表示中ルートの loader を再実行し、
   キャッシュ表示を最新のデータで置き換える (= キャッシュもその時点で上書きされる)
 - **キャッシュ** (`src/lib/board-cache.ts`, `localStorage`): 板 (`GET /api/board`) の loader が成功するたび、
-  および保存成功時に上書きする。キーはユーザー id ごと (`poi:board-cache:v1:<userId>`)。読むときに期限切れの行は除く。
+  および保存成功時に上書きする。キーはユーザー id ごと (`poi:board-cache:v2:<userId>`。v1 は行単位だった頃の形式で、
+  読まずにログアウト時に消すだけ)。読むときに期限切れのセクションは除く。
   `localStorage` が使えない (プライベートモード / 容量超過) 場合は `src/lib/local-storage.ts` が握りつぶし、
   単にキャッシュが無い扱いになる
 - **ログイン状態** (`src/lib/session-cache.ts`): `requireLogin` は `getSession` の fetch 自体が失敗 (ネットワーク断) したら
@@ -241,7 +247,7 @@ HTTPS でデプロイした環境で実機 / DevTools から確認する。
 
 キャッシュ / オフライン判定のヘルパーは DOM 無しでも動くので、node で単体確認できる
 (`localStorage` をモックして `src/lib/board-cache.ts` / `src/lib/offline.ts` を呼ぶ)。
-`src/lib/board.ts` の `diffLines` も同様に node で確認できる。
+`src/lib/board.ts` の `diffSections` も同様に node で確認できる。
 
 ## 初回セットアップ
 

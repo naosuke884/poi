@@ -1,9 +1,15 @@
 import { Button, Group, Loader, Stack, Text, Textarea } from "@mantine/core";
 import { useBlocker } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BOARD_MAX_LENGTH, BOARD_MAX_LINES, MEMO_TTL_DAYS } from "../../worker/memo/constants";
+import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS, MEMO_TTL_DAYS } from "../../worker/memo/constants";
 import { api } from "@/lib/api";
-import { type BoardLine, diffLines, formatDate, joinLines, splitLines } from "@/lib/board";
+import {
+  type BoardSection,
+  diffSections,
+  formatDate,
+  joinSections,
+  splitSections,
+} from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 
@@ -20,24 +26,25 @@ type SaveStatus =
   | "error";
 
 /**
- * 板 (1 枚の Textarea)。入力停止から 1 秒後に PUT /api/board で丸ごと保存する (自動保存)。
- * 保存時は前回保存した行と突き合わせて行の id を引き継ぎ (diffLines)、行ごとの期限を維持する。
+ * 板 (1 枚の Textarea)。空行で区切った各セクションが 1 つの memo で、セクションごとに 30 日で消える。
+ * 入力停止から 1 秒後に PUT /api/board で丸ごと保存する (自動保存)。
+ * 保存時は前回保存したセクションと突き合わせて id を引き継ぎ (diffSections)、セクションごとの期限を維持する。
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  */
 export function Board({
-  lines,
+  sections,
   userId,
   readOnly = false,
 }: {
-  lines: BoardLine[];
+  sections: BoardSection[];
   userId: string;
   readOnly?: boolean;
 }) {
-  // サーバに保存済みの行 (id 引き継ぎと比較用) と、画面上の最新のテキスト
-  const savedRef = useRef<BoardLine[]>(lines);
-  const [savedLines, setSavedLines] = useState(lines);
-  const [text, setText] = useState(() => joinLines(lines));
+  // サーバに保存済みのセクション (id 引き継ぎと比較用) と、画面上の最新のテキスト
+  const savedRef = useRef<BoardSection[]>(sections);
+  const [savedSections, setSavedSections] = useState(sections);
+  const [text, setText] = useState(() => joinSections(sections));
   const latestRef = useRef(text);
 
   const [status, setStatus] = useState<SaveStatus>("saved");
@@ -62,14 +69,14 @@ export function Board({
     if (inFlightRef.current) return;
 
     const snapshot = latestRef.current;
-    if (snapshot === joinLines(savedRef.current)) {
+    if (snapshot === joinSections(savedRef.current)) {
       setStatus("saved");
       return;
     }
-    const draft = splitLines(snapshot);
-    if (draft.length > BOARD_MAX_LINES) {
+    const draft = splitSections(snapshot);
+    if (draft.length > BOARD_MAX_SECTIONS) {
       setStatus("error");
-      setErrorMessage(`行数が上限 (${BOARD_MAX_LINES.toLocaleString()} 行) を超えています`);
+      setErrorMessage(`セクション数が上限 (${BOARD_MAX_SECTIONS.toLocaleString()}) を超えています`);
       return;
     }
     // 確実にオフラインなら送らずに待つ (online イベントで再試行する)
@@ -84,13 +91,13 @@ export function Board({
 
     let saved = false;
     try {
-      const json = { lines: diffLines(savedRef.current, draft) };
+      const json = { sections: diffSections(savedRef.current, draft) };
       const res = await fetchOrOffline(() => api.board.$put({ json }));
       if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
-      const { lines: updated } = await res.json();
+      const { sections: updated } = await res.json();
       writeCachedBoard(userId, updated);
       savedRef.current = updated;
-      setSavedLines(updated);
+      setSavedSections(updated);
       saved = true;
       setStatus("saved");
     } catch (e) {
@@ -107,7 +114,7 @@ export function Board({
 
     // 保存中にさらに入力があれば、debounce を挟んで続けて保存する (失敗時は「再試行」に任せる)。
     // 即座に保存すると入力が続く限り PUT が連発するので、通常の自動保存と同じ待ち時間を置く
-    if (saved && latestRef.current !== joinLines(savedRef.current)) {
+    if (saved && latestRef.current !== joinSections(savedRef.current)) {
       cancelTimer();
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
@@ -127,7 +134,7 @@ export function Board({
   const update = (next: string) => {
     latestRef.current = next;
     setText(next);
-    if (next === joinLines(savedRef.current)) {
+    if (next === joinSections(savedRef.current)) {
       cancelTimer();
       setStatus("saved");
       return;
@@ -150,11 +157,12 @@ export function Board({
       if (
         !inFlightRef.current &&
         !isOffline() &&
-        snapshot !== joinLines(savedRef.current)
+        snapshot !== joinSections(savedRef.current)
       ) {
-        const draft = splitLines(snapshot);
-        if (draft.length > BOARD_MAX_LINES) return;
-        void api.board.$put({ json: { lines: diffLines(savedRef.current, draft) } }).catch(() => {
+        const draft = splitSections(snapshot);
+        if (draft.length > BOARD_MAX_SECTIONS) return;
+        const json = { sections: diffSections(savedRef.current, draft) };
+        void api.board.$put({ json }).catch(() => {
           // 離脱後なので UI には出せない。ネットワーク断ならその編集は失われる (スコープ外)
         });
       }
@@ -203,7 +211,7 @@ export function Board({
     <Stack gap="xs">
       <Group justify="space-between" align="center">
         <Text size="sm" c="dimmed">
-          <ExpiryNote lines={savedLines} />
+          <ExpiryNote sections={savedSections} />
         </Text>
         {!readOnly && (
           <SaveStatusLabel status={status} errorMessage={errorMessage} onRetry={() => void save()} />
@@ -211,7 +219,10 @@ export function Board({
       </Group>
 
       <Textarea
-        placeholder="ここに書くと自動的に保存されます"
+        placeholder={
+          `ここに書くと自動的に保存されます\n` +
+          `空行で区切るとセクションになり、セクションごとに ${MEMO_TTL_DAYS} 日で消えます`
+        }
         aria-label="板"
         value={text}
         onChange={(e) => update(e.currentTarget.value)}
@@ -229,12 +240,12 @@ export function Board({
   );
 }
 
-// 「各行は 30 日で消える」ことと、保存済みの行のうち一番早く消える日を出す
-function ExpiryNote({ lines }: { lines: BoardLine[] }) {
-  const base = `各行は書いてから ${MEMO_TTL_DAYS} 日で消えます`;
-  if (lines.length === 0) return base;
-  const earliest = lines.reduce((min, l) => {
-    const t = new Date(l.expiresAt).getTime();
+// 「各セクションは 30 日で消える」ことと、保存済みのセクションのうち一番早く消える日を出す
+function ExpiryNote({ sections }: { sections: BoardSection[] }) {
+  const base = `空行で区切った各セクションは書いてから ${MEMO_TTL_DAYS} 日で消えます`;
+  if (sections.length === 0) return base;
+  const earliest = sections.reduce((min, s) => {
+    const t = new Date(s.expiresAt).getTime();
     return t < min ? t : min;
   }, Number.POSITIVE_INFINITY);
   return `${base} (次に消えるのは ${formatDate(earliest)})`;

@@ -28,23 +28,23 @@ export const Route = createFileRoute("/")({
           "オフラインのため、板を取得できません (まだ一度も取得していないためキャッシュもありません)。",
         );
       }
-      return { lines: cached.lines, offline: true, cachedAt: cached.cachedAt };
+      return { sections: cached.sections, offline: true, cachedAt: cached.cachedAt };
     }
     if (res.status === 401) {
       // beforeLoad 後にセッションが切れた場合
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
     if (!res.ok) throw new Error("板の取得に失敗しました");
-    const { lines } = await res.json();
+    const { sections } = await res.json();
     // オフライン閲覧用に最新の内容で上書きする
-    writeCachedBoard(userId, lines);
-    return { lines, offline: false, cachedAt: null };
+    writeCachedBoard(userId, sections);
+    return { sections, offline: false, cachedAt: null };
   },
   component: BoardPage,
 });
 
 function BoardPage() {
-  const { lines, offline, cachedAt } = Route.useLoaderData();
+  const { sections, offline, cachedAt } = Route.useLoaderData();
   const { session } = Route.useRouteContext();
   // 一度でもオンラインで (最新の内容で) 開いたかどうか。
   // オンラインで開いた後にオフラインになり、復帰時の再取得 (OfflineBanner の router.invalidate) が
@@ -66,7 +66,7 @@ function BoardPage() {
           編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため) */}
       <Board
         key={readOnly ? "offline" : "online"}
-        lines={lines}
+        sections={sections}
         userId={session.user.id}
         readOnly={readOnly}
       />

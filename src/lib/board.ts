@@ -1,30 +1,39 @@
 import type { InferResponseType } from "hono/client";
+import { SECTION_SEPARATOR } from "../../worker/memo/constants";
 import { api } from "@/lib/api";
 
-// GET /api/board のレスポンスの 1 行。Date は JSON 経由で ISO 文字列になる
-export type BoardLine = InferResponseType<typeof api.board.$get, 200>["lines"][number];
+// GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる
+export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sections"][number];
 
-// PUT /api/board に送る 1 行。id は「前回保存した行」を引き継ぐときだけ付ける
-export type DraftLine = { id: string | null; content: string };
+// PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける
+export type DraftSection = { id: string | null; content: string };
 
-/** Textarea のテキストを行に分ける。空文字は「行が無い」扱い */
-export function splitLines(text: string): string[] {
-  return text === "" ? [] : text.split(/\r\n?|\n/);
+/**
+ * Textarea のテキストをセクションに分ける。区切りは空行 1 つ (SECTION_SEPARATOR = "\n\n")。
+ * 単独の改行はセクションの中身に含める。空文字は「セクションが無い」扱い。
+ * 分割と結合 (joinSections) が必ず往復するよう、区切りは "\n\n" ちょうどで、それ以外は一切変えない
+ * (空行が 2 つ以上続けば余った改行は次のセクションの先頭に付く / 空のセクションになる)
+ */
+export function splitSections(text: string): string[] {
+  return text === "" ? [] : text.split(SECTION_SEPARATOR);
 }
 
-/** 行をテキストに戻す (splitLines の逆) */
-export function joinLines(lines: { content: string }[]): string {
-  return lines.map((l) => l.content).join("\n");
+/** セクションをテキストに戻す (splitSections の逆) */
+export function joinSections(sections: { content: string }[]): string {
+  return sections.map((s) => s.content).join(SECTION_SEPARATOR);
 }
 
 /**
- * 前回保存した行 (saved) と現在のテキストの行 (draft) を突き合わせ、PUT /api/board に送る行を作る。
- * 行の id を引き継ぐと作成日 (= 期限) が維持されるので、できるだけ引き継ぐ:
- * - 内容がそのままの行は LCS (最長共通部分列) で対応付ける
- * - 対応が取れなかった区間では、消えた行と増えた行を順番に 1 対 1 で組にする (= その行を書き換えたとみなす)
- * - 余った増えた行は id: null (新しい行)。余った消えた行は削除される
+ * 前回保存したセクション (saved) と現在のテキストのセクション (draft) を突き合わせ、PUT /api/board に送る配列を作る。
+ * セクションの id を引き継ぐと作成日 (= 期限) が維持されるので、できるだけ引き継ぐ:
+ * - 内容がそのままのセクションは LCS (最長共通部分列) で対応付ける
+ * - 対応が取れなかった区間では、消えたものと増えたものを順番に 1 対 1 で組にする (= そのセクションを書き換えたとみなす)
+ * - 余った増えたものは id: null (新しいセクション)。余った消えたものは削除される
  */
-export function diffLines(saved: { id: string; content: string }[], draft: string[]): DraftLine[] {
+export function diffSections(
+  saved: { id: string; content: string }[],
+  draft: string[],
+): DraftSection[] {
   const n = saved.length;
   const m = draft.length;
   // lcs[i][j] = saved[i..] と draft[j..] の LCS 長
@@ -39,10 +48,10 @@ export function diffLines(saved: { id: string; content: string }[], draft: strin
     }
   }
 
-  const result: DraftLine[] = [];
+  const result: DraftSection[] = [];
   let i = 0;
   let j = 0;
-  // 対応が取れていない saved 側の行 (書き換え候補として次に増えた行へ id を渡す)
+  // 対応が取れていない saved 側のセクション (書き換え候補として次に増えたものへ id を渡す)
   let pendingRemoved: string[] = [];
   const flushGap = (added: string[]) => {
     for (let k = 0; k < added.length; k++) {

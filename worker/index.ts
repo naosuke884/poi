@@ -26,14 +26,14 @@ app.notFound((c) => {
 
 export type ApiType = typeof api;
 
-// Cron Trigger (wrangler.jsonc の triggers.crons) から呼ばれ、期限切れの行を物理削除する。
+// Cron Trigger (wrangler.jsonc の triggers.crons) から呼ばれ、期限切れのセクションを物理削除する。
 // 削除件数は console.log に出す (observability が有効なので Workers Logs で確認できる)。
-// ローカルでの確認手順は README「期限切れの行の自動削除 (Cron)」を参照。
+// ローカルでの確認手順は README「期限切れのセクションの自動削除 (Cron)」を参照。
 const scheduled: ExportedHandlerScheduledHandler<Env> = async (controller, env) => {
   const now = new Date(controller.scheduledTime);
   const deleted = await deleteExpiredMemos(createDb(env.DB), now);
   console.log(
-    `[memo sweep] deleted ${deleted} expired line(s) (cron: ${controller.cron}, scheduledTime: ${now.toISOString()})`,
+    `[memo sweep] deleted ${deleted} expired section(s) (cron: ${controller.cron}, scheduledTime: ${now.toISOString()})`,
   );
 };
 
