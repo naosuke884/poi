@@ -11,8 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as MemosIdRouteImport } from './routes/memos/$id'
-import { Route as MemosNewRouteImport } from './routes/memos/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,49 +22,31 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MemosIdRoute = MemosIdRouteImport.update({
-  id: '/memos/$id',
-  path: '/memos/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MemosNewRoute = MemosNewRouteImport.update({
-  id: '/memos/new',
-  path: '/memos/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/memos/$id': typeof MemosIdRoute
-  '/memos/new': typeof MemosNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/memos/$id': typeof MemosIdRoute
-  '/memos/new': typeof MemosNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/memos/$id': typeof MemosIdRoute
-  '/memos/new': typeof MemosNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/memos/$id' | '/memos/new'
+  fullPaths: '/' | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/memos/$id' | '/memos/new'
-  id: '__root__' | '/' | '/login' | '/memos/$id' | '/memos/new'
+  to: '/' | '/login'
+  id: '__root__' | '/' | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
-  MemosIdRoute: typeof MemosIdRoute
-  MemosNewRoute: typeof MemosNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,28 +65,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/memos/$id': {
-      id: '/memos/$id'
-      path: '/memos/$id'
-      fullPath: '/memos/$id'
-      preLoaderRoute: typeof MemosIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/memos/new': {
-      id: '/memos/new'
-      path: '/memos/new'
-      fullPath: '/memos/new'
-      preLoaderRoute: typeof MemosNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
-  MemosIdRoute: MemosIdRoute,
-  MemosNewRoute: MemosNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

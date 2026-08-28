@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
-import { clearMemoCache } from "@/lib/memo-cache";
+import { clearBoardCache } from "@/lib/board-cache";
 import { OfflineError, isNetworkError } from "@/lib/offline";
 import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } from "@/lib/session-cache";
 
@@ -14,7 +14,7 @@ export type LoginContext = { session: { user: CachedUser } };
 // 戻り値はルートの context にマージされる (Route.useRouteContext() で session を参照できる)。
 //
 // オフライン (getSession の fetch 自体が失敗) のときは、前回ログイン時にキャッシュした
-// ユーザー情報で通す。loader 側はキャッシュ済みのメモを表示する (src/lib/memo-cache.ts)。
+// ユーザー情報で通す。loader 側はキャッシュ済みの板を表示する (src/lib/board-cache.ts)。
 // サーバが「未ログイン」と答えた場合とは区別する (その場合はキャッシュを消して /login へ)。
 export async function requireLogin(location: { href: string }): Promise<LoginContext> {
   let result: Awaited<ReturnType<typeof authClient.getSession>>;
@@ -35,7 +35,7 @@ export async function requireLogin(location: { href: string }): Promise<LoginCon
     if (!error) {
       const stale = readCachedUser();
       clearCachedUser();
-      if (stale) clearMemoCache(stale.id);
+      if (stale) clearBoardCache(stale.id);
     }
     throw redirect({ to: "/login", search: { redirect: location.href } });
   }

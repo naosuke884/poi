@@ -6,8 +6,8 @@ import { useOnline } from "@/lib/use-online";
 /**
  * navigator.onLine が false の間、ヘッダー下に「オフラインです」バナーを出す。
  * オフライン → オンラインに戻ったら router.invalidate() で表示中ルートの loader を再実行し、
- * キャッシュから表示していた一覧 / メモを最新のデータで置き換える (キャッシュもその時点で上書きされる)。
- * 編集画面の未保存分の再送は MemoEditor 側が online イベントで行う。
+ * キャッシュから表示していた板を最新のデータで置き換える (キャッシュもその時点で上書きされる)。
+ * 未保存分の再送は Board 側が online イベントで行う。
  */
 export function OfflineBanner() {
   const online = useOnline();

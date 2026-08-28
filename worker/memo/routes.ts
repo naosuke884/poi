@@ -1,33 +1,32 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type ValidationTargets } from "hono";
 import { z } from "zod";
-import { createDb } from "../db";
+import { createDb, type Db } from "../db";
 import { memo } from "../db/memo";
 import { requireAuth, type AppEnv } from "../middleware";
-import { MEMO_CONTENT_MAX_LENGTH, MEMO_TITLE_MAX_LENGTH, memoExpiresAt } from "./constants";
+import { BOARD_MAX_LENGTH, BOARD_MAX_LINES, memoExpiresAt } from "./constants";
 
-// title は省略可 (null で「無題」)。content は 1〜MEMO_CONTENT_MAX_LENGTH 文字。
-const titleSchema = z.string().max(MEMO_TITLE_MAX_LENGTH).nullable();
-const contentSchema = z.string().min(1).max(MEMO_CONTENT_MAX_LENGTH);
-
-const createMemoSchema = z.object({
-  title: titleSchema.optional(),
-  content: contentSchema,
+// 板 (ユーザーごとに 1 枚) を行の配列としてやり取りする。
+// - id はサーバが発行する。クライアントは「前回保存した行の id」を付けて送り返すことで
+//   その行の作成日 (= 期限) を引き継ぐ。id が null / 知らない id の行は新しい行として作る
+// - 期限は作成時に確定し、内容や並び順を変えても延びない
+const lineSchema = z.object({
+  id: z.string().min(1).nullable(),
+  content: z.string().regex(/^[^\r\n]*$/, "行に改行は含められません"),
 });
 
-// PATCH で更新できるのは title / content だけ。expiresAt はスキーマに含めず、
-// 送られてきても無視する (延命させない)。
-const updateMemoSchema = z
-  .object({
-    title: titleSchema.optional(),
-    content: contentSchema.optional(),
-  })
-  .refine((v) => v.title !== undefined || v.content !== undefined, {
-    message: "title または content のいずれかが必要です",
+const putBoardSchema = z
+  .object({ lines: z.array(lineSchema).max(BOARD_MAX_LINES) })
+  .refine((v) => boardLength(v.lines) <= BOARD_MAX_LENGTH, {
+    message: `板全体で ${BOARD_MAX_LENGTH} 文字までです`,
   });
 
-const paramSchema = z.object({ id: z.string().min(1) });
+/** 板全体の文字数 (行を改行で連結したときの長さ) */
+function boardLength(lines: { content: string }[]): number {
+  return lines.reduce((n, l) => n + l.content.length, 0) + Math.max(0, lines.length - 1);
+}
 
 // バリデーション失敗時は他のエラーレスポンスと同じ { error } 形式に揃える。
 // フックを事前に型付けした定数にすると hono の RPC 型推論が {} に潰れるため、
@@ -43,100 +42,77 @@ function validate<T extends z.ZodType, Target extends keyof ValidationTargets>(
   });
 }
 
-// 「自分のメモ」かつ「未期限切れ」の条件。
-// 他人のメモ・期限切れメモはどちらも「存在しない」扱い (404) にして、
-// ID の有無やメモの存在を外部に漏らさない。
-function visibleMemo(userId: string, id?: string) {
-  const now = new Date();
-  return and(
-    eq(memo.userId, userId),
-    gt(memo.expiresAt, now),
-    id === undefined ? undefined : eq(memo.id, id),
-  );
+// 「自分の行」かつ「未期限切れ」。期限切れの行は Cron が消すまで DB に残るが、見せない
+function visibleLines(userId: string, now: Date) {
+  return and(eq(memo.userId, userId), gt(memo.expiresAt, now));
 }
 
-export const memoRoutes = new Hono<AppEnv>()
+/** 板の全行を並び順で返す。同じ position が並んだときは作成順 */
+function selectBoard(db: Db, userId: string, now: Date) {
+  return db
+    .select()
+    .from(memo)
+    .where(visibleLines(userId, now))
+    .orderBy(asc(memo.position), asc(memo.createdAt));
+}
+
+export const boardRoutes = new Hono<AppEnv>()
   .use(requireAuth)
-  // 自分のメモ一覧 (updatedAt 降順、未期限切れのみ)
+  // 板を取得
   .get("/", async (c) => {
-    const db = createDb(c.env.DB);
-    const memos = await db
-      .select()
-      .from(memo)
-      .where(visibleMemo(c.get("user")!.id))
-      .orderBy(desc(memo.updatedAt));
-    return c.json({ memos });
+    const lines = await selectBoard(createDb(c.env.DB), c.get("user")!.id, new Date());
+    return c.json({ lines });
   })
-  // 作成。expiresAt = createdAt + 30 日 をサーバ側で確定する (クライアントからは指定不可)
-  .post("/", validate("json", createMemoSchema), async (c) => {
+  // 板を丸ごと置き換える。
+  // 送られた行のうち id が既存の行と一致するものは内容と並び順だけ更新し (createdAt / expiresAt は維持)、
+  // それ以外は新規作成、送られてこなかった既存の行は削除する。
+  .put("/", validate("json", putBoardSchema), async (c) => {
     const db = createDb(c.env.DB);
-    const { title, content } = c.req.valid("json");
+    const userId = c.get("user")!.id;
     const now = new Date();
-    const created = await db
-      .insert(memo)
-      .values({
-        userId: c.get("user")!.id,
-        title: title ?? null,
-        content,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: memoExpiresAt(now),
-      })
-      .returning()
-      .get();
-    return c.json({ memo: created }, 201);
-  })
-  // 1 件取得
-  .get("/:id", validate("param", paramSchema), async (c) => {
-    const db = createDb(c.env.DB);
-    const { id } = c.req.valid("param");
-    const found = await db
-      .select()
-      .from(memo)
-      .where(visibleMemo(c.get("user")!.id, id))
-      .get();
-    if (!found) {
-      return c.json({ error: "Not Found" }, 404);
-    }
-    return c.json({ memo: found });
-  })
-  // title / content 更新。updatedAt は $onUpdate で自動更新、expiresAt は変更しない
-  .patch(
-    "/:id",
-    validate("param", paramSchema),
-    validate("json", updateMemoSchema),
-    async (c) => {
-      const db = createDb(c.env.DB);
-      const { id } = c.req.valid("param");
-      const { title, content } = c.req.valid("json");
-      const updated = await db
-        .update(memo)
-        .set({
-          ...(title !== undefined && { title }),
-          ...(content !== undefined && { content }),
-        })
-        .where(visibleMemo(c.get("user")!.id, id))
-        .returning()
-        .get();
-      if (!updated) {
-        return c.json({ error: "Not Found" }, 404);
+    const { lines } = c.req.valid("json");
+
+    const existing = await selectBoard(db, userId, now);
+    const byId = new Map(existing.map((row) => [row.id, row]));
+
+    const ops: BatchItem<"sqlite">[] = [];
+    const kept = new Set<string>();
+    lines.forEach((line, position) => {
+      const row = line.id !== null && !kept.has(line.id) ? byId.get(line.id) : undefined;
+      if (row) {
+        kept.add(row.id);
+        // 変わっていない行は触らない (updatedAt も進めない)
+        if (row.content === line.content && row.position === position) return;
+        ops.push(
+          db
+            .update(memo)
+            .set({ content: line.content, position })
+            .where(and(eq(memo.id, row.id), eq(memo.userId, userId))),
+        );
+      } else {
+        ops.push(
+          db.insert(memo).values({
+            userId,
+            content: line.content,
+            position,
+            createdAt: now,
+            updatedAt: now,
+            expiresAt: memoExpiresAt(now),
+          }),
+        );
       }
-      return c.json({ memo: updated });
-    },
-  )
-  // 削除
-  .delete("/:id", validate("param", paramSchema), async (c) => {
-    const db = createDb(c.env.DB);
-    const { id } = c.req.valid("param");
-    const deleted = await db
-      .delete(memo)
-      .where(visibleMemo(c.get("user")!.id, id))
-      .returning({ id: memo.id })
-      .get();
-    if (!deleted) {
-      return c.json({ error: "Not Found" }, 404);
+    });
+    const removed = existing.filter((row) => !kept.has(row.id)).map((row) => row.id);
+    if (removed.length > 0) {
+      ops.push(db.delete(memo).where(and(eq(memo.userId, userId), inArray(memo.id, removed))));
     }
-    return c.json({ id: deleted.id });
+    // D1 の batch は 1 トランザクションとして実行される (途中で失敗すれば全部ロールバック)
+    if (ops.length > 0) {
+      await db.batch(ops as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
+    }
+
+    const saved = await selectBoard(db, userId, now);
+    return c.json({ lines: saved });
   });
 
-export type MemoRoutes = typeof memoRoutes;
+export type BoardRoutes = typeof boardRoutes;

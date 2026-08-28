@@ -2,7 +2,7 @@ import { Avatar, Button, Group, Menu, Skeleton, Text } from "@mantine/core";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
-import { clearMemoCache } from "@/lib/memo-cache";
+import { clearBoardCache } from "@/lib/board-cache";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
 import { useOnline } from "@/lib/use-online";
 
@@ -65,7 +65,7 @@ export function UserMenu() {
               }
               // この端末に残るオフライン閲覧用のキャッシュも消す
               clearCachedUser();
-              clearMemoCache(user.id);
+              clearBoardCache(user.id);
               await router.invalidate();
               await router.navigate({ to: "/" });
             }}

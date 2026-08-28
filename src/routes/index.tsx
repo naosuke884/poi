@@ -1,217 +1,75 @@
-import {
-  Alert,
-  Anchor,
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Group,
-  Modal,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
-import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
-import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
+import { Alert, Stack } from "@mantine/core";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useRef } from "react";
+import { Board } from "@/components/Board";
 import { api } from "@/lib/api";
-import {
-  MEMO_EXPIRY_WARNING_DAYS,
-  formatDateTime,
-  memoDisplayTitle,
-  remainingDays,
-  type MemoListItem,
-} from "@/lib/memo";
-import { readCachedMemoList, removeCachedMemo, writeCachedMemoList } from "@/lib/memo-cache";
+import { formatDateTime } from "@/lib/board";
+import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
 import { OfflineError, fetchOrOffline } from "@/lib/offline";
 import { requireLogin } from "@/lib/require-login";
 
-// ログイン後のメイン画面: 自分のメモ一覧 (未ログインなら /login へ)
+// ログイン後のメイン画面: 自分の板 (未ログインなら /login へ)
 export const Route = createFileRoute("/")({
   beforeLoad: ({ location }) => requireLogin(location),
+  // Board は loader の結果を初期値にして以後は自身の state で管理するため、
+  // 戻ってきたときに古いキャッシュを一瞬でも表示しないよう、離れたら即キャッシュを捨てる
+  gcTime: 0,
   loader: async ({ location, context }) => {
     const userId = context.session.user.id;
     let res;
     try {
-      res = await fetchOrOffline(() => api.memos.$get());
+      res = await fetchOrOffline(() => api.board.$get());
     } catch (e) {
-      // オフライン: 前回取得した一覧があれば読み取り専用で表示する (offline: true)
+      // オフライン: 前回取得した内容があれば閲覧専用で表示する (offline: true)
       if (!(e instanceof OfflineError)) throw e;
-      const cached = readCachedMemoList(userId);
+      const cached = readCachedBoard(userId);
       if (!cached) {
         throw new OfflineError(
-          "オフラインのため、メモ一覧を取得できません (まだ一度も取得していないためキャッシュもありません)。",
+          "オフラインのため、板を取得できません (まだ一度も取得していないためキャッシュもありません)。",
         );
       }
-      return { memos: cached.memos, offline: true, cachedAt: cached.cachedAt };
+      return { lines: cached.lines, offline: true, cachedAt: cached.cachedAt };
     }
     if (res.status === 401) {
       // beforeLoad 後にセッションが切れた場合
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
-    if (!res.ok) throw new Error("メモ一覧の取得に失敗しました");
-    const { memos } = await res.json();
-    // オフライン閲覧用に最新の一覧で上書きする
-    writeCachedMemoList(userId, memos);
-    return { memos, offline: false, cachedAt: null };
+    if (!res.ok) throw new Error("板の取得に失敗しました");
+    const { lines } = await res.json();
+    // オフライン閲覧用に最新の内容で上書きする
+    writeCachedBoard(userId, lines);
+    return { lines, offline: false, cachedAt: null };
   },
-  component: MemoList,
+  component: BoardPage,
 });
 
-function MemoList() {
-  const { memos, offline, cachedAt } = Route.useLoaderData();
+function BoardPage() {
+  const { lines, offline, cachedAt } = Route.useLoaderData();
   const { session } = Route.useRouteContext();
-  const router = useRouter();
-  const [deleteTarget, setDeleteTarget] = useState<MemoListItem | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    setError(null);
-    try {
-      const res = await fetchOrOffline(() =>
-        api.memos[":id"].$delete({ param: { id: deleteTarget.id } }),
-      );
-      // 404 は既に削除済み (or 期限切れ) なので一覧を再取得するだけでよい
-      if (!res.ok && res.status !== 404) {
-        throw new Error("メモの削除に失敗しました");
-      }
-      removeCachedMemo(session.user.id, deleteTarget.id);
-      setDeleteTarget(null);
-      await router.invalidate();
-    } catch (e) {
-      if (e instanceof OfflineError) {
-        setError("オフラインのため削除できません。オンラインに戻ってから再度お試しください。");
-      } else {
-        setError(e instanceof Error ? e.message : "メモの削除に失敗しました");
-      }
-    } finally {
-      setDeleting(false);
-    }
-  };
-
+  // 一度でもオンラインで (最新の内容で) 開いたかどうか。
+  // オンラインで開いた後にオフラインになり、復帰時の再取得 (OfflineBanner の router.invalidate) が
+  // まだ失敗して loader がキャッシュを返しても、編集中の板を閲覧専用に作り直さない
+  // (作り直すとオフラインで入力した未保存分がキャッシュの内容で上書きされて失われる)。
+  // 閲覧専用にするのは、最初からキャッシュでしか開けていないときだけ
+  const liveRef = useRef(false);
+  if (!offline) liveRef.current = true;
+  const readOnly = offline && !liveRef.current;
   return (
     <Stack>
-      <Group justify="space-between" align="center">
-        <Group gap="sm" align="center">
-          <Title order={2}>メモ</Title>
-          {offline && (
-            <Badge color="yellow" variant="light" size="lg">
-              オフライン (読み取り専用
-              {cachedAt !== null ? ` / ${formatDateTime(cachedAt)} 時点` : ""})
-            </Badge>
-          )}
-        </Group>
-        <Button component={Link} to="/memos/new">
-          新規作成
-        </Button>
-      </Group>
-
-      {error && (
-        <Alert color="red" withCloseButton onClose={() => setError(null)}>
-          {error}
+      {readOnly && (
+        <Alert color="yellow" role="status">
+          {`オフラインのため閲覧のみです (${cachedAt !== null ? formatDateTime(cachedAt) : "前回取得"} 時点の内容)。`}
+          オンラインに戻ると自動的に最新の内容を読み込みます。
         </Alert>
       )}
-
-      {memos.length === 0 ? (
-        <EmptyState
-          title="メモはまだありません"
-          description={`メモは作成から ${MEMO_TTL_DAYS} 日で自動的に消えます。「新規作成」から最初のメモを書いてみましょう。`}
-          py="xl"
-        >
-          <EmptyState.Actions>
-            <Button component={Link} to="/memos/new">
-              新規作成
-            </Button>
-          </EmptyState.Actions>
-        </EmptyState>
-      ) : (
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          {memos.map((memo) => (
-            <MemoCard
-              key={memo.id}
-              memo={memo}
-              readOnly={offline}
-              onDelete={() => setDeleteTarget(memo)}
-            />
-          ))}
-        </SimpleGrid>
-      )}
-
-      <Modal
-        opened={deleteTarget !== null}
-        onClose={() => !deleting && setDeleteTarget(null)}
-        title="メモを削除"
-        centered
-      >
-        <Stack>
-          <Text size="sm">
-            「{deleteTarget ? memoDisplayTitle(deleteTarget) : ""}」を削除します。
-            この操作は取り消せません。
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-              キャンセル
-            </Button>
-            <Button color="red" onClick={handleDelete} loading={deleting}>
-              削除
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+      {/* キャッシュ表示 (閲覧のみ) → オンライン復帰で最新を取得したときは作り直して最新の内容にする。
+          編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため) */}
+      <Board
+        key={readOnly ? "offline" : "online"}
+        lines={lines}
+        userId={session.user.id}
+        readOnly={readOnly}
+      />
     </Stack>
-  );
-}
-
-function MemoCard({
-  memo,
-  readOnly,
-  onDelete,
-}: {
-  memo: MemoListItem;
-  readOnly: boolean;
-  onDelete: () => void;
-}) {
-  const days = remainingDays(memo.expiresAt);
-  const warning = days <= MEMO_EXPIRY_WARNING_DAYS;
-  return (
-    <Card withBorder radius="md" padding="md">
-      <Stack gap="xs" h="100%">
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Anchor
-            // component={Link} だと params の型が付かないので renderRoot で Link を渡す
-            renderRoot={(props) => <Link to="/memos/$id" params={{ id: memo.id }} {...props} />}
-            fw={600}
-            c="inherit"
-            lineClamp={2}
-            style={{ wordBreak: "break-word" }}
-            miw={0}
-          >
-            {memoDisplayTitle(memo)}
-          </Anchor>
-          <Badge
-            color={warning ? "orange" : "gray"}
-            variant={warning ? "filled" : "light"}
-            style={{ flexShrink: 0 }}
-          >
-            残り {days} 日
-          </Badge>
-        </Group>
-        <Group justify="space-between" align="center" mt="auto">
-          <Text size="xs" c="dimmed">
-            更新: {formatDateTime(memo.updatedAt)}
-          </Text>
-          {/* オフライン (キャッシュ表示) 中は削除できないのでボタンを出さない */}
-          {!readOnly && (
-            <Button variant="subtle" color="red" size="compact-xs" onClick={onDelete}>
-              削除
-            </Button>
-          )}
-        </Group>
-      </Stack>
-    </Card>
   );
 }

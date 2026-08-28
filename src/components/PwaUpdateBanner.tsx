@@ -8,7 +8,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
  * 旧 SW とその precache は残るので、開いたままのページが遅延読み込みするチャンクが消えることはない。
  * (autoUpdate だと新 SW が即時有効化 + 旧キャッシュ削除され、開きっぱなしの旧ページが壊れうる)
  * 「リロード」で updateServiceWorker(true) → 新 SW が skipWaiting → controllerchange でリロードされる。
- * MemoEditor の beforeunload により、未保存の変更があればリロード時に確認が出る。
+ * Board の beforeunload により、未保存の変更があればリロード時に確認が出る。
  */
 export function PwaUpdateBanner() {
   const {
