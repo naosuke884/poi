@@ -4,6 +4,10 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 1 つの Cloudflare Worker で動かす構成。
 
 ```
+├── .github/workflows/
+│   ├── ci.yml                # CI: PR / main への push で npm ci → typecheck → build (下記「CI」)
+│   └── deploy.yml            # main への push で wrangler deploy (vars.ENABLE_DEPLOY=true のときだけ動く)
+├── .node-version             # Node のメジャーバージョン (CI の setup-node と package.json の engines で共有)
 ├── src/                      # フロントエンド (React + Mantine + TanStack Router)
 │   ├── routes/               # file-based routing
 │   │   ├── __root.tsx        #   AppShell レイアウト + ヘッダー
@@ -267,9 +271,26 @@ Authorized redirect URI に `http://localhost:5173/api/auth/callback/google` を
 | `npm run db:migrate:local`  | ローカル D1 にマイグレーション適用                              |
 | `npm run db:migrate:remote` | 本番 D1 にマイグレーション適用                                  |
 
+## CI (GitHub Actions)
+
+`.github/workflows/ci.yml` が PR (全ブランチ向け) と `main` への push で次を実行し、
+PR にステータスチェックとして表示される。型エラー / ビルドエラーがあると落ちる。
+
+1. `actions/checkout` → `actions/setup-node` (`.node-version` の Node、npm キャッシュ有効)
+2. `npm ci`
+3. `npm run typecheck` … `wrangler types` で `worker-configuration.d.ts` (D1 バインディング等の `Env`) を生成してから `tsc --build`。
+   `wrangler types` は `wrangler.jsonc` からローカルで型を作るだけなので Cloudflare の認証情報 (secrets) は不要
+4. `npm run build`
+
+- Node のバージョンは `.node-version` (メジャーのみ) と `package.json` の `engines.node` で固定している。
+  上げるときは両方を揃えて変更する
+- `concurrency` で同じ PR / ブランチの古い run は自動でキャンセルされる
+- ローカルで CI と同じ確認をするには `npm run typecheck && npm run build`
+
 ## 本番デプロイ
 
-「環境横断で使える」ための本番 URL を用意する手順。初回は 1〜7 をすべて、2 回目以降は 7 だけでよい。
+「環境横断で使える」ための本番 URL を用意する手順。初回は 1〜7 をすべて、2 回目以降は 7 だけでよい
+(GitHub Actions からデプロイする場合は下記「GitHub Actions からデプロイする」)。
 
 1. Cloudflare にログイン
    ```sh
@@ -317,6 +338,28 @@ Authorized redirect URI に `http://localhost:5173/api/auth/callback/google` を
 - Better Auth の `trustedOrigins` は既定で `baseURL` の origin だけなので、上記の挙動と一致する。
 - `wrangler.jsonc` は `wrangler deploy` 時にも読まれるため、`database_id` は必ず本物に置き換えること
   (ダミーのままだと `binding DB ... database_id not found` でデプロイに失敗する)。
+
+### GitHub Actions からデプロイする
+
+`.github/workflows/deploy.yml` は `main` への push (と手動の `workflow_dispatch`) で
+`npm ci` → `npm run typecheck` → `npm run build` → `npm run db:migrate:remote` → `wrangler deploy`
+(`cloudflare/wrangler-action`) を実行する。
+
+job 全体が `if: vars.ENABLE_DEPLOY == 'true'` でガードされているので、**既定では何もしない** (スキップ扱い)。
+上記 1〜6 を済ませたうえで、GitHub リポジトリの Settings > Secrets and variables > Actions に次を登録すると有効になる。
+
+| 種類     | 名前                    | 値                                                                                         |
+| -------- | ----------------------- | ------------------------------------------------------------------------------------------ |
+| Variable | `ENABLE_DEPLOY`         | `true`                                                                                     |
+| Secret   | `CLOUDFLARE_API_TOKEN`  | Cloudflare ダッシュボード > My Profile > API Tokens で作る。テンプレート「Edit Cloudflare Workers」に D1 の Edit 権限を足す |
+| Secret   | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ダッシュボード > Workers & Pages の右側に表示される Account ID                    |
+
+- `BETTER_AUTH_SECRET` などの Worker の Secrets は手順 4 の `wrangler secret put` で登録済みのものがそのまま使われる
+  (GitHub 側に登録する必要はない)
+- 本番 D1 のマイグレーション (`npm run db:migrate:remote`) はデプロイ前に毎回実行する。適用済みのものはスキップされる
+- 無効に戻すときは `ENABLE_DEPLOY` を `true` 以外にする (削除でもよい)。以後は手元の `npm run deploy` だけになる
+- `concurrency` で `main` へ連続 push したときは古いデプロイ run がキャンセルされ、最新のものだけが走る
+
 ## スキーマを変更するとき
 
 1. Better Auth のプラグイン追加など → `npm run auth:schema`

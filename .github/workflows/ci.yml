@@ -1,0 +1,36 @@
+# PR ごと / main への push ごとに typecheck と build を回し、壊れていないことを機械的に確認する。
+# `npm run typecheck` は `wrangler types` を含むが、これは wrangler.jsonc からローカルで型を生成するだけなので
+# Cloudflare の認証情報は不要 (secrets 無しで動く)。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 同じ PR / ブランチで新しい push があったら、進行中の古い run はキャンセルする
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: typecheck / build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run build
