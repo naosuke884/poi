@@ -1,5 +1,6 @@
 import { Alert, Anchor, Stack, Text, Title } from "@mantine/core";
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
+import { useRef } from "react";
 import { MemoEditor } from "@/components/MemoEditor";
 import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/memo";
@@ -52,21 +53,30 @@ export const Route = createFileRoute("/memos/$id")({
 function EditMemo() {
   const { memo, offline, cachedAt } = Route.useLoaderData();
   const { session } = Route.useRouteContext();
+  // このメモを一度でもオンラインで (最新の内容で) 開いたかどうか。
+  // オンラインで開いた後にオフラインになり、復帰時の再取得 (OfflineBanner の router.invalidate) が
+  // まだ失敗して loader がキャッシュを返しても、編集中のエディタを閲覧専用に作り直さない
+  // (作り直すとオフラインで入力した未保存分がキャッシュの内容で上書きされて失われる)。
+  // 閲覧専用にするのは、最初からキャッシュでしか開けていないときだけ
+  const liveIdRef = useRef<string | null>(null);
+  if (!offline) liveIdRef.current = memo.id;
+  const readOnly = offline && liveIdRef.current !== memo.id;
   return (
     <Stack>
-      {offline && (
+      {readOnly && (
         <Alert color="yellow" role="status">
           {`オフラインのため閲覧のみです (${cachedAt !== null ? formatDateTime(cachedAt) : "前回取得"} 時点の内容)。`}
           オンラインに戻ると自動的に最新の内容を読み込みます。
         </Alert>
       )}
       {/* id が変わったら (別のメモに移動したら) エディタの state を作り直す。
-          キャッシュ表示 (閲覧のみ) → オンライン復帰で最新を取得したときも作り直して最新の内容にする */}
+          キャッシュ表示 (閲覧のみ) → オンライン復帰で最新を取得したときも作り直して最新の内容にする。
+          編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため) */}
       <MemoEditor
-        key={`${memo.id}:${offline ? "offline" : "online"}`}
+        key={`${memo.id}:${readOnly ? "offline" : "online"}`}
         memo={memo}
         userId={session.user.id}
-        readOnly={offline}
+        readOnly={readOnly}
       />
     </Stack>
   );
