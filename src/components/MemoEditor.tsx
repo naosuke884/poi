@@ -161,9 +161,14 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
       inFlightRef.current = false;
     }
 
-    // 保存中にさらに入力があれば続けて保存する (失敗時は「再試行」に任せる)
+    // 保存中にさらに入力があれば、debounce を挟んで続けて保存する (失敗時は「再試行」に任せる)。
+    // 即座に保存すると入力が続く限り PATCH が連発するので、通常の自動保存と同じ待ち時間を置く
     if (saved && !isSameDraft(latestRef.current, savedRef.current)) {
-      void save();
+      cancelTimer();
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        void save();
+      }, AUTOSAVE_DELAY_MS);
     }
   }, [navigate]);
 
