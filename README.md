@@ -266,7 +266,7 @@ Authorized redirect URI に `http://localhost:5173/api/auth/callback/google` を
 | `npm run preview`           | ビルド後、本番相当の環境でプレビュー                           |
 | `npm run typecheck`         | `wrangler types` で `Env` を生成してから `tsc --build`         |
 | `npm run deploy`            | ビルドして `wrangler deploy`                                   |
-| `npm run auth:schema`       | Better Auth の設定から `worker/db/schema.ts` を再生成          |
+| `npm run auth:schema`       | Better Auth の設定から `worker/db/schema.ts` を再生成 (`auth` CLI。better-auth と同じバージョンに固定すること) |
 | `npm run db:generate`       | スキーマ差分からマイグレーション SQL を生成 (`drizzle/`)       |
 | `npm run db:migrate:local`  | ローカル D1 にマイグレーション適用                              |
 | `npm run db:migrate:remote` | 本番 D1 にマイグレーション適用                                  |
