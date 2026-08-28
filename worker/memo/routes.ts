@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { and, desc, eq, gt } from "drizzle-orm";
-import { Hono } from "hono";
+import { Hono, type ValidationTargets } from "hono";
 import { z } from "zod";
 import { createDb } from "../db";
 import { memo } from "../db/memo";
@@ -29,12 +29,19 @@ const updateMemoSchema = z
 
 const paramSchema = z.object({ id: z.string().min(1) });
 
-// バリデーション失敗時は他のエラーレスポンスと同じ { error } 形式に揃える
-const onValidationError: Parameters<typeof zValidator>[2] = (result, c) => {
-  if (!result.success) {
-    return c.json({ error: "Bad Request", issues: result.error.issues }, 400);
-  }
-};
+// バリデーション失敗時は他のエラーレスポンスと同じ { error } 形式に揃える。
+// フックを事前に型付けした定数にすると hono の RPC 型推論が {} に潰れるため、
+// スキーマごとに推論されるよう小さなラッパー関数にしている。
+function validate<T extends z.ZodType, Target extends keyof ValidationTargets>(
+  target: Target,
+  schema: T,
+) {
+  return zValidator(target, schema, (result, c) => {
+    if (!result.success) {
+      return c.json({ error: "Bad Request", issues: result.error.issues }, 400);
+    }
+  });
+}
 
 // 「自分のメモ」かつ「未期限切れ」の条件。
 // 他人のメモ・期限切れメモはどちらも「存在しない」扱い (404) にして、
@@ -61,7 +68,7 @@ export const memoRoutes = new Hono<AppEnv>()
     return c.json({ memos });
   })
   // 作成。expiresAt = createdAt + 30 日 をサーバ側で確定する (クライアントからは指定不可)
-  .post("/", zValidator("json", createMemoSchema, onValidationError), async (c) => {
+  .post("/", validate("json", createMemoSchema), async (c) => {
     const db = createDb(c.env.DB);
     const { title, content } = c.req.valid("json");
     const now = new Date();
@@ -80,7 +87,7 @@ export const memoRoutes = new Hono<AppEnv>()
     return c.json({ memo: created }, 201);
   })
   // 1 件取得
-  .get("/:id", zValidator("param", paramSchema, onValidationError), async (c) => {
+  .get("/:id", validate("param", paramSchema), async (c) => {
     const db = createDb(c.env.DB);
     const { id } = c.req.valid("param");
     const found = await db
@@ -96,8 +103,8 @@ export const memoRoutes = new Hono<AppEnv>()
   // title / content 更新。updatedAt は $onUpdate で自動更新、expiresAt は変更しない
   .patch(
     "/:id",
-    zValidator("param", paramSchema, onValidationError),
-    zValidator("json", updateMemoSchema, onValidationError),
+    validate("param", paramSchema),
+    validate("json", updateMemoSchema),
     async (c) => {
       const db = createDb(c.env.DB);
       const { id } = c.req.valid("param");
@@ -118,7 +125,7 @@ export const memoRoutes = new Hono<AppEnv>()
     },
   )
   // 削除
-  .delete("/:id", zValidator("param", paramSchema, onValidationError), async (c) => {
+  .delete("/:id", validate("param", paramSchema), async (c) => {
     const db = createDb(c.env.DB);
     const { id } = c.req.valid("param");
     const deleted = await db
