@@ -23,25 +23,45 @@ import {
   remainingDays,
   type MemoListItem,
 } from "@/lib/memo";
+import { readCachedMemoList, removeCachedMemo, writeCachedMemoList } from "@/lib/memo-cache";
+import { OfflineError, fetchOrOffline } from "@/lib/offline";
 import { requireLogin } from "@/lib/require-login";
 
 // ログイン後のメイン画面: 自分のメモ一覧 (未ログインなら /login へ)
 export const Route = createFileRoute("/")({
   beforeLoad: ({ location }) => requireLogin(location),
-  loader: async ({ location }) => {
-    const res = await api.memos.$get();
+  loader: async ({ location, context }) => {
+    const userId = context.session.user.id;
+    let res;
+    try {
+      res = await fetchOrOffline(() => api.memos.$get());
+    } catch (e) {
+      // オフライン: 前回取得した一覧があれば読み取り専用で表示する (offline: true)
+      if (!(e instanceof OfflineError)) throw e;
+      const cached = readCachedMemoList(userId);
+      if (!cached) {
+        throw new OfflineError(
+          "オフラインのため、メモ一覧を取得できません (まだ一度も取得していないためキャッシュもありません)。",
+        );
+      }
+      return { memos: cached.memos, offline: true, cachedAt: cached.cachedAt };
+    }
     if (res.status === 401) {
       // beforeLoad 後にセッションが切れた場合
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
     if (!res.ok) throw new Error("メモ一覧の取得に失敗しました");
-    return res.json();
+    const { memos } = await res.json();
+    // オフライン閲覧用に最新の一覧で上書きする
+    writeCachedMemoList(userId, memos);
+    return { memos, offline: false, cachedAt: null };
   },
   component: MemoList,
 });
 
 function MemoList() {
-  const { memos } = Route.useLoaderData();
+  const { memos, offline, cachedAt } = Route.useLoaderData();
+  const { session } = Route.useRouteContext();
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<MemoListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -52,15 +72,22 @@ function MemoList() {
     setDeleting(true);
     setError(null);
     try {
-      const res = await api.memos[":id"].$delete({ param: { id: deleteTarget.id } });
+      const res = await fetchOrOffline(() =>
+        api.memos[":id"].$delete({ param: { id: deleteTarget.id } }),
+      );
       // 404 は既に削除済み (or 期限切れ) なので一覧を再取得するだけでよい
       if (!res.ok && res.status !== 404) {
         throw new Error("メモの削除に失敗しました");
       }
+      removeCachedMemo(session.user.id, deleteTarget.id);
       setDeleteTarget(null);
       await router.invalidate();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "メモの削除に失敗しました");
+      if (e instanceof OfflineError) {
+        setError("オフラインのため削除できません。オンラインに戻ってから再度お試しください。");
+      } else {
+        setError(e instanceof Error ? e.message : "メモの削除に失敗しました");
+      }
     } finally {
       setDeleting(false);
     }
@@ -69,7 +96,15 @@ function MemoList() {
   return (
     <Stack>
       <Group justify="space-between" align="center">
-        <Title order={2}>メモ</Title>
+        <Group gap="sm" align="center">
+          <Title order={2}>メモ</Title>
+          {offline && (
+            <Badge color="yellow" variant="light" size="lg">
+              オフライン (読み取り専用
+              {cachedAt !== null ? ` / ${formatDateTime(cachedAt)} 時点` : ""})
+            </Badge>
+          )}
+        </Group>
         <Button component={Link} to="/memos/new">
           新規作成
         </Button>
@@ -96,7 +131,12 @@ function MemoList() {
       ) : (
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           {memos.map((memo) => (
-            <MemoCard key={memo.id} memo={memo} onDelete={() => setDeleteTarget(memo)} />
+            <MemoCard
+              key={memo.id}
+              memo={memo}
+              readOnly={offline}
+              onDelete={() => setDeleteTarget(memo)}
+            />
           ))}
         </SimpleGrid>
       )}
@@ -126,7 +166,15 @@ function MemoList() {
   );
 }
 
-function MemoCard({ memo, onDelete }: { memo: MemoListItem; onDelete: () => void }) {
+function MemoCard({
+  memo,
+  readOnly,
+  onDelete,
+}: {
+  memo: MemoListItem;
+  readOnly: boolean;
+  onDelete: () => void;
+}) {
   const days = remainingDays(memo.expiresAt);
   const warning = days <= MEMO_EXPIRY_WARNING_DAYS;
   return (
@@ -156,9 +204,12 @@ function MemoCard({ memo, onDelete }: { memo: MemoListItem; onDelete: () => void
           <Text size="xs" c="dimmed">
             更新: {formatDateTime(memo.updatedAt)}
           </Text>
-          <Button variant="subtle" color="red" size="compact-xs" onClick={onDelete}>
-            削除
-          </Button>
+          {/* オフライン (キャッシュ表示) 中は削除できないのでボタンを出さない */}
+          {!readOnly && (
+            <Button variant="subtle" color="red" size="compact-xs" onClick={onDelete}>
+              削除
+            </Button>
+          )}
         </Group>
       </Stack>
     </Card>

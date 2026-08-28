@@ -1,5 +1,5 @@
 import { Anchor, Button, Group, Loader, Stack, Text, TextInput, Textarea } from "@mantine/core";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MEMO_CONTENT_MAX_LENGTH,
@@ -8,9 +8,13 @@ import {
 } from "../../worker/memo/constants";
 import { api } from "@/lib/api";
 import { formatDate, type MemoDetail } from "@/lib/memo";
+import { writeCachedMemo } from "@/lib/memo-cache";
+import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
+
+export const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
 
 type Draft = { title: string; content: string };
 
@@ -23,6 +27,7 @@ type SaveStatus =
   | "empty" // 本文が空なので保存できない
   | "saving"
   | "saved"
+  | "offline" // オフラインで保存できなかった (入力は保持。online イベントか「再試行」で再送する)
   | "error";
 
 // /memos/new で POST した直後に /memos/$id へ replace 遷移すると、ルートが変わるため
@@ -47,12 +52,26 @@ function draftOf(memo: MemoDetail | null): Draft {
   return { title: memo?.title ?? "", content: memo?.content ?? "" };
 }
 
+function toJson(draft: Draft) {
+  return { title: draft.title === "" ? null : draft.title, content: draft.content };
+}
+
 /**
  * メモの作成・編集画面で共有するエディタ。
  * memo が null なら新規: 最初の入力で POST し、/memos/$id へ replace 遷移する。
  * 以後は入力停止から 1 秒後に PATCH する (自動保存)。
+ * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
+ * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  */
-export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
+export function MemoEditor({
+  memo,
+  userId,
+  readOnly = false,
+}: {
+  memo: MemoDetail | null;
+  userId: string;
+  readOnly?: boolean;
+}) {
   const navigate = useNavigate();
 
   // 新規作成からの replace 遷移直後なら、前のエディタから下書きとカーソル位置を引き継ぐ。
@@ -77,6 +96,8 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
     if (!memo) return "idle";
     return isSameDraft(latestRef.current, savedRef.current) ? "saved" : "dirty";
   });
+  const statusRef = useRef(status);
+  statusRef.current = status;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const inFlightRef = useRef(false);
@@ -107,18 +128,24 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
       setStatus("empty");
       return;
     }
+    // 確実にオフラインなら送らずに待つ (online イベントで再試行する)
+    if (isOffline()) {
+      setStatus("offline");
+      return;
+    }
 
     inFlightRef.current = true;
     setStatus("saving");
     setErrorMessage(null);
-    const json = { title: snapshot.title === "" ? null : snapshot.title, content: snapshot.content };
+    const json = toJson(snapshot);
 
     let saved = false;
     try {
       if (idRef.current === null) {
-        const res = await api.memos.$post({ json });
+        const res = await fetchOrOffline(() => api.memos.$post({ json }));
         if (res.status !== 201) throw new Error(`保存に失敗しました (${res.status})`);
         const { memo: created } = await res.json();
+        writeCachedMemo(userId, created);
         savedRef.current = snapshot;
         idRef.current = created.id;
         setId(created.id);
@@ -146,17 +173,25 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
         return;
       }
 
-      const res = await api.memos[":id"].$patch({ param: { id: idRef.current }, json });
+      const memoId = idRef.current;
+      const res = await fetchOrOffline(() => api.memos[":id"].$patch({ param: { id: memoId }, json }));
       if (res.status === 404) {
         throw new Error("このメモは期限切れか、既に削除されています");
       }
       if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
+      const { memo: updated } = await res.json();
+      writeCachedMemo(userId, updated);
       savedRef.current = snapshot;
       saved = true;
       setStatus("saved");
     } catch (e) {
-      setStatus("error");
-      setErrorMessage(e instanceof Error ? e.message : "保存に失敗しました");
+      if (e instanceof OfflineError) {
+        // 入力内容 (latestRef / draft) はそのまま保持し、オンライン復帰時に再送する
+        setStatus("offline");
+      } else {
+        setStatus("error");
+        setErrorMessage(e instanceof Error ? e.message : "保存に失敗しました");
+      }
     } finally {
       inFlightRef.current = false;
     }
@@ -170,7 +205,7 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
         void save();
       }, AUTOSAVE_DELAY_MS);
     }
-  }, [navigate]);
+  }, [navigate, userId]);
 
   const scheduleSave = useCallback(() => {
     cancelTimer();
@@ -209,25 +244,43 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
       cancelTimer();
       if (idRef.current !== null) clearHandoff(idRef.current);
       // SPA 内の遷移 (一覧へ戻る等) で debounce 待ちの編集を落とさないよう、その場で保存する。
-      // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる
+      // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
+      // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
       const snapshot = latestRef.current;
       if (
         !handedOffRef.current &&
         !inFlightRef.current &&
+        !isOffline() &&
         !isSameDraft(snapshot, savedRef.current) &&
         snapshot.content !== ""
       ) {
-        const json = { title: snapshot.title === "" ? null : snapshot.title, content: snapshot.content };
-        void (idRef.current === null
+        const json = toJson(snapshot);
+        const memoId = idRef.current;
+        void (memoId === null
           ? api.memos.$post({ json })
-          : api.memos[":id"].$patch({ param: { id: idRef.current }, json }));
+          : api.memos[":id"].$patch({ param: { id: memoId }, json })
+        ).catch(() => {
+          // 離脱後なので UI には出せない。ネットワーク断ならその編集は失われる (スコープ外)
+        });
       }
     };
     // マウント時に一度だけ実行する (handed / scheduleSave はマウント後に変わらない)
   }, []);
 
+  // オンラインに復帰したら、オフラインで保存できなかった分 (や失敗したまま残っている分) を再送する
+  useEffect(() => {
+    if (readOnly) return;
+    const onOnline = () => {
+      const s = statusRef.current;
+      if (s === "offline" || s === "error" || s === "dirty") void save();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [readOnly, save]);
+
   // 未保存の内容がある間はタブを閉じる / リロード前に確認を出す
-  const unsaved = status === "dirty" || status === "saving" || status === "error";
+  const unsaved =
+    status === "dirty" || status === "saving" || status === "offline" || status === "error";
   useEffect(() => {
     if (!unsaved) return;
     const handler = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -235,13 +288,32 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
     return () => window.removeEventListener("beforeunload", handler);
   }, [unsaved]);
 
+  // オフラインで保存できていない変更がある間は、SPA 内の遷移も確認してから (アンマウント時の
+  // 保存が届かず、入力内容が失われるため)。オンラインなら unmount 時にその場で保存するので確認しない
+  const blockNavigation = status === "offline" || (unsaved && isOffline());
+  const confirmLeave = useCallback(
+    () =>
+      !window.confirm(
+        "オフラインのため未保存の変更を保存できません。このページを離れると変更は失われます。移動しますか?",
+      ),
+    [],
+  );
+  useBlocker({
+    shouldBlockFn: confirmLeave,
+    disabled: !blockNavigation,
+    // beforeunload は上の useEffect で扱う
+    enableBeforeUnload: false,
+  });
+
   return (
     <Stack>
       <Group justify="space-between" align="center">
         <Anchor component={Link} to="/" size="sm">
           ← 一覧へ戻る
         </Anchor>
-        <SaveStatusLabel status={status} errorMessage={errorMessage} onRetry={() => void save()} />
+        {!readOnly && (
+          <SaveStatusLabel status={status} errorMessage={errorMessage} onRetry={() => void save()} />
+        )}
       </Group>
 
       <Text size="sm" c="dimmed">
@@ -259,6 +331,7 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
         size="lg"
         variant="unstyled"
         styles={{ input: { fontWeight: 700 } }}
+        readOnly={readOnly}
         ref={titleRef}
       />
       <Textarea
@@ -270,6 +343,7 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
         autosize
         minRows={12}
         autoFocus={id === null}
+        readOnly={readOnly}
         ref={contentRef}
       />
       <Group justify="flex-end" gap="md">
@@ -318,6 +392,17 @@ function SaveStatusLabel({
         <Text size="sm" c="dimmed">
           保存済み
         </Text>
+      );
+    case "offline":
+      return (
+        <Group gap="xs" role="alert">
+          <Text size="sm" c="orange" fw={600}>
+            {OFFLINE_SAVE_MESSAGE}
+          </Text>
+          <Button size="compact-xs" variant="light" color="orange" onClick={onRetry}>
+            再試行
+          </Button>
+        </Group>
       );
     case "error":
       return (

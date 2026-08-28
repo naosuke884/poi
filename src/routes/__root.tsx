@@ -2,6 +2,7 @@ import { AppShell, Container, Group, Title, Anchor, Stack, Text } from "@mantine
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { UserMenu } from "@/components/UserMenu";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdateBanner } from "@/components/PwaUpdateBanner";
 
 export const Route = createRootRoute({
@@ -32,6 +33,7 @@ function RootLayout() {
       </AppShell.Header>
       <AppShell.Main>
         <Container size="md">
+          <OfflineBanner />
           <Outlet />
         </Container>
       </AppShell.Main>

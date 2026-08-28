@@ -12,12 +12,19 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   │   ├── memos/new.tsx     #   /memos/new メモ作成 (最初の入力で POST → /memos/$id へ replace 遷移)
 │   │   └── memos/$id.tsx     #   /memos/:id メモ編集 (自動保存)。404 は notFoundComponent
 │   ├── components/UserMenu.tsx
-│   ├── components/MemoEditor.tsx # 作成・編集で共有するエディタ (debounce 自動保存 / 保存状態 / 期限表示)
+│   ├── components/MemoEditor.tsx # 作成・編集で共有するエディタ (debounce 自動保存 / 保存状態 / 期限表示 / オフライン時は保持して復帰後に再送)
 │   ├── components/PwaUpdateBanner.tsx # Service Worker 登録 + 新バージョン検知時の「更新があります」バナー
+│   ├── components/OfflineBanner.tsx   # navigator.onLine を見て「オフラインです」バナー。復帰時に router.invalidate()
+│   ├── components/RouteErrorFallback.tsx # loader / beforeLoad の例外の共通表示 (defaultErrorComponent)。「再試行」付き
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
-│   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ)
+│   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ。オフラインはキャッシュしたユーザーで通す)
 │   ├── lib/memo.ts           # 残り日数 / 表示タイトル / 日付フォーマットなどのヘルパー
+│   ├── lib/memo-cache.ts     # オフライン閲覧用のメモキャッシュ (localStorage、ユーザー id ごと)
+│   ├── lib/session-cache.ts  # オフライン起動用にログイン中ユーザーをキャッシュ
+│   ├── lib/local-storage.ts  # localStorage の try/catch ラッパー
+│   ├── lib/offline.ts        # OfflineError / isOffline / fetchOrOffline (ネットワークエラーの判定)
+│   ├── lib/use-online.ts     # useOnline(): navigator.onLine + online/offline イベント
 │   ├── routeTree.gen.ts      # 自動生成 (編集不要)
 │   └── vite-env.d.ts         # vite/client + vite-plugin-pwa/react の型参照 (virtual:pwa-register/react)
 ├── public/                   # そのまま配信される静的ファイル (PWA アイコン: pwa-192x192 / pwa-512x512 / maskable / apple-touch-icon / icon.svg)
@@ -55,10 +62,10 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 
 | Path         | 内容                                                                                   |
 | ------------ | -------------------------------------------------------------------------------------- |
-| `/`          | メモ一覧 (要ログイン)。タイトル (無ければ本文の先頭行) / 更新日時 / 残り日数を表示。カードのタイトルから編集画面へ。削除は確認ダイアログ付き |
+| `/`          | メモ一覧 (要ログイン)。タイトル (無ければ本文の先頭行) / 更新日時 / 残り日数を表示。カードのタイトルから編集画面へ。削除は確認ダイアログ付き。オフライン時は前回取得分を読み取り専用で表示 |
 | `/login`     | Google でログイン。`?redirect=` があればログイン後にそこへ戻る                            |
 | `/memos/new` | メモ作成 (要ログイン)。最初の入力で `POST /api/memos` し、`/memos/:id` へ `replace` 遷移       |
-| `/memos/:id` | メモ編集 (要ログイン)。期限切れ・存在しない id は 404 表示 (`notFoundComponent`)          |
+| `/memos/:id` | メモ編集 (要ログイン)。期限切れ・存在しない id は 404 表示 (`notFoundComponent`)。オフライン時はキャッシュを閲覧のみで表示 |
 
 - ログイン必須ページは `beforeLoad` で `src/lib/require-login.ts` の `requireLogin` を呼ぶ
   (未ログインなら `/login?redirect=<元の URL>` へ)
@@ -72,7 +79,8 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
   - `POST` 直後の `/memos/$id` への遷移でエディタは作り直されるが、遷移中の入力とカーソル位置は
     モジュール内の `handoff` 経由で新しいエディタに引き継ぐ
   - 本文が空の間は保存しない (API が `content` を 1 文字以上要求するため)
-- 保存状態を右上に表示: 未保存の変更があります / 保存中… / 保存済み / 保存に失敗 (「再試行」ボタン付き)。
+- 保存状態を右上に表示: 未保存の変更があります / 保存中… / 保存済み / 保存に失敗 (「再試行」ボタン付き) /
+  オフラインです。オンライン復帰後に再保存してください (「再試行」付き。`online` イベントでも自動再送。下記「オフライン時の挙動」)。
   未保存の間はタブを閉じる・リロード時に `beforeunload` で確認を出す
 - 期限日を「このメモは YYYY/MM/DD に消えます」と表示 (`expiresAt` を `formatDate` で整形)
 - タイトル / 本文の `maxLength` と文字数カウンタは `worker/memo/constants.ts` の上限を使う
@@ -180,6 +188,54 @@ curl -i http://localhost:8787/api/memos             # 401 {"error":"Unauthorized
 
 インストール可否 (Lighthouse の PWA チェック、iOS Safari / Android Chrome の「ホーム画面に追加」) は
 HTTPS でデプロイした環境で実機 / DevTools から確認する。
+
+
+## オフライン時の挙動
+
+フルオフライン編集はスコープ外。「前回取得した内容の閲覧」と「分かりやすいエラー / 復帰時の再送」に留める
+(複数端末の競合解決はせず last-write-wins)。
+
+- **状態バナー**: `src/lib/use-online.ts` の `useOnline()` (`navigator.onLine` + `online` / `offline` イベント) を
+  `src/components/OfflineBanner.tsx` が見て、オフラインの間はヘッダー下に「オフラインです」を出す。
+  オフライン → オンラインに戻った瞬間に `router.invalidate()` で表示中ルートの loader を再実行し、
+  キャッシュ表示を最新のデータで置き換える (= キャッシュもその時点で上書きされる)
+- **キャッシュ** (`src/lib/memo-cache.ts`, `localStorage`): 一覧 (`GET /api/memos`) と 1 件 (`GET /api/memos/:id`) の
+  loader が成功するたび、および編集画面の保存成功時に上書きする。キーはユーザー id ごと
+  (`poi:memo-cache:v1:<userId>:list` / `...:memo:<id>`)。一覧を書くとき、一覧に無い id の詳細は削除する。
+  `localStorage` が使えない (プライベートモード / 容量超過) 場合は `src/lib/local-storage.ts` が握りつぶし、
+  単にキャッシュが無い扱いになる
+- **ログイン状態** (`src/lib/session-cache.ts`): `requireLogin` は `getSession` の fetch 自体が失敗 (ネットワーク断) したら
+  前回キャッシュしたユーザー情報 (`poi:session:v1`) で通す。サーバが「未ログイン」と答えた場合はキャッシュを消して
+  `/login` へ。ログアウト時 (`UserMenu`) もキャッシュを全部消す。ヘッダーのユーザー表示もキャッシュから出す
+  (ログアウトはオフラインでは押せない)
+- **一覧 (`/`)**: fetch がネットワークエラー (`src/lib/offline.ts` の `OfflineError`) なら
+  キャッシュした一覧を `offline: true` で返し、「オフライン (読み取り専用 / 取得時刻)」バッジを出して削除ボタンを隠す。
+  キャッシュも無ければ `OfflineError` を throw → `src/components/RouteErrorFallback.tsx`
+  (`createRouter` の `defaultErrorComponent`) が「再試行」付きで表示する
+- **編集画面 (`/memos/:id`)**
+  - loader が失敗してキャッシュから表示したときは閲覧のみ (`MemoEditor` の `readOnly`)。
+    オンライン復帰時の `invalidate` で最新を取得したら `key` が変わってエディタを作り直す
+  - オンラインで開いた後にオフラインになった場合: 自動保存は `navigator.onLine === false` なら送らず、
+    fetch が失敗した場合も含めて右上に「オフラインです。オンライン復帰後に再保存してください」(+「再試行」) を出す。
+    入力内容はそのまま保持し、`online` イベントで自動的に再送する (手動の「再試行」でも可)。
+    この状態で SPA 内の別ページへ移動しようとすると `useBlocker` で確認を出す (離れると失われるため)。
+    タブを閉じる / リロードは従来どおり `beforeunload` で確認
+  - 新規作成 (`/memos/new`) も同じ: 最初の `POST` がオフラインで失敗したら復帰後に再送して `/memos/:id` へ遷移する
+- **Service Worker**: ナビゲーションは `navigateFallback: /index.html` で precache から返るので、
+  機内モードで PWA を起動しても (`/` でも `/memos/:id` でも) アプリ本体は起動する。
+  `/api/*` はキャッシュしないので、データはすべて上記の `localStorage` キャッシュから出す
+
+### ローカルで確認する
+
+ブラウザの DevTools (Network → Offline / Application → Service Workers → Offline) で確認する。
+
+1. オンラインで `/` と `/memos/:id` を一度開く (キャッシュが作られる)
+2. Offline にしてリロード → 一覧が「オフライン (読み取り専用)」バッジ付きで表示される。メモを開くと閲覧のみ
+3. オンラインで編集画面を開いたまま Offline にして入力 → 「オフラインです。オンライン復帰後に再保存してください」
+4. Online に戻す → 自動で `PATCH` され「保存済み」になる。一覧に戻るとキャッシュも最新になっている
+
+キャッシュ / オフライン判定のヘルパーは DOM 無しでも動くので、node で単体確認できる
+(`localStorage` をモックして `src/lib/memo-cache.ts` / `src/lib/offline.ts` を呼ぶ)。
 
 ## 初回セットアップ
 
