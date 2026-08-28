@@ -13,11 +13,14 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   │   └── memos/$id.tsx     #   /memos/:id メモ編集 (自動保存)。404 は notFoundComponent
 │   ├── components/UserMenu.tsx
 │   ├── components/MemoEditor.tsx # 作成・編集で共有するエディタ (debounce 自動保存 / 保存状態 / 期限表示)
+│   ├── components/PwaUpdateBanner.tsx # Service Worker 登録 + 新バージョン検知時の「更新があります」バナー
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
 │   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ)
 │   ├── lib/memo.ts           # 残り日数 / 表示タイトル / 日付フォーマットなどのヘルパー
-│   └── routeTree.gen.ts      # 自動生成 (編集不要)
+│   ├── routeTree.gen.ts      # 自動生成 (編集不要)
+│   └── vite-env.d.ts         # vite/client + vite-plugin-pwa/react の型参照 (virtual:pwa-register/react)
+├── public/                   # そのまま配信される静的ファイル (PWA アイコン: pwa-192x192 / pwa-512x512 / maskable / apple-touch-icon / icon.svg)
 ├── worker/
 │   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/memos。scheduled ハンドラ (Cron) もここ
 │   ├── middleware.ts         # authMiddleware (セッション解決) / requireAuth (401 ガード)
@@ -33,7 +36,8 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 ├── better-auth.config.ts     # Better Auth CLI 用 (スキーマ生成)
 ├── drizzle.config.ts
 ├── postcss.config.cjs        # Mantine 用 PostCSS
-└── vite.config.ts            # tanstackRouter + react + cloudflare
+├── index.html                # theme-color / apple-mobile-web-app-* meta、apple-touch-icon
+└── vite.config.ts            # tanstackRouter + react + cloudflare + VitePWA (manifest / Service Worker)
 ```
 
 ## ルーティング
@@ -45,6 +49,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 - `/__scheduled` … `wrangler dev --test-scheduled` で Cron をローカル実行するための経路 (下記)。
   静的アセットに取られないよう `run_worker_first` に含めている (本番では SPA フォールバックになるだけ)
 - それ以外 … 静的アセットがあればそれを返し、無ければ `index.html` (SPA フォールバック)
+  - `/sw.js` / `/manifest.webmanifest` / `/pwa-*.png` などの PWA 用ファイルもここ (Worker を通らず静的配信)
 
 ### 画面
 
@@ -137,6 +142,44 @@ npx wrangler d1 execute poi --local --command "SELECT id FROM memo WHERE id LIKE
 npx wrangler d1 execute poi --local --command "
   DELETE FROM memo WHERE user_id = 'cron-test-user'; DELETE FROM user WHERE id = 'cron-test-user';"
 ```
+
+## PWA (ホーム画面への追加)
+
+`vite-plugin-pwa` (`vite.config.ts` の `VitePWA`) で `manifest.webmanifest` と Service Worker (`sw.js`) を
+`npm run build` 時に `dist/client` へ生成する。開発サーバー (`npm run dev`) では SW は登録されない
+(`useRegisterSW` が no-op になる)。
+
+- manifest: `name` / `short_name` = `poi`、`display: standalone`、`start_url: /`。
+  `theme_color` (`#228be6` = Mantine `blue.6`) / `background_color` (`#ffffff`) は
+  `index.html` の `theme-color` meta と揃えている
+- アイコンは `public/` に置く (`pwa-192x192.png` / `pwa-512x512.png` / `pwa-maskable-512x512.png` (purpose: maskable) /
+  `apple-touch-icon.png` (180px)。`icon.svg` は元絵兼ファビコン)
+- Service Worker (Workbox `generateSW`) のキャッシュ戦略
+  - ビルド成果物 (`/assets/*`、`index.html`、アイコン類) は precache。ハッシュ付きなので更新時は差分だけ取り直す
+  - ナビゲーションは `index.html` を `navigateFallback` にする (オフラインでも SPA が起動する)。
+    ただし `/api/*` (Better Auth のコールバック含む) と `/__scheduled` は `navigateFallbackDenylist` で除外
+  - `/api/*` は **キャッシュしない**。`runtimeCaching` を一切定義していないので precache 対象外のリクエストは
+    SW を素通りしてネットワークへ行く (NetworkOnly 相当)。認証付きレスポンスがキャッシュされないよう、
+    `/api` 向けの `runtimeCaching` は今後も追加しないこと
+- 更新: `registerType: "autoUpdate"` で新しい SW は待機せず即座に有効化される (`skipWaiting` + `clientsClaim`)。
+  既定の「その場で自動リロード」は編集中のメモが飛びかねないので `onNeedReload` で止め、
+  `src/components/PwaUpdateBanner.tsx` が右下に「更新があります」+「リロード」ボタンを出す
+  (未保存の変更があれば `MemoEditor` の `beforeunload` で確認が出る)
+
+### ローカルで確認する
+
+```sh
+npm run build
+ls dist/client   # sw.js / manifest.webmanifest / workbox-*.js / pwa-*.png が含まれる
+npx wrangler dev --config wrangler.jsonc --assets dist/client   # http://localhost:8787
+
+curl -I http://localhost:8787/sw.js                 # 200, text/javascript (静的配信)
+curl -I http://localhost:8787/manifest.webmanifest  # 200, application/manifest+json
+curl -i http://localhost:8787/api/memos             # 401 {"error":"Unauthorized"} (Worker が処理)
+```
+
+インストール可否 (Lighthouse の PWA チェック、iOS Safari / Android Chrome の「ホーム画面に追加」) は
+HTTPS でデプロイした環境で実機 / DevTools から確認する。
 
 ## 初回セットアップ
 

@@ -2,6 +2,7 @@ import { AppShell, Container, Group, Title, Anchor, Stack, Text } from "@mantine
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { UserMenu } from "@/components/UserMenu";
+import { PwaUpdateBanner } from "@/components/PwaUpdateBanner";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -34,6 +35,7 @@ function RootLayout() {
           <Outlet />
         </Container>
       </AppShell.Main>
+      <PwaUpdateBanner />
       {import.meta.env.DEV && <TanStackRouterDevtools />}
     </AppShell>
   );

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   resolve: {
@@ -13,5 +14,41 @@ export default defineConfig({
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
     react(),
     cloudflare(),
+    // PWA: manifest.webmanifest と Service Worker (sw.js) を dist/client に生成する。
+    // cloudflare() がクライアントを dist/client に出力した後 (closeBundle) に動くので、この順で置く
+    VitePWA({
+      // 新しい SW を待機させず即座に有効化する (skipWaiting + clientsClaim)。
+      // 有効化後のリロードは自動では行わず、PwaUpdateBanner が「更新があります」を出す (onNeedReload)
+      registerType: "autoUpdate",
+      // SW の登録は src/components/PwaUpdateBanner.tsx の useRegisterSW で行うので、登録スクリプトは注入しない
+      injectRegister: null,
+      manifest: {
+        name: "poi",
+        short_name: "poi",
+        description: "1 ヶ月で消えるメモ",
+        lang: "ja",
+        display: "standalone",
+        start_url: "/",
+        scope: "/",
+        // Mantine のテーマ色に合わせる (primary: blue.6 / 背景: 白)
+        theme_color: "#228be6",
+        background_color: "#ffffff",
+        icons: [
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+          { src: "/pwa-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+      },
+      workbox: {
+        // 静的アセット (/assets/* など) は precache
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // ナビゲーションは index.html にフォールバック (SPA)。
+        // /api/* (認証付き) と /__scheduled (Cron のローカル実行) は SW を介さずネットワークへ
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//, /^\/__scheduled/],
+        // runtimeCaching は定義しない: precache 対象外 (= /api/* を含む) は SW がキャッシュせず
+        // そのままネットワークに流れる (NetworkOnly 相当)。認証付きレスポンスをキャッシュ事故させないため
+      },
+    }),
   ],
 });
