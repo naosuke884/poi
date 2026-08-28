@@ -8,7 +8,7 @@ export const Route = createFileRoute("/login")({
   }),
   beforeLoad: async ({ search }) => {
     const { data } = await authClient.getSession();
-    if (data) throw redirect({ to: search.redirect ?? "/dashboard" });
+    if (data) throw redirect({ to: search.redirect ?? "/" });
   },
   component: Login,
 });
@@ -26,7 +26,7 @@ function Login() {
           onClick={() =>
             authClient.signIn.social({
               provider: "google",
-              callbackURL: redirectTo ?? "/dashboard",
+              callbackURL: redirectTo ?? "/",
             })
           }
         >

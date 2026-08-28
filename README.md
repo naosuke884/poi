@@ -7,15 +7,17 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 ├── src/                      # フロントエンド (React + Mantine + TanStack Router)
 │   ├── routes/               # file-based routing
 │   │   ├── __root.tsx        #   AppShell レイアウト + ヘッダー
-│   │   ├── index.tsx         #   /
-│   │   ├── login.tsx         #   /login  (Google でログイン)
-│   │   └── dashboard.tsx     #   /dashboard (要ログイン: beforeLoad でガード)
+│   │   ├── index.tsx         #   /          メモ一覧 (要ログイン: beforeLoad でガード)
+│   │   ├── login.tsx         #   /login     (Google でログイン)
+│   │   └── memos/new.tsx     #   /memos/new メモ作成 (編集画面は #4 で実装。今はプレースホルダー)
 │   ├── components/UserMenu.tsx
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
+│   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ)
+│   ├── lib/memo.ts           # 残り日数 / 表示タイトルなど一覧用のヘルパー
 │   └── routeTree.gen.ts      # 自動生成 (編集不要)
 ├── worker/
-│   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/me, /api/memos
+│   ├── index.ts              # Hono アプリ: /api/auth/* (Better Auth), /api/memos
 │   ├── middleware.ts         # authMiddleware (セッション解決) / requireAuth (401 ガード)
 │   ├── auth.ts               # createAuth(env): Better Auth + Drizzle(D1) + Google
 │   ├── db/schema.ts          # Drizzle スキーマ (Better Auth CLI が生成。手で編集しない)
@@ -36,9 +38,21 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 - `/api/*` … `run_worker_first` で常に Worker (Hono) が処理
   - `/api/auth/*` … Better Auth のハンドラ
   - それ以外は `authMiddleware` でセッション解決済み。`requireAuth` で 401 ガード
-  - `/api/me` … ログイン中のユーザー
   - `/api/memos` … メモ CRUD (下記)
 - それ以外 … 静的アセットがあればそれを返し、無ければ `index.html` (SPA フォールバック)
+
+### 画面
+
+| Path         | 内容                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------- |
+| `/`          | メモ一覧 (要ログイン)。タイトル (無ければ本文の先頭行) / 更新日時 / 残り日数を表示。削除は確認ダイアログ付き |
+| `/login`     | Google でログイン。`?redirect=` があればログイン後にそこへ戻る                            |
+| `/memos/new` | メモ作成 (#4 で実装予定。現状はプレースホルダー)                                          |
+
+- ログイン必須ページは `beforeLoad` で `src/lib/require-login.ts` の `requireLogin` を呼ぶ
+  (未ログインなら `/login?redirect=<元の URL>` へ)
+- 残り日数は `expiresAt` から `src/lib/memo.ts` の `remainingDays` で算出し、
+  3 日以下 (`MEMO_EXPIRY_WARNING_DAYS`) は警告色で表示する
 
 ## メモ API (`/api/memos`)
 
