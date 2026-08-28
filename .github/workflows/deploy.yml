@@ -12,10 +12,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# デプロイは並列に走らせず、後から来た run で古い run を置き換える
+# 本番は 1 つなので、ブランチに関わらず直列に走らせる。
+# 途中キャンセルすると D1 マイグレーション適用済み・Worker 未デプロイの状態で止まりうるので cancel はしない
 concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-production
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -23,7 +24,8 @@ permissions:
 jobs:
   deploy:
     name: wrangler deploy
-    if: ${{ vars.ENABLE_DEPLOY == 'true' }}
+    # workflow_dispatch で他ブランチから起動しても本番には出さない
+    if: ${{ vars.ENABLE_DEPLOY == 'true' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
