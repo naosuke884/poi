@@ -208,6 +208,20 @@ export function MemoEditor({ memo }: { memo: MemoDetail | null }) {
     return () => {
       cancelTimer();
       if (idRef.current !== null) clearHandoff(idRef.current);
+      // SPA 内の遷移 (一覧へ戻る等) で debounce 待ちの編集を落とさないよう、その場で保存する。
+      // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる
+      const snapshot = latestRef.current;
+      if (
+        !handedOffRef.current &&
+        !inFlightRef.current &&
+        !isSameDraft(snapshot, savedRef.current) &&
+        snapshot.content !== ""
+      ) {
+        const json = { title: snapshot.title === "" ? null : snapshot.title, content: snapshot.content };
+        void (idRef.current === null
+          ? api.memos.$post({ json })
+          : api.memos[":id"].$patch({ param: { id: idRef.current }, json }));
+      }
     };
     // マウント時に一度だけ実行する (handed / scheduleSave はマウント後に変わらない)
   }, []);
