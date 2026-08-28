@@ -9,74 +9,65 @@ export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sectio
 export type DraftSection = { id: string | null; content: string };
 
 /**
- * Textarea のテキストをセクションに分ける。区切りは空行 1 つ (SECTION_SEPARATOR = "\n\n")。
- * 単独の改行はセクションの中身に含める。空文字は「セクションが無い」扱い。
- * 分割と結合 (joinSections) が必ず往復するよう、区切りは "\n\n" ちょうどで、それ以外は一切変えない
- * (空行が 2 つ以上続けば余った改行は次のセクションの先頭に付く / 空のセクションになる)
+ * 画面上の 1 セクション (= 1 つの Textarea)。
+ * key は React の key と Textarea の参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
+ * id / expiresAt はサーバに保存済みのときだけ入る
  */
-export function splitSections(text: string): string[] {
-  return text === "" ? [] : text.split(SECTION_SEPARATOR);
+export type EditableSection = {
+  key: string;
+  id: string | null;
+  content: string;
+  expiresAt: string | null;
+};
+
+let seq = 0;
+export function newSection(content = ""): EditableSection {
+  return { key: `s${++seq}`, id: null, content, expiresAt: null };
 }
 
-/** セクションをテキストに戻す (splitSections の逆) */
-export function joinSections(sections: { content: string }[]): string {
-  return sections.map((s) => s.content).join(SECTION_SEPARATOR);
+/** サーバから取得したセクションを画面用にする */
+export function toEditable(sections: BoardSection[]): EditableSection[] {
+  return sections.map((s) => ({ ...newSection(s.content), id: s.id, expiresAt: s.expiresAt }));
 }
 
 /**
- * 前回保存したセクション (saved) と現在のテキストのセクション (draft) を突き合わせ、PUT /api/board に送る配列を作る。
- * セクションの id を引き継ぐと作成日 (= 期限) が維持されるので、できるだけ引き継ぐ:
- * - 内容がそのままのセクションは LCS (最長共通部分列) で対応付ける
- * - 対応が取れなかった区間では、消えたものと増えたものを順番に 1 対 1 で組にする (= そのセクションを書き換えたとみなす)
- * - 余った増えたものは id: null (新しいセクション)。余った消えたものは削除される
+ * 画面上のセクションから保存するものを選ぶ。空のセクションは送らない (= サーバには残らない。
+ * 画面には残るので、書き足せば新しいセクションとして保存される)。
+ * key は保存後にサーバが付けた id / 期限を画面のセクションへ戻すために持つ
  */
-export function diffSections(
-  saved: { id: string; content: string }[],
-  draft: string[],
-): DraftSection[] {
-  const n = saved.length;
-  const m = draft.length;
-  // lcs[i][j] = saved[i..] と draft[j..] の LCS 長
-  const width = m + 1;
-  const lcs = new Uint16Array((n + 1) * width);
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      lcs[i * width + j] =
-        saved[i]!.content === draft[j]!
-          ? lcs[(i + 1) * width + j + 1]! + 1
-          : Math.max(lcs[(i + 1) * width + j]!, lcs[i * width + j + 1]!);
-    }
-  }
+export function toDraft(sections: EditableSection[]): (DraftSection & { key: string })[] {
+  return sections
+    .filter((s) => s.content !== "")
+    .map(({ key, id, content }) => ({ key, id, content }));
+}
 
-  const result: DraftSection[] = [];
-  let i = 0;
-  let j = 0;
-  // 対応が取れていない saved 側のセクション (書き換え候補として次に増えたものへ id を渡す)
-  let pendingRemoved: string[] = [];
-  const flushGap = (added: string[]) => {
-    for (let k = 0; k < added.length; k++) {
-      result.push({ id: pendingRemoved[k] ?? null, content: added[k]! });
-    }
-    pendingRemoved = [];
-  };
-  let pendingAdded: string[] = [];
-  while (i < n || j < m) {
-    if (i < n && j < m && saved[i]!.content === draft[j]!) {
-      flushGap(pendingAdded);
-      pendingAdded = [];
-      result.push({ id: saved[i]!.id, content: draft[j]! });
-      i++;
-      j++;
-    } else if (j < m && (i >= n || lcs[i * width + j + 1]! >= lcs[(i + 1) * width + j]!)) {
-      pendingAdded.push(draft[j]!);
-      j++;
-    } else {
-      pendingRemoved.push(saved[i]!.id);
-      i++;
-    }
+/** 保存対象が前回保存したものと同じか (id と内容と並び順) */
+export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
+  return a.length === b.length && a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content);
+}
+
+/**
+ * Textarea の入力に区切り (空行 = SECTION_SEPARATOR) が含まれていたら、そこでセクションを分ける。
+ * 区切りが無ければ null。
+ * parts は分けた後の各セクションの内容 (区切りちょうどで分けるだけで、それ以外の改行は残す)。
+ * focus はカーソル (cursor: 入力後の selectionStart) を置く先の part とその中の位置。
+ * カーソルが区切りの途中 (改行 2 つの間) にあるときは次の part の先頭に置く
+ */
+export function splitAtSeparator(
+  text: string,
+  cursor: number,
+): { parts: string[]; focus: { index: number; offset: number } } | null {
+  if (!text.includes(SECTION_SEPARATOR)) return null;
+  const parts = text.split(SECTION_SEPARATOR);
+  let start = 0;
+  for (let i = 0; i < parts.length; i++) {
+    const end = start + parts[i]!.length;
+    if (cursor <= end) return { parts, focus: { index: i, offset: cursor - start } };
+    start = end + SECTION_SEPARATOR.length;
+    if (cursor < start) return { parts, focus: { index: i + 1, offset: 0 } };
   }
-  flushGap(pendingAdded);
-  return result;
+  const last = parts.length - 1;
+  return { parts, focus: { index: last, offset: parts[last]!.length } };
 }
 
 /** 期限日など日付だけの表示用フォーマット (YYYY/MM/DD、端末のタイムゾーン) */

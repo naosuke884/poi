@@ -3,8 +3,8 @@
 TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Mantine を
 1 つの Cloudflare Worker で動かす構成。
 
-アプリは「板」1 枚: ログインすると 1 つの Textarea があり、書いた内容は自動保存される。
-空行 (改行 2 つ) で区切った「セクション」ごとに「書いてから 30 日」で消える
+アプリは「板」1 枚: ログインすると「セクション」ごとの Textarea が縦に並び、書いた内容は自動保存される。
+空行 (Enter 2 回) で次のセクションに分かれ、セクションごとに「書いてから 30 日」で消える
 (セクション単位で期限を持ち、Cron がセクション単位で削除する)。
 
 ```
@@ -18,14 +18,14 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   │   ├── index.tsx         #   /          板 (要ログイン: beforeLoad でガード)。オフライン時はキャッシュを閲覧のみで表示
 │   │   └── login.tsx         #   /login     (Google でログイン)
 │   ├── components/UserMenu.tsx
-│   ├── components/Board.tsx  # 板の Textarea (debounce 自動保存 / 保存状態 / 期限表示 / オフライン時は保持して復帰後に再送)
+│   ├── components/Board.tsx  # 板 (セクションごとの Textarea / 分割・結合・移動のキー操作 / debounce 自動保存 / 保存状態 / オフライン時は保持して復帰後に再送)
 │   ├── components/PwaUpdateBanner.tsx # Service Worker 登録 + 新バージョン検知時の「更新があります」バナー
 │   ├── components/OfflineBanner.tsx   # navigator.onLine を見て「オフラインです」バナー。復帰時に router.invalidate()
 │   ├── components/RouteErrorFallback.tsx # loader / beforeLoad の例外の共通表示 (defaultErrorComponent)。「再試行」付き
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
 │   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ。オフラインはキャッシュしたユーザーで通す)
-│   ├── lib/board.ts          # セクションの分割 / 結合、保存時に id を引き継ぐ diff (diffSections)、日付フォーマット
+│   ├── lib/board.ts          # 画面上のセクションの型と保存用の変換 (toDraft / sameDraft)、空行での分割 (splitAtSeparator)、日付フォーマット
 │   ├── lib/board-cache.ts    # オフライン閲覧用の板のキャッシュ (localStorage、ユーザー id ごと)
 │   ├── lib/session-cache.ts  # オフライン起動用にログイン中ユーザーをキャッシュ
 │   ├── lib/local-storage.ts  # localStorage の try/catch ラッパー
@@ -40,7 +40,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   ├── auth.ts               # createAuth(env): Better Auth + Drizzle(D1) + Google
 │   ├── db/schema.ts          # Drizzle スキーマ (Better Auth CLI が生成。手で編集しない)
 │   ├── db/memo.ts            # Drizzle スキーマ (アプリ独自: memo テーブル = 板の 1 セクション)
-│   ├── memo/constants.ts     # セクションの保持期間 (30 日) / 区切り文字列 / 板の文字数・セクション数上限。src/ からも参照
+│   ├── memo/constants.ts     # セクションの保持期間 (30 日) / 区切り文字列 / 板の文字数・セクション数上限 (boardLength)。src/ からも参照
 │   ├── memo/routes.ts        # 板 API (GET / PUT /api/board)。zod でバリデーション
 │   ├── memo/sweep.ts         # 期限切れのセクションの物理削除 (deleteExpiredMemos)。Cron から呼ぶ
 │   └── env.d.ts              # シークレットの型を Env にマージ
@@ -68,7 +68,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 
 | Path         | 内容                                                                                   |
 | ------------ | -------------------------------------------------------------------------------------- |
-| `/`          | 板 (要ログイン)。1 つの Textarea。オフライン時は前回取得分を閲覧のみで表示                  |
+| `/`          | 板 (要ログイン)。セクションごとの Textarea。オフライン時は前回取得分を閲覧のみで表示        |
 | `/login`     | Google でログイン。`?redirect=` があればログイン後にそこへ戻る                            |
 
 - ログイン必須ページは `beforeLoad` で `src/lib/require-login.ts` の `requireLogin` を呼ぶ
@@ -76,22 +76,24 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 
 ### 板 (`src/components/Board.tsx`)
 
-- 板のテキストは空行 1 つ (`SECTION_SEPARATOR = "\n\n"`) で「セクション」に区切る (`src/lib/board.ts` の `splitSections`)。
-  セクションの中の単独の改行はそのまま内容に含める。区切りは `"\n\n"` ちょうどで、分割と結合 (`joinSections`) が
-  必ず往復するようそれ以外は変えない (空行が 2 つ以上続いた分の改行は次のセクションの先頭に付く / 空のセクションになる)
+- セクション (= `memo` 1 行) ごとに 1 つの `Textarea` を縦に並べる (Notion のブロックのような構造)。
+  各 Textarea が自分のセクションの id / 期限を持ち、下に「YYYY/MM/DD に消えます」(未保存なら「新しいセクション」) と
+  削除ボタンを出す。末尾に「+ セクションを追加」。板が空なら空のセクションを 1 つ出す
+- キー操作 (`src/lib/board.ts` の `splitAtSeparator` と `Board.tsx` の `onKeyDown`。IME の変換中は無視する):
+  - 空行 (`SECTION_SEPARATOR = "\n\n"`) が入力されたら (Enter 2 回や貼り付け) その場で分け、カーソルのある側の
+    Textarea へ移る。先頭の部分が元のセクション (id = 期限を維持)、残りは新しいセクション。
+    区切りちょうどで分けるだけなので、改行 3 つなら余りは次のセクションの先頭に残る
+  - 先頭で Backspace → 前のセクションと結合 (前の id が残る)。末尾で Delete → 次と結合
+  - 1 行目で ↑ → 前のセクションの末尾へ。最終行で ↓ → 次のセクションの先頭へ (折り返しは考慮しない)
 - 保存ボタンは無く、入力停止から 1 秒 (`AUTOSAVE_DELAY_MS`) 後に `PUT /api/board` で丸ごと保存する。
-  保存中に入力があれば完了後に続けて保存する
-- セクションの id は Textarea には持たせず、保存時に「前回保存したセクション」と現在のテキストをセクション単位で
-  突き合わせて決める (`src/lib/board.ts` の `diffSections`)。内容がそのままのセクションは LCS で対応付け、
-  対応が取れなかった区間では消えたものと増えたものを順に 1 対 1 で組にして「書き換えたセクション」とみなし
-  id を引き継ぐ (= 期限を維持する)。余った増えたものは `id: null` で新しいセクションになる
+  保存中に入力があれば完了後に続けて保存する。
+  空のセクションは送らない (= サーバから消える) が画面には残り、書き足せば新しいセクションとして保存される (`toDraft`)。
+  レスポンスは送った順に並ぶので、送ったセクションにサーバの id / `expiresAt` を書き戻す (画面内の `key` で対応付ける)
 - 保存状態を右上に表示: 未保存の変更があります / 保存中… / 保存済み / 保存に失敗 (「再試行」ボタン付き) /
   オフラインです。オンライン復帰後に再保存してください (「再試行」付き。`online` イベントでも自動再送。下記「オフライン時の挙動」)。
   未保存の間はタブを閉じる・リロード時に `beforeunload` で確認を出す
-- 左上に「空行で区切った各セクションは書いてから 30 日で消えます (次に消えるのは YYYY/MM/DD)」を表示
-  (保存済みのセクションの `expiresAt` の最小値を `formatDate` で整形)
-- Textarea の `maxLength` と文字数カウンタは `worker/memo/constants.ts` の `BOARD_MAX_LENGTH` を使う。
-  セクション数が `BOARD_MAX_SECTIONS` を超えると保存せずエラー表示
+- 文字数カウンタは `worker/memo/constants.ts` の `boardLength` (区切りを含めた板全体の長さ) と `BOARD_MAX_LENGTH`。
+  文字数またはセクション数 (`BOARD_MAX_SECTIONS`) が上限を超えると保存せずエラー表示
 
 ## 板 API (`/api/board`)
 
@@ -247,7 +249,7 @@ HTTPS でデプロイした環境で実機 / DevTools から確認する。
 
 キャッシュ / オフライン判定のヘルパーは DOM 無しでも動くので、node で単体確認できる
 (`localStorage` をモックして `src/lib/board-cache.ts` / `src/lib/offline.ts` を呼ぶ)。
-`src/lib/board.ts` の `diffSections` も同様に node で確認できる。
+`src/lib/board.ts` の `splitAtSeparator` / `toDraft` も同様に node で確認できる。
 
 ## 初回セットアップ
 

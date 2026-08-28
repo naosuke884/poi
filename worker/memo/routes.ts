@@ -10,6 +10,7 @@ import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
   SECTION_SEPARATOR,
+  boardLength,
   memoExpiresAt,
 } from "./constants";
 
@@ -31,14 +32,6 @@ const putBoardSchema = z
   .refine((v) => boardLength(v.sections) <= BOARD_MAX_LENGTH, {
     message: `板全体で ${BOARD_MAX_LENGTH} 文字までです`,
   });
-
-/** 板全体の文字数 (セクションを区切りで連結したときの長さ) */
-function boardLength(sections: { content: string }[]): number {
-  return (
-    sections.reduce((n, s) => n + s.content.length, 0) +
-    Math.max(0, sections.length - 1) * SECTION_SEPARATOR.length
-  );
-}
 
 // バリデーション失敗時は他のエラーレスポンスと同じ { error } 形式に揃える。
 // フックを事前に型付けした定数にすると hono の RPC 型推論が {} に潰れるため、
