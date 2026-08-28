@@ -16,8 +16,7 @@
     {
       "binding": "DB",
       "database_name": "poi",
-      // `wrangler d1 create poi` の出力で置き換える (ローカル開発だけならこのままでも動く)
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "95b1e126-5ae4-418a-8b4f-0c9de8c4533d",
       "migrations_dir": "drizzle"
     }
   ],
