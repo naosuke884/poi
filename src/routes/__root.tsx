@@ -26,7 +26,10 @@ function RootLayout() {
         <Container size="md" h="100%">
           <Group h="100%" justify="space-between">
             <Anchor component={Link} to="/" fw={700} c="inherit" underline="never">
-              poi
+              <Group gap={8} wrap="nowrap">
+                <img src="/icon.svg" alt="" width={24} height={24} style={{ display: "block" }} />
+                poi
+              </Group>
             </Anchor>
             <Group gap="md">
               <SaveStatusIcon />
