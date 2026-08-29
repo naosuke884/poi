@@ -102,6 +102,9 @@ Service Worker は dev では登録されないので、PWA の挙動はビル�
 
 - `BETTER_AUTH_URL` は省略可。未設定ならリクエストの origin が使われるので、`workers.dev` とカスタムドメインの両方で
   ログインできる。1 つの origin に固定したいときだけ `wrangler secret put BETTER_AUTH_URL` で設定する
+- `/terms` と `/privacy` (`src/routes/terms.tsx`, `src/routes/privacy.tsx`) はメンテナ自身の利用規約・プライバシーポリシーで、
+  問い合わせ先もこのリポジトリの Issue になっている。他の人に使わせるなら自分のものに書き換える
+  (Google OAuth の同意画面にも `/privacy` を登録する)。
 - `wrangler.jsonc` は `wrangler deploy` 時にも読まれるので、`database_id` は必ず本物にする
   (ダミーのままだと `binding DB ... database_id not found` で失敗する)
 </details>

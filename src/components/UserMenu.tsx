@@ -75,7 +75,14 @@ export function UserMenu() {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{user.email}</Menu.Label>
-          {offline && <Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
+          <Menu.Item component={Link} to="/terms">
+            利用規約
+          </Menu.Item>
+          <Menu.Item component={Link} to="/privacy">
+            プライバシーポリシー
+          </Menu.Item>
+          <Menu.Divider />
+          {offline &&<Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
           <Menu.Item color="red" disabled={offline || loggingOut} onClick={() => void logout()}>
             ログアウト
           </Menu.Item>

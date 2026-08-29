@@ -109,6 +109,9 @@ with Google. `GET /api/board` without a session returns `401`. The Workers dashb
 
 - `BETTER_AUTH_URL` is optional. When unset, the request origin is used, so both `workers.dev` and a custom
   domain work at once. Set it (`wrangler secret put BETTER_AUTH_URL`) only if you want to pin auth to a single origin.
+- `/terms` and `/privacy` (`src/routes/terms.tsx`, `src/routes/privacy.tsx`) are the maintainer's own terms of
+  service and privacy policy, and name this repository's issue tracker as the contact. If you open your instance
+  to other people, rewrite them for yourself (and register `/privacy` on the Google OAuth consent screen).
 - `wrangler.jsonc` is read by `wrangler deploy`, so the `database_id` must be real — a placeholder fails with
   `binding DB ... database_id not found`.
 </details>

@@ -1,5 +1,5 @@
-import { Button, Paper, Stack, Text, Title } from "@mantine/core";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Anchor, Button, Paper, Stack, Text, Title } from "@mantine/core";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
@@ -52,6 +52,17 @@ function Login() {
             {error}
           </Text>
         )}
+        <Text c="dimmed" size="xs">
+          ログインすると、
+          <Anchor component={Link} to="/terms" size="xs">
+            利用規約
+          </Anchor>
+          と
+          <Anchor component={Link} to="/privacy" size="xs">
+            プライバシーポリシー
+          </Anchor>
+          に同意したものとみなします。
+        </Text>
       </Stack>
     </Paper>
   );
