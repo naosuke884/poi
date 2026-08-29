@@ -28,7 +28,7 @@ function RootLayout() {
             <Anchor component={Link} to="/" fw={700} c="inherit" underline="never">
               poi
             </Anchor>
-            <Group gap="xs">
+            <Group gap="md">
               <SaveStatusIcon />
               <UserMenu />
             </Group>
