@@ -141,11 +141,11 @@ src/        React SPA (TanStack Router のルート、Board コンポーネン�
 worker/     Hono API、Better Auth、Drizzle スキーマ、期限切れセクションを消す Cron
 drizzle/    マイグレーション SQL
 public/     PWA アイコン
-docs/       設計メモ
 ```
 
-ルーティング、板エディタ、`/api/board` の仕様、期限切れ削除の Cron、PWA のキャッシュ、オフライン時の挙動などの
-詳細は [`docs/internals.ja.md`](./docs/internals.ja.md) にまとめてある。
+板エディタ、`/api/board` の仕様、期限切れ削除の Cron、PWA のキャッシュ、オフライン時の挙動などの詳細は、
+それぞれのファイル冒頭のコメント (`src/components/Board.tsx`、`worker/memo/routes.ts`、`worker/memo/sweep.ts`、
+`vite.config.ts`、`src/routes/index.tsx`) に書いてある。
 
 ## コントリビュート
 

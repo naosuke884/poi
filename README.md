@@ -148,11 +148,11 @@ src/        React SPA (TanStack Router routes, Board component, offline/PWA help
 worker/     Hono API, Better Auth, Drizzle schema, cron sweep of expired sections
 drizzle/    SQL migrations
 public/     PWA icons
-docs/       Design notes
 ```
 
-The design and behaviour in detail — routing, the board editor, the `/api/board` contract, the expiry cron,
-PWA caching and offline handling — are documented in [`docs/internals.ja.md`](./docs/internals.ja.md) (Japanese).
+How things work — the board editor, the `/api/board` contract, the expiry cron, PWA caching and offline
+handling — is explained in comments at the top of the relevant files (`src/components/Board.tsx`,
+`worker/memo/routes.ts`, `worker/memo/sweep.ts`, `vite.config.ts`, `src/routes/index.tsx`).
 
 ## Contributing
 
