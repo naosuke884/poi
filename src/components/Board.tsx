@@ -35,6 +35,7 @@ import {
   type EditableSection,
   daysUntil,
   formatDate,
+  newKey,
   newSection,
   sameDraft,
   splitAtSeparator,
@@ -66,8 +67,11 @@ const sectionStyle = { contentVisibility: "auto", containIntrinsicSize: "auto 3r
  * 編集中 (フォーカスのある) セクションだけ Textarea で、それ以外は Markdown をレンダリングして表示する
  * (クリックすると Textarea に戻る)。内容はそのまま Markdown テキストとして保存する
  * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次の Textarea へ移る (空行 1 つはセクションの中に残る)。
- *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣の Textarea へ移る (Notion のブロック風)
- * - 各 Textarea が自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
+ *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣の Textarea へ移る (Notion のブロック風)。
+ *   分割 / 結合ではフォーカスのある Textarea の DOM (key) をそのまま使い回し、カーソルだけ動かす
+ *   (Textarea を作り直してフォーカスを移すと、タッチ端末ではキーボードが閉じたり新しい Textarea に
+ *   フォーカスが渡らなかったりする)
+ * - 各セクションが自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
  *   空のセクションは送らない (画面には残る)
  * - 入力停止から 1 秒後に丸ごと保存する (自動保存)。保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
@@ -243,30 +247,46 @@ export function Board({
 
   const indexOf = (key: string) => latestRef.current.findIndex((s) => s.key === key);
 
-  // 入力。区切り (空行 2 つ) が入ったらそこで分ける。最初の部分が元のセクション (id を保ち期限を維持)、残りは新しいセクション
+  // 入力。区切り (空行 2 つ) が入ったらそこで分ける。
+  // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key (= 今フォーカスのある Textarea の DOM) を引き継ぐ。
+  // 残りは新しいセクション
   const changeSection = (key: string, value: string, cursor: number) => {
     const cur = latestRef.current;
     const i = indexOf(key);
+    const orig = cur[i];
+    if (!orig) return;
     const split = splitAtSeparator(value, cursor);
     if (!split) {
       update(cur.map((s) => (s.key === key ? { ...s, content: value } : s)));
       return;
     }
-    const parts = split.parts.map((content, j) =>
-      j === 0 ? { ...cur[i]!, content } : newSection(content),
+    const parts = split.parts.map(
+      (content, j): EditableSection => ({
+        key: j === split.focus.index ? orig.key : newKey(),
+        id: j === 0 ? orig.id : null,
+        expiresAt: j === 0 ? orig.expiresAt : null,
+        content,
+      }),
     );
-    focusLater(parts[split.focus.index]!.key, split.focus.offset);
+    focusLater(orig.key, split.focus.offset);
     update([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
   };
 
-  // i 番目と i+1 番目をつなげる (前のセクションが id を保つ)。カーソルはつなぎ目に置く
-  const mergeSections = (i: number) => {
+  // i 番目と i+1 番目をつなげる。前のセクションが id (期限) を保ち、フォーカスのある方 (focused) が key を保つ。
+  // カーソルはつなぎ目に置く
+  const mergeSections = (i: number, focused: string) => {
     const cur = latestRef.current;
     const a = cur[i];
     const b = cur[i + 1];
     if (!a || !b) return;
-    focusLater(a.key, a.content.length);
-    update([...cur.slice(0, i), { ...a, content: a.content + b.content }, ...cur.slice(i + 2)]);
+    const merged: EditableSection = {
+      key: focused,
+      id: a.id,
+      expiresAt: a.expiresAt,
+      content: a.content + b.content,
+    };
+    focusLater(focused, a.content.length);
+    update([...cur.slice(0, i), merged, ...cur.slice(i + 2)]);
   };
 
   // 削除は即時に反映し (1 秒後に自動保存される)、しばらく「元に戻す」を出す (確認ダイアログの代わり)。
@@ -311,17 +331,18 @@ export function Board({
     const cur = latestRef.current;
     const { selectionStart, selectionEnd, value } = e.currentTarget;
     const collapsed = selectionStart === selectionEnd;
+    const key = cur[i]!.key;
     switch (e.key) {
       case "Backspace":
         if (collapsed && selectionStart === 0 && i > 0) {
           e.preventDefault();
-          mergeSections(i - 1);
+          mergeSections(i - 1, key);
         }
         break;
       case "Delete":
         if (collapsed && selectionStart === value.length && i < cur.length - 1) {
           e.preventDefault();
-          mergeSections(i);
+          mergeSections(i, key);
         }
         break;
       case "ArrowUp":

@@ -11,6 +11,8 @@ export type DraftSection = { id: string | null; content: string };
 /**
  * 画面上の 1 セクション (= 1 つの Textarea)。
  * key は React の key と Textarea の参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
+ * 分割 / 結合ではフォーカスのある Textarea の DOM を使い回すため、key と id は別々に引き継がれる
+ * (key はフォーカスのある部分に、id は先頭の部分に付く)。
  * id / expiresAt はサーバに保存済みのときだけ入る
  */
 export type EditableSection = {
@@ -21,8 +23,11 @@ export type EditableSection = {
 };
 
 let seq = 0;
+export function newKey(): string {
+  return `s${++seq}`;
+}
 export function newSection(content = ""): EditableSection {
-  return { key: `s${++seq}`, id: null, content, expiresAt: null };
+  return { key: newKey(), id: null, content, expiresAt: null };
 }
 
 /** サーバから取得したセクションを画面用にする */
