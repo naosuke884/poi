@@ -1,4 +1,4 @@
-import { Box, CloseButton, Divider, Group, Stack, Text, Textarea } from "@mantine/core";
+import { Box, CloseButton, Divider, Group, Stack, Text, Textarea, Tooltip } from "@mantine/core";
 import { useBlocker } from "@tanstack/react-router";
 import {
   Fragment,
@@ -421,14 +421,16 @@ export function Board({
                 }
               />
               {!readOnly && (
-                <CloseButton
-                  size="xs"
-                  c="red"
-                  aria-label={`セクション ${i + 1} を削除`}
-                  // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => removeSection(s.key)}
-                />
+                <Tooltip label="削除" withArrow>
+                  <CloseButton
+                    size="xs"
+                    c="red"
+                    aria-label={`セクション ${i + 1} を削除`}
+                    // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => removeSection(s.key)}
+                  />
+                </Tooltip>
               )}
             </Group>
             {(readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
