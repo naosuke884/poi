@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mantine/core";
-import type { MouseEvent } from "react";
+import type { MouseEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -14,18 +14,22 @@ import classes from "./MarkdownView.module.css";
  * - リンクは別タブで開く (同じタブで開くと編集中の板から離れてしまうため)
  * - クリックで編集に切り替えるとき、mousedown では他の Textarea を blur させない (blur で先にレイアウトが
  *   変わるとクリック位置がずれるため。フォーカスの移動は onClick 側が行う)
+ * - ref は外側の要素 (スクショはこの要素をそのまま画像にする)
  */
 export function MarkdownView({
   content,
   onClick,
   "aria-label": ariaLabel,
+  ref,
 }: {
   content: string;
   onClick?: (e: MouseEvent<HTMLDivElement>) => void;
   "aria-label"?: string;
+  ref?: Ref<HTMLDivElement>;
 }) {
   return (
     <Box
+      ref={ref}
       onClick={onClick}
       onMouseDown={onClick ? (e) => e.preventDefault() : undefined}
       aria-label={ariaLabel}

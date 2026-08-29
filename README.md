@@ -24,6 +24,8 @@ It runs entirely on a single Cloudflare Worker with a D1 database, so you can se
 - **Lightweight Markdown** — sections you are not editing are rendered as Markdown. Only headings,
   bullet / numbered lists and auto-linked URLs are enabled; everything else (emphasis, code, quotes, tables,
   HTML, …) is shown literally so a stray `*` or `>` never mangles a note.
+- **Copy / screenshot a section** — the buttons on each section's divider copy its text (Markdown as written)
+  or turn its rendered view into a PNG, placed on the clipboard (downloaded where the browser can't do that).
 - **Installable PWA** — add it to your home screen. When offline it shows the last fetched board read-only,
   and edits made while the connection drops are kept and re-sent when you're back online.
 - **Small footprint** — one Worker, one D1 database, no third-party services beyond Google sign-in.

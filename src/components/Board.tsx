@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
@@ -31,8 +32,10 @@ import {
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
 import { MarkdownView } from "@/components/MarkdownView";
+import { SectionActions } from "@/components/SectionActions";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
+import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
@@ -47,6 +50,7 @@ const AUTOSAVE_DELAY_MS = 1000;
  * - 各 Textarea が自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
  *   空のセクションは送らない (画面には残る)
  * - 入力停止から 1 秒後に丸ごと保存する (自動保存)。保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
+ * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  */
@@ -78,6 +82,8 @@ export function Board({
 
   // key → Textarea 要素。分割 / 結合 / ↑↓ の後にカーソルを移すのに使う
   const elementsRef = useRef(new Map<string, HTMLTextAreaElement>());
+  // key → Markdown 表示の要素 (スクショの対象)
+  const viewsRef = useRef(new Map<string, HTMLDivElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しい Textarea が無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
   // 編集中 (Textarea で表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
@@ -364,6 +370,15 @@ export function Board({
     if (e.target === e.currentTarget) e.preventDefault();
   };
 
+  // セクションを画像にする。編集中 (Textarea) なら先に Markdown 表示へ切り替え、その描画を同期的に済ませてから
+  // (flushSync) その要素を撮る。空のセクションには表示要素が無いのでボタン自体を出さない
+  const screenshot = (key: string) => {
+    flushSync(() => setEditingKey((k) => (k === key ? null : k)));
+    const el = viewsRef.current.get(key);
+    if (!el) throw new Error("空のセクションは画像にできません");
+    return deliverImage(renderSectionImage(el));
+  };
+
   // フォーカスが外れたら Markdown 表示に戻す。ただしウィンドウ自体がフォーカスを失った場合
   // (タブ切り替えなど) は編集中のまま (戻ってきたときにカーソル位置を保つ)。
   // 別のセクションへ移るときは、移った先が先に editingKey になっているので何もしない
@@ -394,6 +409,13 @@ export function Board({
                   ) : (
                     <span>新しいセクション</span>
                   )}
+                  {s.content.trim() !== "" && (
+                    <SectionActions
+                      index={i}
+                      onCopy={() => copySectionText(s.content)}
+                      onScreenshot={() => screenshot(s.key)}
+                    />
+                  )}
                   {!readOnly && (
                     <CloseButton
                       size="xs"
@@ -411,6 +433,10 @@ export function Board({
                 content={s.content}
                 aria-label={`セクション ${i + 1}`}
                 onClick={readOnly ? undefined : () => focus(s.key, s.content.length)}
+                ref={(el) => {
+                  if (el) viewsRef.current.set(s.key, el);
+                  else viewsRef.current.delete(s.key);
+                }}
               />
             ) : (
             <Textarea
