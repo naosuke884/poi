@@ -31,6 +31,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   ├── lib/local-storage.ts  # localStorage の try/catch ラッパー
 │   ├── lib/offline.ts        # OfflineError / isOffline / fetchOrOffline (ネットワークエラーの判定)
 │   ├── lib/use-online.ts     # useOnline(): navigator.onLine + online/offline イベント
+│   ├── fonts.css             # 欧文フォント Inter (@fontsource-variable/inter の latin サブセットだけ @font-face で同梱)。日本語はシステムフォント
 │   ├── routeTree.gen.ts      # 自動生成 (編集不要)
 │   └── vite-env.d.ts         # vite/client + vite-plugin-pwa/react の型参照 (virtual:pwa-register/react)
 ├── public/                   # そのまま配信される静的ファイル (PWA アイコン: pwa-192x192 / pwa-512x512 / maskable / apple-touch-icon / icon.svg)

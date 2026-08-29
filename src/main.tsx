@@ -1,7 +1,8 @@
 import "@mantine/core/styles.css";
+import "./fonts.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, createTheme } from "@mantine/core";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { RouteErrorFallback } from "@/components/RouteErrorFallback";
 import { routeTree } from "./routeTree.gen";
@@ -20,11 +21,16 @@ declare module "@tanstack/react-router" {
   }
 }
 
+// 欧文は Inter、日本語などそれ以外の文字は各環境のシステムフォントに任せる (fonts.css)
+const theme = createTheme({
+  fontFamily: '"Inter Variable", system-ui, sans-serif',
+});
+
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   createRoot(rootElement).render(
     <StrictMode>
-      <MantineProvider defaultColorScheme="auto">
+      <MantineProvider theme={theme} defaultColorScheme="auto">
         <RouterProvider router={router} />
       </MantineProvider>
     </StrictMode>,
