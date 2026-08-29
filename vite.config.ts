@@ -31,8 +31,8 @@ export default defineConfig({
         display: "standalone",
         start_url: "/",
         scope: "/",
-        // Mantine のテーマ色に合わせる (primary: blue.6 / 背景: 白)
-        theme_color: "#228be6",
+        // index.html の theme-color (light) と同じくページ背景 (白) に合わせる
+        theme_color: "#ffffff",
         background_color: "#ffffff",
         icons: [
           { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },

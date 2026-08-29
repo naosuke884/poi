@@ -16,14 +16,25 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="ja_JP" />
     <meta name="twitter:card" content="summary_large_image" />
-    <!-- PWA: manifest.webmanifest の theme_color と合わせる (Mantine blue.6) -->
-    <meta name="theme-color" content="#228be6" />
+    <!-- PWA: ブラウザ UI の色はページ背景 (Mantine の body 色: light #ffffff / dark #242424) に合わせる。
+         manifest.webmanifest の theme_color (vite.config.ts) は light と同じ値にしておく -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#242424" media="(prefers-color-scheme: dark)" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="poi" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- 欧文フォント (fonts.css の @font-face と同じファイル) を CSS の読み込みを待たずに取りに行く。
+         Vite が href をビルド成果物のパスに書き換える (fonts.css の url() と同じハッシュ名になる) -->
+    <link
+      rel="preload"
+      href="/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
   </head>
   <body>
     <div id="root"></div>
