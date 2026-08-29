@@ -12,13 +12,14 @@
   margin-top: 0;
 }
 
-/* 見出しの大きさ: 既定 (h1 34px / h2 26px / h3 22px / h4 18px) は文書向けに大きいので、本文 16px に対して控えめにする。
+/* 見出しの大きさ: 既定 (h1 34px / h2 26px / h3 22px / h4 18px) は文書向けに大きいので、本文 16px に対して控えめにする
+   (h1 28px / h2 22px / h3 18px。レベル差がわかる程度には開ける)。
    h4 以下は h3 と並ばないよう本文と同じ大きさ (太字だけで区別する) */
 .root :where(h1) {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
 }
 .root :where(h2) {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
 }
 .root :where(h3) {
   font-size: 1.125rem;
