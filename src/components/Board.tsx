@@ -575,11 +575,12 @@ export function Board({
           }}
         >
           <Notification
+            title="セクションを削除しました"
             withBorder
             onClose={cancelUndo}
             closeButtonProps={{ "aria-label": "閉じる" }}
           >
-            <Button size="xs" variant="default" onClick={undoDelete}>
+            <Button size="xs" mt="xs" variant="default" onClick={undoDelete}>
               元に戻す
             </Button>
           </Notification>
