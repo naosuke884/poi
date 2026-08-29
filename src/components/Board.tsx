@@ -227,12 +227,6 @@ export function Board({
     update(next.length > 0 ? next : [newSection()]);
   };
 
-  const addSection = () => {
-    const s = newSection();
-    pendingFocusRef.current = { key: s.key, pos: 0 };
-    update([...latestRef.current, s]);
-  };
-
   // 隣のセクションとの結合 / 移動。文字変換中 (IME) のキーは触らない
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>, i: number) => {
     if (e.nativeEvent.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
@@ -357,7 +351,7 @@ export function Board({
             onKeyDown={(e) => onKeyDown(e, i)}
             maxLength={BOARD_MAX_LENGTH}
             autosize
-            minRows={2}
+            minRows={1}
             readOnly={readOnly}
             ref={(el) => {
               if (el) elementsRef.current.set(s.key, el);
@@ -381,18 +375,9 @@ export function Board({
         </Stack>
       ))}
 
-      <Group justify="space-between" align="center">
-        {readOnly ? (
-          <span />
-        ) : (
-          <Button variant="subtle" size="compact-sm" onClick={addSection}>
-            + セクションを追加
-          </Button>
-        )}
-        <Text size="xs" c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"}>
-          {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
-        </Text>
-      </Group>
+      <Text size="xs" c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"} ta="right">
+        {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
+      </Text>
     </Stack>
   );
 }

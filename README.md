@@ -78,7 +78,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 
 - セクション (= `memo` 1 行) ごとに 1 つの `Textarea` を縦に並べる (Notion のブロックのような構造)。
   各 Textarea が自分のセクションの id / 期限を持ち、下に「YYYY/MM/DD に消えます」(未保存なら「新しいセクション」) と
-  削除ボタンを出す。末尾に「+ セクションを追加」。板が空なら空のセクションを 1 つ出す
+  削除ボタンを出す。板が空なら空のセクションを 1 つ出す
 - キー操作 (`src/lib/board.ts` の `splitAtSeparator` と `Board.tsx` の `onKeyDown`。IME の変換中は無視する):
   - 空行 (`SECTION_SEPARATOR = "\n\n"`) が入力されたら (Enter 2 回や貼り付け) その場で分け、カーソルのある側の
     Textarea へ移る。先頭の部分が元のセクション (id = 期限を維持)、残りは新しいセクション。
