@@ -2,3 +2,12 @@
 .root > :last-child {
   margin-bottom: 0;
 }
+
+/* 見出しの上の余白: Mantine の Typography は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める。
+   セクション先頭の見出しは区切り線の直後なので余白なし */
+.root :where(h1, h2, h3, h4, h5, h6) {
+  margin-top: var(--mantine-spacing-md);
+}
+.root > :first-child {
+  margin-top: 0;
+}
