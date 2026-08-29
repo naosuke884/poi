@@ -3,6 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
+import { CONTACT_URL } from "@/components/LegalPage";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
 import { useOnline } from "@/lib/use-online";
 
@@ -80,6 +81,9 @@ export function UserMenu() {
           </Menu.Item>
           <Menu.Item component={Link} to="/privacy">
             プライバシーポリシー
+          </Menu.Item>
+          <Menu.Item component="a" href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
+            問い合わせ (GitHub Issues)
           </Menu.Item>
           <Menu.Divider />
           {offline &&<Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
