@@ -21,7 +21,13 @@ export function PwaUpdateBanner() {
   if (!needRefresh) return null;
 
   return (
-    <Affix position={{ bottom: 16, right: 16 }}>
+    // ホームインジケータ / ノッチ (safe-area) の分だけ内側に寄せる
+    <Affix
+      position={{
+        bottom: "calc(16px + env(safe-area-inset-bottom))",
+        right: "calc(16px + env(safe-area-inset-right))",
+      }}
+    >
       <Notification
         title="更新があります"
         withBorder
