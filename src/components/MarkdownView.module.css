@@ -28,30 +28,21 @@
   font-size: 1rem;
 }
 
-/* 見出しレベルの印: 入力した Markdown と同じ "#" を薄い色で見出しの前に出す (Bear / Obsidian 風)。
-   Textarea に切り替えたときの見た目の差が小さく、セクションの区切り線 (横線) とも紛れない。
-   擬似要素なのでコピーには含まれない */
-.root :where(h1, h2, h3, h4, h5, h6)::before {
-  color: var(--mantine-color-dimmed);
-  font-weight: 400;
-  margin-right: 0.4em;
-  user-select: none;
+/* 見出しレベルの印: 左の縦棒 (h1 太く primary / h2 細く薄い青 / h3 極細の灰色、h4 以下はなし)。
+   セクションの区切り線は横線なので、縦棒なら紛れない */
+.root :where(h1, h2, h3) {
+  padding-left: 12px;
+  border-left-style: solid;
 }
-.root :where(h1)::before {
-  content: "#";
+.root :where(h1) {
+  border-left-width: 4px;
+  border-left-color: var(--mantine-primary-color-filled);
 }
-.root :where(h2)::before {
-  content: "##";
+.root :where(h2) {
+  border-left-width: 3px;
+  border-left-color: light-dark(var(--mantine-color-blue-2), var(--mantine-color-blue-8));
 }
-.root :where(h3)::before {
-  content: "###";
-}
-.root :where(h4)::before {
-  content: "####";
-}
-.root :where(h5)::before {
-  content: "#####";
-}
-.root :where(h6)::before {
-  content: "######";
+.root :where(h3) {
+  border-left-width: 2px;
+  border-left-color: var(--mantine-color-default-border);
 }
