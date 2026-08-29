@@ -58,9 +58,6 @@ const UNDO_DELETE_MS = 8000;
 const hasFinePointer = () =>
   typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-// 1 セクションの外枠。画面外のセクションは描画を省く (content-visibility) — セクション数が多くても軽く
-const sectionStyle = { contentVisibility: "auto", containIntrinsicSize: "auto 3rem" } as const;
-
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) ごとに 1 つの Textarea を縦に並べる。
  * 見た目は 1 枚の文書: Textarea は枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
@@ -470,7 +467,7 @@ export function Board({
         onMouseDown={keepFocus}
       >
         {sections.map((s, i) => (
-          <Box key={s.key} data-section style={sectionStyle}>
+          <Box key={s.key} data-section>
             {/* 区切り: 期限ラベルとコピー / スクショは線の中 (左)、削除は線の外の右端 (誤って押しにくいように離す) */}
             <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
