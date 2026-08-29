@@ -93,8 +93,9 @@ First-time setup (steps 1–6), then deploy (step 7). Later deploys only need st
    ```
 5. Add the production redirect URI `https://<your-domain>/api/auth/callback/google` to the Google OAuth client.
    `<your-domain>` is `poi.<account>.workers.dev` unless you set a custom domain.
-6. *(Optional)* Custom domain: uncomment `routes` in `wrangler.jsonc` and set your domain
-   (the zone must be in the same Cloudflare account).
+6. Domain: `wrangler.jsonc` ships with the maintainer's custom domain (`routes`) and `workers_dev: false`.
+   Either replace the domain with your own (the zone must be in the same Cloudflare account), or delete `routes`
+   and set `workers_dev: true` to use `poi.<account>.workers.dev`.
 7. Build and deploy:
    ```sh
    npm run deploy

@@ -87,8 +87,9 @@ Service Worker は dev では登録されないので、PWA の挙動はビル�
    ```
 5. Google の OAuth クライアントに本番のリダイレクト URI `https://<本番ドメイン>/api/auth/callback/google` を追加する。
    カスタムドメインを設定しなければ `poi.<account>.workers.dev`
-6. (任意) カスタムドメイン: `wrangler.jsonc` の `routes` のコメントを外してドメインを書く
-   (ゾーンが同じ Cloudflare アカウントにあること)
+6. ドメイン: `wrangler.jsonc` にはメンテナのカスタムドメイン (`routes`) と `workers_dev: false` が入っている。
+   自分のドメインに書き換える (ゾーンが同じ Cloudflare アカウントにあること) か、`routes` を消して
+   `workers_dev: true` にして `poi.<account>.workers.dev` で公開する。
 7. ビルドしてデプロイ
    ```sh
    npm run deploy

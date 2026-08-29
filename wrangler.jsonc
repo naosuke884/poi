@@ -25,9 +25,10 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
-  // カスタムドメイン (ゾーンが同じアカウントにあること)。routes を消せば https://poi.<account>.workers.dev で公開される。
-  // メンテナの本番ドメイン。セルフホストするときは自分のドメインに置き換える (workers.dev で公開するなら消す)
+  // メンテナの本番ドメイン (ゾーンが同じアカウントにあること)。入口を 1 つにするため workers.dev の URL は無効化している。
+  // セルフホストするときは自分のドメインに置き換えるか、routes を消して workers_dev を true にする (README 参照)
   "routes": [{ "pattern": "poinote.app", "custom_domain": true }],
+  "workers_dev": false,
   "observability": {
     "enabled": true
   }
