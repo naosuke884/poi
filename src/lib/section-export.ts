@@ -21,6 +21,9 @@ const PAD_X = 20;
 export async function renderSectionImage(el: HTMLElement): Promise<Blob> {
   // スクショを撮るときだけ読み込む (初期バンドルに入れない)
   const { domToBlob } = await import("modern-screenshot");
+  // 読み込みを待つ間にセクションが編集状態になると Markdown 表示は外れる (unmount)。外れた要素は
+  // 大きさ 0 で描かれて空白の画像が「成功」として届いてしまうので、ここで失敗にする
+  if (!el.isConnected) throw new Error("セクションが編集中になったので画像にできません");
   const background = getComputedStyle(document.body).backgroundColor;
   return domToBlob(el, {
     type: "image/png",
