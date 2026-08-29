@@ -46,9 +46,10 @@ export default defineConfig({
         // og.png は SNS のクローラー向け (index.html の og:image)。アプリでは使わないので precache しない
         globIgnores: ["og.png"],
         // ナビゲーションは index.html にフォールバック (SPA)。
-        // /api/* (認証付き) と /__scheduled (Cron のローカル実行) は SW を介さずネットワークへ
+        // /api/* (認証付き) と /__scheduled (Cron のローカル実行) は SW を介さずネットワークへ。
+        // 拡張子付きのパス (/og.png をブラウザで直接開いたときなど) もフォールバックせずネットワークへ
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//, /^\/__scheduled/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/__scheduled/, /\.[a-z0-9]+$/i],
         // runtimeCaching は定義しない: precache 対象外 (= /api/* を含む) は SW がキャッシュせず
         // そのままネットワークに流れる (NetworkOnly 相当)。認証付きレスポンスをキャッシュ事故させないため
       },
