@@ -20,7 +20,7 @@ export function RouteErrorFallback({ error }: ErrorComponentProps) {
           再試行
         </Button>
         <Anchor component={Link} to="/">
-          一覧へ戻る
+          トップへ戻る
         </Anchor>
       </Group>
     </Stack>

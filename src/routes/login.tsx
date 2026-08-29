@@ -1,5 +1,6 @@
 import { Button, Paper, Stack, Text, Title } from "@mantine/core";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/login")({
@@ -15,23 +16,42 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const { redirect: redirectTo } = Route.useSearch();
+  // Google へのリダイレクトが始まるまでの間、二度押しで OAuth を 2 回始めないようにする
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const login = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { error: err } = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: redirectTo ?? "/",
+      });
+      if (err) throw err;
+      // 成功すると Google へ遷移するので busy は戻さない
+    } catch {
+      setError("ログインを開始できませんでした。接続を確認してもう一度お試しください。");
+      setBusy(false);
+    }
+  };
   return (
     <Paper withBorder p="xl" maw={400} mx="auto" mt="xl">
       <Stack>
-        <Title order={2}>ログイン</Title>
+        {/* ページの見出し (h1)。大きさは h2 相当に抑える */}
+        <Title order={1} size="h2">
+          ログイン
+        </Title>
         <Text c="dimmed" size="sm">
           Google アカウントでログインします。
         </Text>
-        <Button
-          onClick={() =>
-            authClient.signIn.social({
-              provider: "google",
-              callbackURL: redirectTo ?? "/",
-            })
-          }
-        >
+        <Button loading={busy} onClick={() => void login()}>
           Google でログイン
         </Button>
+        {error && (
+          <Text size="sm" c="red" role="alert">
+            {error}
+          </Text>
+        )}
       </Stack>
     </Paper>
   );
