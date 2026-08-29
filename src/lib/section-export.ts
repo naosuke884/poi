@@ -36,23 +36,14 @@ export async function renderSectionImage(el: HTMLElement): Promise<Blob> {
 /** 画像をクリップボードへ。返り値は届け先 (clipboard / download) */
 export async function deliverImage(blob: Promise<Blob>): Promise<"clipboard" | "download"> {
   if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
-    // 1. Blob の Promise を渡す形 (Safari 向け。クリック直後に書き込みを始める)
     try {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       return "clipboard";
     } catch (e) {
-      console.warn("clipboard.write (promise) failed", e);
-    }
-    // 2. 出来上がった Blob を渡す形 (Promise を受け付けない実装向け。Chrome / Firefox はユーザー操作から
-    //    時間が経っていても書き込める)
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": await blob })]);
-      return "clipboard";
-    } catch (e) {
-      console.warn("clipboard.write (blob) failed", e);
+      // 拒否された / 未対応 (Promise を受け付けない古い実装など) → ダウンロードへ
+      console.warn("clipboard.write failed; falling back to download", e);
     }
   }
-  // 3. どちらも駄目ならダウンロード
   download(await blob, `poi-${fileStamp()}.png`);
   return "download";
 }
