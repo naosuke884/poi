@@ -23,6 +23,7 @@ export function SectionActions({
   return (
     <>
       <ActionButton
+        tooltip="コピー"
         label={`セクション ${index + 1} をコピー`}
         run={async () => {
           await onCopy();
@@ -32,6 +33,7 @@ export function SectionActions({
         <CopyIcon />
       </ActionButton>
       <ActionButton
+        tooltip="スクショ"
         label={`セクション ${index + 1} を画像にする`}
         run={async () => {
           const to = await onScreenshot();
@@ -47,10 +49,14 @@ export function SectionActions({
 type Feedback = { ok: boolean; message: string };
 
 function ActionButton({
+  tooltip,
   label,
   run,
   children,
 }: {
+  /** ホバーで出す短い名前 */
+  tooltip: string;
+  /** 読み上げ用 (どのセクションかを含む) */
   label: string;
   /** 実行して結果メッセージを返す。throw したら「失敗しました」を出す */
   run: () => Promise<string>;
@@ -84,7 +90,7 @@ function ActionButton({
   };
 
   return (
-    <Tooltip label={feedback?.message ?? label} opened={feedback ? true : undefined} withArrow>
+    <Tooltip label={feedback?.message ?? tooltip} opened={feedback ? true : undefined} withArrow>
       <ActionIcon
         variant="subtle"
         color={feedback ? (feedback.ok ? "teal" : "red") : "gray"}
