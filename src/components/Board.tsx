@@ -1,7 +1,18 @@
-import { Box, CloseButton, Divider, Group, Stack, Text, Textarea, Tooltip } from "@mantine/core";
+import {
+  Affix,
+  Box,
+  Button,
+  CloseButton,
+  Divider,
+  Group,
+  Notification,
+  Stack,
+  Text,
+  Textarea,
+  Tooltip,
+} from "@mantine/core";
 import { useBlocker } from "@tanstack/react-router";
 import {
-  Fragment,
   type KeyboardEvent,
   type MouseEvent,
   useCallback,
@@ -39,6 +50,15 @@ import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
+// セクションを削除したあと「元に戻す」を出しておく時間
+const UNDO_DELETE_MS = 8000;
+
+// マウント時に自動でカーソルを置くのはマウス環境だけ (タッチ端末では開くたびにキーボードが出てしまう)
+const hasFinePointer = () =>
+  typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+// 1 セクションの外枠。画面外のセクションは描画を省く (content-visibility) — セクション数が多くても軽く
+const sectionStyle = { contentVisibility: "auto", containIntrinsicSize: "auto 3rem" } as const;
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) ごとに 1 つの Textarea を縦に並べる。
@@ -249,9 +269,40 @@ export function Board({
     update([...cur.slice(0, i), { ...a, content: a.content + b.content }, ...cur.slice(i + 2)]);
   };
 
+  // 削除は即時に反映し (1 秒後に自動保存される)、しばらく「元に戻す」を出す (確認ダイアログの代わり)。
+  // 戻すときは元の位置に差し込む。保存が済んだ後なら id は無効になっているが、サーバは未知の id を
+  // 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)
+  const [deleted, setDeleted] = useState<{ section: EditableSection; index: number } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelUndo = () => {
+    if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = null;
+    setDeleted(null);
+  };
+  useEffect(() => () => clearTimeout(undoTimerRef.current ?? undefined), []);
   const removeSection = (key: string) => {
-    const next = latestRef.current.filter((s) => s.key !== key);
+    const cur = latestRef.current;
+    const index = indexOf(key);
+    const section = cur[index];
+    if (!section) return;
+    const next = cur.filter((s) => s.key !== key);
     update(next.length > 0 ? next : [newSection()]);
+    if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
+    setDeleted({ section, index });
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      setDeleted(null);
+    }, UNDO_DELETE_MS);
+  };
+  const undoDelete = () => {
+    if (!deleted) return;
+    cancelUndo();
+    const cur = latestRef.current;
+    // 最後の 1 つを消して空のセクションだけになっていたら、それは置き換える (書き足していなければ)
+    const base = cur.length === 1 && cur[0]!.id === null && cur[0]!.content === "" ? [] : cur;
+    const i = Math.min(deleted.index, base.length);
+    focusLater(deleted.section.key, deleted.section.content.length);
+    update([...base.slice(0, i), deleted.section, ...base.slice(i)]);
   };
 
   // 隣のセクションとの結合 / 移動。文字変換中 (IME) のキーは触らない
@@ -295,7 +346,7 @@ export function Board({
   // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
   // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
   useEffect(() => {
-    if (!readOnly) {
+    if (!readOnly && hasFinePointer()) {
       const last = latestRef.current.at(-1);
       if (last) focus(last.key, last.content.length);
     }
@@ -359,15 +410,18 @@ export function Board({
 
   const length = boardLength(toDraft(sections));
 
-  // 最後のセクションより下の空き領域をクリックしたら末尾にカーソルを置く (画面全体が書ける場所に見えるように)。
+  // 最後のセクションより下の空き領域 (やセクションの外枠の余白) をクリックしたら末尾にカーソルを置く
+  // (画面全体が書ける場所に見えるように)。
   // mousedown を止めて、編集中の Textarea がクリックの途中で blur (→ Markdown 表示) しないようにする
+  const isBlank = (e: MouseEvent<HTMLDivElement>) =>
+    e.target === e.currentTarget || (e.target as HTMLElement).hasAttribute("data-section");
   const focusEnd = (e: MouseEvent<HTMLDivElement>) => {
-    if (readOnly || e.target !== e.currentTarget) return;
+    if (readOnly || !isBlank(e)) return;
     const last = latestRef.current.at(-1);
     if (last) focus(last.key, last.content.length);
   };
   const keepFocus = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) e.preventDefault();
+    if (isBlank(e)) e.preventDefault();
   };
 
   // セクションを画像にする。編集中 (Textarea) なら先に Markdown 表示へ切り替え、その描画を同期的に済ませてから
@@ -395,7 +449,7 @@ export function Board({
         onMouseDown={keepFocus}
       >
         {sections.map((s, i) => (
-          <Fragment key={s.key}>
+          <Box key={s.key} data-section style={sectionStyle}>
             {/* 区切り: 期限ラベルとコピー / スクショは線の中 (左)、削除は線の外の右端 (誤って押しにくいように離す) */}
             <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
@@ -404,8 +458,12 @@ export function Board({
                 label={
                   <Group gap="sm" wrap="nowrap">
                     {s.expiresAt !== null ? (
-                      <span title={`${formatDate(s.expiresAt)} に消えます`}>
+                      <span>
                         あと {daysUntil(s.expiresAt)} 日で消えます
+                        {/* 期限の日付。狭い画面では省く (title 属性だとタッチ / キーボードで見られないので文字で出す) */}
+                        <Text span inherit c="dimmed" visibleFrom="sm">
+                          {` (${formatDate(s.expiresAt)})`}
+                        </Text>
                       </span>
                     ) : (
                       <span>新しいセクション</span>
@@ -446,10 +504,16 @@ export function Board({
             ) : (
             <Textarea
               aria-label={`セクション ${i + 1}`}
+              name={`section-${i + 1}`}
+              autoComplete="off"
               placeholder={
                 sections.length === 1
-                  ? `ここに書くと自動的に保存されます\n` +
-                    `空行 2 つ (Enter 3 回) で次のセクションに移り、セクションごとに ${MEMO_TTL_DAYS} 日で消えます`
+                  ? [
+                      "ここに書く…",
+                      `セクションごとに ${MEMO_TTL_DAYS} 日で消えます`,
+                      "空行 2 つで次のセクションへ",
+                      "Markdown が使えます (# 見出し、- 箇条書き)",
+                    ].join("\n")
                   : undefined
               }
               value={s.content}
@@ -470,13 +534,40 @@ export function Board({
               }}
             />
             )}
-          </Fragment>
+          </Box>
         ))}
       </Box>
 
-      <Text size="xs" c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"} ta="right">
+      {/* 文字数は打つたびに変わるので等幅の数字にして幅がぶれないようにする */}
+      <Text
+        size="xs"
+        c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"}
+        ta="right"
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
         {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
       </Text>
+
+      {/* 削除の取り消し (左下。右下は PwaUpdateBanner) */}
+      {deleted && (
+        <Affix
+          position={{
+            bottom: "calc(16px + env(safe-area-inset-bottom))",
+            left: "calc(16px + env(safe-area-inset-left))",
+          }}
+        >
+          <Notification
+            title={`セクション ${deleted.index + 1} を削除しました`}
+            withBorder
+            onClose={cancelUndo}
+            closeButtonProps={{ "aria-label": "閉じる" }}
+          >
+            <Button size="xs" mt="xs" variant="default" onClick={undoDelete}>
+              元に戻す
+            </Button>
+          </Notification>
+        </Affix>
+      )}
     </Stack>
   );
 }
