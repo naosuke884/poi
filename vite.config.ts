@@ -43,6 +43,8 @@ export default defineConfig({
       workbox: {
         // 静的アセット (/assets/* など) は precache
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // og.png は SNS のクローラー向け (index.html の og:image)。アプリでは使わないので precache しない
+        globIgnores: ["og.png"],
         // ナビゲーションは index.html にフォールバック (SPA)。
         // /api/* (認証付き) と /__scheduled (Cron のローカル実行) は SW を介さずネットワークへ
         navigateFallback: "/index.html",
