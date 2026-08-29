@@ -396,38 +396,40 @@ export function Board({
       >
         {sections.map((s, i) => (
           <Fragment key={s.key}>
-            <Divider
-              labelPosition="left"
-              mt={i === 0 ? 0 : "md"}
-              mb="xs"
-              label={
-                <Group gap={4} wrap="nowrap">
-                  {s.expiresAt !== null ? (
-                    <span title={`${formatDate(s.expiresAt)} に消えます`}>
-                      あと {daysUntil(s.expiresAt)} 日で消えます
-                    </span>
-                  ) : (
-                    <span>新しいセクション</span>
-                  )}
-                  {s.content.trim() !== "" && (
-                    <SectionActions
-                      index={i}
-                      onCopy={() => copySectionText(s.content)}
-                      onScreenshot={() => screenshot(s.key)}
-                    />
-                  )}
-                  {!readOnly && (
-                    <CloseButton
-                      size="xs"
-                      aria-label={`セクション ${i + 1} を削除`}
-                      // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => removeSection(s.key)}
-                    />
-                  )}
-                </Group>
-              }
-            />
+            {/* 区切り: 期限ラベルとコピー / スクショは線の中 (左)、削除は線の外の右端 (誤って押しにくいように離す) */}
+            <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
+              <Divider
+                labelPosition="left"
+                style={{ flex: 1 }}
+                label={
+                  <Group gap="sm" wrap="nowrap">
+                    {s.expiresAt !== null ? (
+                      <span title={`${formatDate(s.expiresAt)} に消えます`}>
+                        あと {daysUntil(s.expiresAt)} 日で消えます
+                      </span>
+                    ) : (
+                      <span>新しいセクション</span>
+                    )}
+                    {s.content.trim() !== "" && (
+                      <SectionActions
+                        index={i}
+                        onCopy={() => copySectionText(s.content)}
+                        onScreenshot={() => screenshot(s.key)}
+                      />
+                    )}
+                  </Group>
+                }
+              />
+              {!readOnly && (
+                <CloseButton
+                  size="xs"
+                  aria-label={`セクション ${i + 1} を削除`}
+                  // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => removeSection(s.key)}
+                />
+              )}
+            </Group>
             {(readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
               <MarkdownView
                 content={s.content}
