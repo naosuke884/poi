@@ -1,4 +1,4 @@
-import { ActionIcon, Tooltip } from "@mantine/core";
+import { ActionIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 // 結果の表示 (チェック / ×) を出しておく時間
@@ -7,6 +7,7 @@ const FEEDBACK_MS = 1500;
 /**
  * セクションの区切り線に並べる「コピー」「スクショ」ボタン。
  * 押した結果は Tooltip とアイコン (チェック / ×) で短く知らせる (通知ライブラリは使わない)。
+ * 読み上げ用には同じ文言を隠しテキストのライブリージョンに出す。
  * どちらも mousedown を止めて、編集中の Textarea を blur させない (削除ボタンと同じ)
  */
 export function SectionActions({
@@ -90,19 +91,25 @@ function ActionButton({
   };
 
   return (
-    <Tooltip label={feedback?.message ?? tooltip} opened={feedback ? true : undefined} withArrow>
-      <ActionIcon
-        variant="subtle"
-        color={feedback ? (feedback.ok ? "teal" : "red") : "gray"}
-        size="xs"
-        aria-label={label}
-        loading={busy}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => void onClick()}
-      >
-        {feedback ? feedback.ok ? <CheckIcon /> : <XIcon /> : children}
-      </ActionIcon>
-    </Tooltip>
+    <>
+      <Tooltip label={feedback?.message ?? tooltip} opened={feedback ? true : undefined} withArrow>
+        <ActionIcon
+          variant="subtle"
+          color={feedback ? (feedback.ok ? "teal" : "red") : "gray"}
+          size="xs"
+          aria-label={label}
+          loading={busy}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => void onClick()}
+        >
+          {feedback ? feedback.ok ? <CheckIcon /> : <XIcon /> : children}
+        </ActionIcon>
+      </Tooltip>
+      {/* Tooltip (role="tooltip") は読み上げられないので、結果はここで通知する */}
+      <VisuallyHidden role="status" aria-live="polite">
+        {feedback?.message}
+      </VisuallyHidden>
+    </>
   );
 }
 

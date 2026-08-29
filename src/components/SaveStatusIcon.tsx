@@ -1,4 +1,4 @@
-import { ActionIcon, ThemeIcon, Tooltip } from "@mantine/core";
+import { ActionIcon, Box, ThemeIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import type { ReactNode } from "react";
 import { useSaveState } from "@/lib/save-status";
 
@@ -7,12 +7,20 @@ export const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復�
 /**
  * ヘッダーに出す板の保存状態 (雲のアイコンのみ、説明は Tooltip)。
  * 雲+チェック = 保存済み、雲 = 未保存、雲+↑ = 保存中、雲に斜線 = オフライン、雲+! = 失敗。
- * 板を編集していないときは何も描画しない。offline / error はクリックで再試行
+ * 板を編集していないときは何も描画しない。offline / error はクリックで再試行。
+ * 読み上げ用に、状態の文言を常在のライブリージョン (role="status") の中に隠しテキストで置く
+ * (リージョン自体は状態が無いときも残しておく: 後から中身が変わったときに読み上げられるように)
  */
 export function SaveStatusIcon() {
   const state = useSaveState();
-  if (!state) return null;
+  return (
+    <Box component="span" role="status" style={{ display: "inline-flex", alignItems: "center" }}>
+      {state && <Inner state={state} />}
+    </Box>
+  );
+}
 
+function Inner({ state }: { state: NonNullable<ReturnType<typeof useSaveState>> }) {
   switch (state.status) {
     case "saved":
       return (
@@ -62,15 +70,18 @@ function Status({
   children: ReactNode;
 }) {
   return (
-    <Tooltip label={label}>
-      <ThemeIcon variant="transparent" color={color} size="sm" role="status" aria-label={label}>
-        {children}
-      </ThemeIcon>
-    </Tooltip>
+    <>
+      <Tooltip label={label}>
+        <ThemeIcon variant="transparent" color={color} size="sm" aria-hidden="true">
+          {children}
+        </ThemeIcon>
+      </Tooltip>
+      <VisuallyHidden>{label}</VisuallyHidden>
+    </>
   );
 }
 
-// クリックで再試行する状態 (offline / error)
+// クリックで再試行する状態 (offline / error)。ボタンの役割はそのまま (role を上書きしない)
 function RetryStatus({
   label,
   color,
@@ -83,18 +94,14 @@ function RetryStatus({
   children: ReactNode;
 }) {
   return (
-    <Tooltip label={`${label} (クリックで再試行)`}>
-      <ActionIcon
-        variant="subtle"
-        color={color}
-        size="sm"
-        role="alert"
-        aria-label={`${label}。再試行`}
-        onClick={onRetry}
-      >
-        {children}
-      </ActionIcon>
-    </Tooltip>
+    <>
+      <VisuallyHidden>{label}</VisuallyHidden>
+      <Tooltip label={`${label} (クリックで再試行)`}>
+        <ActionIcon variant="subtle" color={color} size="sm" aria-label="保存を再試行" onClick={onRetry}>
+          {children}
+        </ActionIcon>
+      </Tooltip>
+    </>
   );
 }
 
