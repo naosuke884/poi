@@ -25,9 +25,9 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
-  // カスタムドメインで公開する場合はコメントを外す (ゾーンが同じアカウントにあること)。
-  // 未設定なら https://poi.<account>.workers.dev で公開される
-  // "routes": [{ "pattern": "poi.example.com", "custom_domain": true }],
+  // カスタムドメイン (ゾーンが同じアカウントにあること)。routes を消せば https://poi.<account>.workers.dev で公開される。
+  // メンテナの本番ドメイン。セルフホストするときは自分のドメインに置き換える (workers.dev で公開するなら消す)
+  "routes": [{ "pattern": "poinote.app", "custom_domain": true }],
   "observability": {
     "enabled": true
   }
