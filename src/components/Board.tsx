@@ -423,6 +423,7 @@ export function Board({
               {!readOnly && (
                 <CloseButton
                   size="xs"
+                  c="red"
                   aria-label={`セクション ${i + 1} を削除`}
                   // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
                   onMouseDown={(e) => e.preventDefault()}
