@@ -11,3 +11,18 @@
 .root > :first-child {
   margin-top: 0;
 }
+
+/* 見出しの大きさ: 既定 (h1 34px / h2 26px / h3 22px / h4 18px) は文書向けに大きいので、本文 16px に対して控えめにする。
+   h4 以下は h3 と並ばないよう本文と同じ大きさ (太字だけで区別する) */
+.root :where(h1) {
+  font-size: 1.5rem;
+}
+.root :where(h2) {
+  font-size: 1.25rem;
+}
+.root :where(h3) {
+  font-size: 1.125rem;
+}
+.root :where(h4, h5, h6) {
+  font-size: 1rem;
+}
