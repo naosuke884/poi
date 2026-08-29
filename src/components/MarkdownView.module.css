@@ -28,9 +28,9 @@
   font-size: 1rem;
 }
 
-/* 見出しレベルの印: 左の縦棒 (h1 太く primary / h2 細く薄い青 / h3 極細の灰色、h4 以下はなし)。
+/* 見出しレベルの印: 左の縦棒 (h1 太く primary / h2 細く灰色、h3 以下はなし)。
    セクションの区切り線は横線なので、縦棒なら紛れない */
-.root :where(h1, h2, h3) {
+.root :where(h1, h2) {
   padding-left: 12px;
   border-left-style: solid;
 }
@@ -40,9 +40,5 @@
 }
 .root :where(h2) {
   border-left-width: 3px;
-  border-left-color: light-dark(var(--mantine-color-blue-2), var(--mantine-color-blue-8));
-}
-.root :where(h3) {
-  border-left-width: 2px;
   border-left-color: var(--mantine-color-default-border);
 }
