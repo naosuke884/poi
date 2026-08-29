@@ -1,6 +1,15 @@
-import { Button, CloseButton, Group, Loader, Stack, Text, Textarea } from "@mantine/core";
+import { Box, CloseButton, Divider, Group, Stack, Text, Textarea } from "@mantine/core";
 import { useBlocker } from "@tanstack/react-router";
-import { type KeyboardEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type KeyboardEvent,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
@@ -12,6 +21,7 @@ import {
   type BoardSection,
   type DraftSection,
   type EditableSection,
+  daysUntil,
   formatDate,
   newSection,
   sameDraft,
@@ -20,27 +30,23 @@ import {
   toEditable,
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
+import { MarkdownView } from "@/components/MarkdownView";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
+import { publishSaveState, type SaveStatus } from "@/lib/save-status";
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
 
-export const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
-
-type SaveStatus =
-  | "dirty" // 未保存の変更がある (debounce 待ち)
-  | "saving"
-  | "saved"
-  | "offline" // オフラインで保存できなかった (入力は保持。online イベントか「再試行」で再送する)
-  | "error";
-
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) ごとに 1 つの Textarea を縦に並べる。
+ * 見た目は 1 枚の文書: Textarea は枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
+ * 編集中 (フォーカスのある) セクションだけ Textarea で、それ以外は Markdown をレンダリングして表示する
+ * (クリックすると Textarea に戻る)。内容はそのまま Markdown テキストとして保存する
  * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次の Textarea へ移る (空行 1 つはセクションの中に残る)。
  *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣の Textarea へ移る (Notion のブロック風)
  * - 各 Textarea が自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
  *   空のセクションは送らない (画面には残る)
- * - 入力停止から 1 秒後に丸ごと保存する (自動保存)
+ * - 入力停止から 1 秒後に丸ごと保存する (自動保存)。保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  */
@@ -74,17 +80,31 @@ export function Board({
   const elementsRef = useRef(new Map<string, HTMLTextAreaElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しい Textarea が無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
+  // 編集中 (Textarea で表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない
+  const [editingKey, setEditingKey] = useState<string | null>(() => latestRef.current.at(-1)?.key ?? null);
+  // 描画後にカーソルを置く (Textarea がまだ無いセクションを編集状態にしてから)
+  const focusLater = (key: string, pos: number) => {
+    pendingFocusRef.current = { key, pos };
+    setEditingKey(key);
+  };
   const focus = (key: string, pos: number) => {
     const el = elementsRef.current.get(key);
-    if (!el) return;
+    if (!el) {
+      focusLater(key, pos);
+      return;
+    }
+    setEditingKey(key);
     el.focus();
     el.setSelectionRange(pos, pos);
   };
   useLayoutEffect(() => {
     const pending = pendingFocusRef.current;
     if (!pending) return;
+    const el = elementsRef.current.get(pending.key);
+    if (!el) return; // 次の描画で Textarea が現れるまで待つ
     pendingFocusRef.current = null;
-    focus(pending.key, pending.pos);
+    el.focus();
+    el.setSelectionRange(pending.pos, pending.pos);
   });
 
   const cancelTimer = () => {
@@ -208,7 +228,7 @@ export function Board({
     const parts = split.parts.map((content, j) =>
       j === 0 ? { ...cur[i]!, content } : newSection(content),
     );
-    pendingFocusRef.current = { key: parts[split.focus.index]!.key, pos: split.focus.offset };
+    focusLater(parts[split.focus.index]!.key, split.focus.offset);
     update([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
   };
 
@@ -218,7 +238,7 @@ export function Board({
     const a = cur[i];
     const b = cur[i + 1];
     if (!a || !b) return;
-    pendingFocusRef.current = { key: a.key, pos: a.content.length };
+    focusLater(a.key, a.content.length);
     update([...cur.slice(0, i), { ...a, content: a.content + b.content }, ...cur.slice(i + 2)]);
   };
 
@@ -297,6 +317,13 @@ export function Board({
     return () => window.removeEventListener("online", onOnline);
   }, [readOnly, save]);
 
+  // 保存状態をヘッダーのアイコンに出す (編集中のときだけ。離れたら消す)
+  useEffect(() => {
+    if (readOnly) return;
+    publishSaveState({ status, errorMessage, retry: () => void save() });
+  }, [readOnly, status, errorMessage, save]);
+  useEffect(() => () => publishSaveState(null), []);
+
   // 未保存の内容がある間はタブを閉じる / リロード前に確認を出す
   const unsaved = status !== "saved";
   useEffect(() => {
@@ -325,115 +352,99 @@ export function Board({
 
   const length = boardLength(toDraft(sections));
 
-  return (
-    <Stack gap="xs">
-      <Group justify="space-between" align="center">
-        <Text size="sm" c="dimmed">
-          各セクションは書いてから {MEMO_TTL_DAYS} 日で消えます
-        </Text>
-        {!readOnly && (
-          <SaveStatusLabel status={status} errorMessage={errorMessage} onRetry={() => void save()} />
-        )}
-      </Group>
+  // 最後のセクションより下の空き領域をクリックしたら末尾にカーソルを置く (画面全体が書ける場所に見えるように)。
+  // mousedown を止めて、編集中の Textarea がクリックの途中で blur (→ Markdown 表示) しないようにする
+  const focusEnd = (e: MouseEvent<HTMLDivElement>) => {
+    if (readOnly || e.target !== e.currentTarget) return;
+    const last = latestRef.current.at(-1);
+    if (last) focus(last.key, last.content.length);
+  };
+  const keepFocus = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) e.preventDefault();
+  };
 
-      {sections.map((s, i) => (
-        <Stack key={s.key} gap={4}>
-          <Textarea
-            aria-label={`セクション ${i + 1}`}
-            placeholder={
-              sections.length === 1
-                ? `ここに書くと自動的に保存されます\n` +
-                  `空行 2 つ (Enter 3 回) で次のセクションに移り、セクションごとに ${MEMO_TTL_DAYS} 日で消えます`
-                : undefined
-            }
-            value={s.content}
-            onChange={(e) => changeSection(s.key, e.currentTarget.value, e.currentTarget.selectionStart)}
-            onKeyDown={(e) => onKeyDown(e, i)}
-            maxLength={BOARD_MAX_LENGTH}
-            autosize
-            minRows={1}
-            readOnly={readOnly}
-            ref={(el) => {
-              if (el) elementsRef.current.set(s.key, el);
-              else elementsRef.current.delete(s.key);
-            }}
-          />
-          <Group justify="space-between" gap="xs" wrap="nowrap">
-            <Text size="xs" c="dimmed">
-              {s.expiresAt !== null
-                ? `${formatDate(s.expiresAt)} に消えます`
-                : `新しいセクション (保存してから ${MEMO_TTL_DAYS} 日で消えます)`}
-            </Text>
-            {!readOnly && (
-              <CloseButton
-                size="sm"
-                aria-label={`セクション ${i + 1} を削除`}
-                onClick={() => removeSection(s.key)}
+  // フォーカスが外れたら Markdown 表示に戻す。ただしウィンドウ自体がフォーカスを失った場合
+  // (タブ切り替えなど) は編集中のまま (戻ってきたときにカーソル位置を保つ)。
+  // 別のセクションへ移るときは、移った先が先に editingKey になっているので何もしない
+  const onBlur = (key: string) => {
+    if (!document.hasFocus()) return;
+    setEditingKey((k) => (k === key ? null : k));
+  };
+
+  return (
+    <Stack gap="xs" style={{ flex: 1 }}>
+      <Box
+        style={{ flex: 1, cursor: readOnly ? undefined : "text" }}
+        onClick={focusEnd}
+        onMouseDown={keepFocus}
+      >
+        {sections.map((s, i) => (
+          <Fragment key={s.key}>
+            <Divider
+              labelPosition="left"
+              mt={i === 0 ? 0 : "md"}
+              mb="xs"
+              label={
+                <Group gap={4} wrap="nowrap">
+                  {s.expiresAt !== null ? (
+                    <span title={`${formatDate(s.expiresAt)} に消えます`}>
+                      あと {daysUntil(s.expiresAt)} 日で消えます
+                    </span>
+                  ) : (
+                    <span>新しいセクション</span>
+                  )}
+                  {!readOnly && (
+                    <CloseButton
+                      size="xs"
+                      aria-label={`セクション ${i + 1} を削除`}
+                      // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => removeSection(s.key)}
+                    />
+                  )}
+                </Group>
+              }
+            />
+            {(readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
+              <MarkdownView
+                content={s.content}
+                aria-label={`セクション ${i + 1}`}
+                onClick={readOnly ? undefined : () => focus(s.key, s.content.length)}
               />
+            ) : (
+            <Textarea
+              aria-label={`セクション ${i + 1}`}
+              placeholder={
+                sections.length === 1
+                  ? `ここに書くと自動的に保存されます\n` +
+                    `空行 2 つ (Enter 3 回) で次のセクションに移り、セクションごとに ${MEMO_TTL_DAYS} 日で消えます`
+                  : undefined
+              }
+              value={s.content}
+              onChange={(e) => changeSection(s.key, e.currentTarget.value, e.currentTarget.selectionStart)}
+              onKeyDown={(e) => onKeyDown(e, i)}
+              onFocus={() => setEditingKey(s.key)}
+              onBlur={() => onBlur(s.key)}
+              maxLength={BOARD_MAX_LENGTH}
+              variant="unstyled"
+              // Markdown 表示 (fz="md") と文字サイズを揃える。16px 以上なら iOS でフォーカス時に拡大されない
+              size="md"
+              autosize
+              minRows={1}
+              readOnly={readOnly}
+              ref={(el) => {
+                if (el) elementsRef.current.set(s.key, el);
+                else elementsRef.current.delete(s.key);
+              }}
+            />
             )}
-          </Group>
-        </Stack>
-      ))}
+          </Fragment>
+        ))}
+      </Box>
 
       <Text size="xs" c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"} ta="right">
         {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
       </Text>
     </Stack>
   );
-}
-
-function SaveStatusLabel({
-  status,
-  errorMessage,
-  onRetry,
-}: {
-  status: SaveStatus;
-  errorMessage: string | null;
-  onRetry: () => void;
-}) {
-  switch (status) {
-    case "dirty":
-      return (
-        <Text size="sm" c="dimmed">
-          未保存の変更があります
-        </Text>
-      );
-    case "saving":
-      return (
-        <Group gap="xs">
-          <Loader size="xs" />
-          <Text size="sm" c="dimmed">
-            保存中…
-          </Text>
-        </Group>
-      );
-    case "saved":
-      return (
-        <Text size="sm" c="dimmed">
-          保存済み
-        </Text>
-      );
-    case "offline":
-      return (
-        <Group gap="xs" role="alert">
-          <Text size="sm" c="orange" fw={600}>
-            {OFFLINE_SAVE_MESSAGE}
-          </Text>
-          <Button size="compact-xs" variant="light" color="orange" onClick={onRetry}>
-            再試行
-          </Button>
-        </Group>
-      );
-    case "error":
-      return (
-        <Group gap="xs" role="alert">
-          <Text size="sm" c="red" fw={600}>
-            保存に失敗{errorMessage ? `: ${errorMessage}` : ""}
-          </Text>
-          <Button size="compact-xs" variant="light" color="red" onClick={onRetry}>
-            再試行
-          </Button>
-        </Group>
-      );
-  }
 }

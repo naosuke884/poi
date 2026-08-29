@@ -55,7 +55,7 @@ function BoardPage() {
   if (!offline) liveRef.current = true;
   const readOnly = offline && !liveRef.current;
   return (
-    <Stack>
+    <Stack style={{ flex: 1 }}>
       {readOnly && (
         <Alert color="yellow" role="status">
           {`オフラインのため閲覧のみです (${cachedAt !== null ? formatDateTime(cachedAt) : "前回取得"} 時点の内容)。`}

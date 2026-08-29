@@ -1,0 +1,4 @@
+/* Markdown 表示の最後の要素の下マージンを消し、Textarea に切り替わったときの高さの差を小さくする */
+.root > :last-child {
+  margin-bottom: 0;
+}

@@ -1,6 +1,7 @@
 import { AppShell, Container, Group, Title, Anchor, Stack, Text } from "@mantine/core";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { SaveStatusIcon } from "@/components/SaveStatusIcon";
 import { UserMenu } from "@/components/UserMenu";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdateBanner } from "@/components/PwaUpdateBanner";
@@ -27,12 +28,16 @@ function RootLayout() {
             <Anchor component={Link} to="/" fw={700} c="inherit" underline="never">
               poi
             </Anchor>
-            <UserMenu />
+            <Group gap="xs">
+              <SaveStatusIcon />
+              <UserMenu />
+            </Group>
           </Group>
         </Container>
       </AppShell.Header>
-      <AppShell.Main>
-        <Container size="md">
+      {/* Main → Container → ページ を縦の flex にして、板が画面の下端まで広がれるようにする */}
+      <AppShell.Main style={{ display: "flex", flexDirection: "column" }}>
+        <Container size="md" w="100%" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <OfflineBanner />
           <Outlet />
         </Container>
