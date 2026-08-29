@@ -80,8 +80,9 @@ export function Board({
   const elementsRef = useRef(new Map<string, HTMLTextAreaElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しい Textarea が無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
-  // 編集中 (Textarea で表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない
-  const [editingKey, setEditingKey] = useState<string | null>(() => latestRef.current.at(-1)?.key ?? null);
+  // 編集中 (Textarea で表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
+  // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックで Textarea に切り替わる)
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   // 描画後にカーソルを置く (Textarea がまだ無いセクションを編集状態にしてから)
   const focusLater = (key: string, pos: number) => {
     pendingFocusRef.current = { key, pos };
