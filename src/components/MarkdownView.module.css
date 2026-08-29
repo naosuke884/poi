@@ -1,6 +1,33 @@
+/* 編集に切り替えられる表示: キーボードでフォーカスしたときだけ枠を出す (クリックでは出さない) */
+.editable {
+  border-radius: var(--mantine-radius-sm);
+}
+.editable:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 4px;
+}
+
+/* ユーザーが書いた内容なので、長い URL や区切りの無い文字列でも板の幅で折り返す */
+.root {
+  overflow-wrap: anywhere;
+}
+
 /* Markdown 表示の最後の要素の下マージンを消し、Textarea に切り替わったときの高さの差を小さくする */
 .root > :last-child {
   margin-bottom: 0;
+}
+
+/* 表は幅に収まらなければこの箱の中で横スクロールする (Mantine の table は width: 100% なので箱の幅に広がる) */
+.tableScroll {
+  overflow-x: auto;
+  margin-bottom: var(--mantine-spacing-md);
+}
+.tableScroll > table {
+  margin-bottom: 0;
+}
+/* 表の中は折り返しすぎないようにする (箱がスクロールするので普通の折り返しで十分) */
+.tableScroll :where(th, td) {
+  overflow-wrap: normal;
 }
 
 /* 見出しの上の余白: Mantine の Typography は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める。
