@@ -7,6 +7,9 @@ export function createAuth(env: Env, requestOrigin: string) {
     baseURL: env.BETTER_AUTH_URL ?? requestOrigin,
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(createDb(env.DB), { provider: "sqlite", schema }),
+    // X などのアプリ内ブラウザでは state cookie が OAuth コールバックに乗らず state_mismatch になる。
+    // state は DB 側で単回使用・10 分期限・PKCE 付きで検証されるので、cookie 照合だけをスキップする
+    account: { skipStateCookieCheck: true },
     socialProviders: {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
