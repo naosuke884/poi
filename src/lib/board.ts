@@ -47,11 +47,11 @@ export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
 }
 
 /**
- * Textarea の入力に区切り (空行 = SECTION_SEPARATOR) が含まれていたら、そこでセクションを分ける。
+ * Textarea の入力に区切り (空行 2 つ = SECTION_SEPARATOR) が含まれていたら、そこでセクションを分ける。
  * 区切りが無ければ null。
  * parts は分けた後の各セクションの内容 (区切りちょうどで分けるだけで、それ以外の改行は残す)。
  * focus はカーソル (cursor: 入力後の selectionStart) を置く先の part とその中の位置。
- * カーソルが区切りの途中 (改行 2 つの間) にあるときは次の part の先頭に置く
+ * カーソルが区切りの途中 (改行 3 つの間) にあるときは次の part の先頭に置く
  */
 export function splitAtSeparator(
   text: string,

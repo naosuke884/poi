@@ -6,7 +6,7 @@ import { user } from "./schema";
 // schema.ts は Better Auth CLI (npm run auth:schema) が上書きするため、
 // アプリ独自のテーブルはこのファイルに定義する。
 //
-// 1 行 = 板 (ユーザーごとに 1 枚のテキスト) の 1 セクション (空行で区切られたまとまり)。
+// 1 行 = 板 (ユーザーごとに 1 枚のテキスト) の 1 セクション (空行 2 つで区切られたまとまり)。
 // 期限切れの削除はセクション単位で行う (書いたセクションから順に消えていく)。
 export const memo = sqliteTable(
   "memo",
@@ -17,7 +17,7 @@ export const memo = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    // 1 セクション分のテキスト (単独の改行は含んでよいが、区切りの空行 "\n\n" は含まない。空でも 1 セクション)
+    // 1 セクション分のテキスト (改行や空行 1 つは含んでよいが、区切りの "\n\n\n" (空行 2 つ) は含まない。空でも 1 セクション)
     content: text("content").notNull(),
     // 板の中での並び順 (0 始まり)。PUT /api/board のたびに振り直す
     position: integer("position").notNull().default(0),

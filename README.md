@@ -4,7 +4,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 1 つの Cloudflare Worker で動かす構成。
 
 アプリは「板」1 枚: ログインすると「セクション」ごとの Textarea が縦に並び、書いた内容は自動保存される。
-空行 (Enter 2 回) で次のセクションに分かれ、セクションごとに「書いてから 30 日」で消える
+空行 2 つ (Enter 3 回) で次のセクションに分かれ、セクションごとに「書いてから 30 日」で消える
 (セクション単位で期限を持ち、Cron がセクション単位で削除する)。
 
 ```
@@ -25,7 +25,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 │   ├── lib/api.ts            # Hono RPC クライアント (型安全な fetch)
 │   ├── lib/auth-client.ts    # Better Auth クライアント (useSession / signIn / signOut)
 │   ├── lib/require-login.ts  # ログイン必須ルート用の beforeLoad ガード (未ログインなら /login へ。オフラインはキャッシュしたユーザーで通す)
-│   ├── lib/board.ts          # 画面上のセクションの型と保存用の変換 (toDraft / sameDraft)、空行での分割 (splitAtSeparator)、日付フォーマット
+│   ├── lib/board.ts          # 画面上のセクションの型と保存用の変換 (toDraft / sameDraft)、空行 2 つでの分割 (splitAtSeparator)、日付フォーマット
 │   ├── lib/board-cache.ts    # オフライン閲覧用の板のキャッシュ (localStorage、ユーザー id ごと)
 │   ├── lib/session-cache.ts  # オフライン起動用にログイン中ユーザーをキャッシュ
 │   ├── lib/local-storage.ts  # localStorage の try/catch ラッパー
@@ -80,9 +80,9 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
   各 Textarea が自分のセクションの id / 期限を持ち、下に「YYYY/MM/DD に消えます」(未保存なら「新しいセクション」) と
   削除ボタンを出す。板が空なら空のセクションを 1 つ出す
 - キー操作 (`src/lib/board.ts` の `splitAtSeparator` と `Board.tsx` の `onKeyDown`。IME の変換中は無視する):
-  - 空行 (`SECTION_SEPARATOR = "\n\n"`) が入力されたら (Enter 2 回や貼り付け) その場で分け、カーソルのある側の
-    Textarea へ移る。先頭の部分が元のセクション (id = 期限を維持)、残りは新しいセクション。
-    区切りちょうどで分けるだけなので、改行 3 つなら余りは次のセクションの先頭に残る
+  - 空行 2 つ (`SECTION_SEPARATOR = "\n\n\n"`) が入力されたら (Enter 3 回や貼り付け) その場で分け、カーソルのある側の
+    Textarea へ移る。先頭の部分が元のセクション (id = 期限を維持)、残りは新しいセクション。空行 1 つはセクションの中に残る。
+    区切りちょうどで分けるだけなので、改行 4 つなら余りは次のセクションの先頭に残る
   - 先頭で Backspace → 前のセクションと結合 (前の id が残る)。末尾で Delete → 次と結合
   - 1 行目で ↑ → 前のセクションの末尾へ。最終行で ↓ → 次のセクションの先頭へ (折り返しは考慮しない)
 - 保存ボタンは無く、入力停止から 1 秒 (`AUTOSAVE_DELAY_MS`) 後に `PUT /api/board` で丸ごと保存する。
@@ -105,7 +105,7 @@ TanStack Router (SPA) + Hono (API) + Better Auth (Google ログイン) + D1 + Ma
 | PUT    | `/api/board` | 板を丸ごと置き換える。保存後の全セクションを返す                                        |
 
 - `PUT` のリクエストボディ: `{ sections: { id: string \| null, content: string }[] }`
-  (`content` は 1 セクション分のテキスト。単独の改行は含んでよいが、区切りの空行 `"\n\n"` と CR は不可。空でも 1 セクション。
+  (`content` は 1 セクション分のテキスト。改行や空行 1 つは含んでよいが、区切りの `"\n\n\n"` (空行 2 つ) と CR は不可。空でも 1 セクション。
   板全体で 20,000 文字 / 1,000 セクションまで。上限と区切りは `worker/memo/constants.ts`)
 - `PUT` の処理: `id` が自分の既存のセクションと一致すれば `content` / `position` だけ更新 (`createdAt` / `expiresAt` は維持 = 延命しない。
   変化が無いセクションは触らない)。それ以外は `expiresAt = createdAt + 30 日` で新規作成。送られてこなかった既存のセクションは削除。

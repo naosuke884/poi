@@ -15,7 +15,7 @@ import {
 } from "./constants";
 
 // 板 (ユーザーごとに 1 枚) をセクションの配列としてやり取りする。
-// - セクションは板のテキストを空行 (SECTION_SEPARATOR) で区切ったもの。中身に単独の改行は含んでよい
+// - セクションは板のテキストを空行 2 つ (SECTION_SEPARATOR = 改行 3 つ) で区切ったもの。中身に改行や空行 1 つは含んでよい
 // - id はサーバが発行する。クライアントは「前回保存したセクションの id」を付けて送り返すことで
 //   そのセクションの作成日 (= 期限) を引き継ぐ。id が null / 知らない id のものは新しいセクションとして作る
 // - 期限は作成時に確定し、内容や並び順を変えても延びない
@@ -24,7 +24,7 @@ const sectionSchema = z.object({
   content: z
     .string()
     .refine((s) => !s.includes("\r"), "セクションに CR は含められません")
-    .refine((s) => !s.includes(SECTION_SEPARATOR), "セクションに空行 (区切り) は含められません"),
+    .refine((s) => !s.includes(SECTION_SEPARATOR), "セクションに空行 2 つ (区切り) は含められません"),
 });
 
 const putBoardSchema = z

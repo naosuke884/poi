@@ -3,9 +3,9 @@
 export const MEMO_TTL_DAYS = 30;
 export const MEMO_TTL_MS = MEMO_TTL_DAYS * 24 * 60 * 60 * 1000;
 
-// セクションの区切り (= 空行 1 つ)。
+// セクションの区切り (= 改行 3 つ = 空行 2 つ)。空行 1 つはセクションの中に含めてよい。
 // UI は Textarea にこれが入力されたらそこでセクションを分け、API はセクションの内容にこれが含まれないことを検証する
-export const SECTION_SEPARATOR = "\n\n";
+export const SECTION_SEPARATOR = "\n\n\n";
 
 // バリデーション上限。API (worker/memo/routes.ts) と UI (文字数カウンタ / 保存前チェック) で共有する
 // 板全体の文字数 (セクションを区切りで連結したときの長さ)

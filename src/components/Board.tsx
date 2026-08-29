@@ -36,7 +36,7 @@ type SaveStatus =
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) ごとに 1 つの Textarea を縦に並べる。
- * - 空行 (改行 2 つ) を入力するとそこでセクションが分かれて次の Textarea へ移る。
+ * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次の Textarea へ移る (空行 1 つはセクションの中に残る)。
  *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣の Textarea へ移る (Notion のブロック風)
  * - 各 Textarea が自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
  *   空のセクションは送らない (画面には残る)
@@ -196,7 +196,7 @@ export function Board({
 
   const indexOf = (key: string) => latestRef.current.findIndex((s) => s.key === key);
 
-  // 入力。区切り (空行) が入ったらそこで分ける。最初の部分が元のセクション (id を保ち期限を維持)、残りは新しいセクション
+  // 入力。区切り (空行 2 つ) が入ったらそこで分ける。最初の部分が元のセクション (id を保ち期限を維持)、残りは新しいセクション
   const changeSection = (key: string, value: string, cursor: number) => {
     const cur = latestRef.current;
     const i = indexOf(key);
@@ -343,7 +343,7 @@ export function Board({
             placeholder={
               sections.length === 1
                 ? `ここに書くと自動的に保存されます\n` +
-                  `空行 (Enter 2 回) で次のセクションに移り、セクションごとに ${MEMO_TTL_DAYS} 日で消えます`
+                  `空行 2 つ (Enter 3 回) で次のセクションに移り、セクションごとに ${MEMO_TTL_DAYS} 日で消えます`
                 : undefined
             }
             value={s.content}
