@@ -1,6 +1,14 @@
 {
   "name": "poi",
   "private": true,
+  "description": "A memo pad that forgets: notes that disappear 30 days after you write them. One Cloudflare Worker + D1.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naosuke884/poi.git"
+  },
+  "homepage": "https://github.com/naosuke884/poi#readme",
+  "bugs": "https://github.com/naosuke884/poi/issues",
   "version": "0.0.0",
   "type": "module",
   "engines": {

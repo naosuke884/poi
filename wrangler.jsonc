@@ -16,6 +16,7 @@
     {
       "binding": "DB",
       "database_name": "poi",
+      // メンテナの本番 D1 の id。セルフホストするときは `npx wrangler d1 create poi` で作った自分の id に置き換える (README 参照)
       "database_id": "95b1e126-5ae4-418a-8b4f-0c9de8c4533d",
       "migrations_dir": "drizzle"
     }
