@@ -80,3 +80,36 @@
   color: var(--mantine-color-anchor);
   text-decoration: underline;
 }
+
+/* 箇条書き: 本文の位置を「深さ × MarkdownView のリストの字下げ幅 (Typography の ul / ol の padding-inline-start)」に
+   揃え、折り返した行もそこから始める (ぶら下げ)。行頭の空白 + 記号は同じ幅の箱 (inline-block) に右寄せするので、
+   ネストが深いほど記号が右に寄り、本文は blur したときの表示と同じ位置に来る。
+   文字は隠さず幅を足すだけなので、カーソルはそのまま記号や空白の上を通れる。
+   --md-li-depth は行の style 属性で src/lib/section-markdown.ts が付ける (1 始まり)。
+   .cm-line の padding: 0 より後に置く (同じ要素に効くので、順番でこちらを勝たせる) */
+.root :global(.cm-editor .cm-line.md-li) {
+  --md-li-indent: calc(var(--md-li-depth) * var(--mantine-spacing-xl));
+  padding-left: var(--md-li-indent);
+  text-indent: calc(-1 * var(--md-li-indent));
+}
+/* 行頭に空白も記号も無い続きの行は箱が無いので、ぶら下げを戻して本文の位置から始める */
+.root :global(.cm-editor .cm-line.md-li-lazy) {
+  text-indent: 0;
+}
+.root :global(.cm-editor .md-li-prefix) {
+  display: inline-block;
+  min-width: var(--md-li-indent);
+  text-align: right;
+  /* .md-li の負の text-indent は継承されて inline-block の中の行にも効くので打ち消す。
+     打ち消さないと prefix が箱より広いとき (`100. ` やスペース 5 つ以上の続きの行) 箱が広がらず左にはみ出す */
+  text-indent: 0;
+  /* 箱の中では折り返さない (CodeMirror の折り返しは break-spaces なので末尾のスペースは幅に入るが、
+     長い prefix が箱の中で 2 行になると本文の位置がずれる) */
+  white-space: pre;
+  color: var(--mantine-color-dimmed);
+}
+/* 箇条書きの中の見出し (`- # 見出し`): 縦棒は行の左端 (箱の手前) に出て MarkdownView (li の中) と位置が合わないので
+   出さない。記号 (#) と大きさで見出しだと分かる */
+.root :global(.cm-editor .cm-line.md-li:is(.md-h1, .md-h2)) {
+  border-left-style: none;
+}

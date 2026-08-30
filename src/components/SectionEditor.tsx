@@ -25,6 +25,8 @@ type Props = {
   onArrowUpAtFirstLine(): boolean;
   /** 最後の (表示上の) 行で ↓。false を返せば通常の動き */
   onArrowDownAtLastLine(): boolean;
+  /** Tab で編集をやめた (blur 済み)。Board は Markdown 表示に切り替えてそこへフォーカスを移す */
+  onTab(): void;
   /** 複数行なら \n 区切り */
   placeholder?: string;
   readOnly?: boolean;
@@ -54,10 +56,10 @@ function applyFocus(view: EditorView, pos: number) {
 /**
  * 編集中セクションのエディタ (CodeMirror 6)。Board が編集中の 1 セクションだけこれで表示する。
  * テキストは常に Markdown ソースそのもので、見出し・記号・URL は装飾するだけ (src/lib/section-markdown.ts)。
- * Textarea と同じ使い勝手にする: 散文向けの spellcheck / 自動大文字化、Enter は単純な改行、Tab はフォーカス移動、
+ * Textarea と同じ使い勝手にする: 散文向けの spellcheck / 自動大文字化、Enter は単純な改行、
  * 文字数上限、複数行のプレースホルダ。
  * セクションの境界 (先頭で Backspace / 末尾で Delete / 最初の行で ↑ / 最後の行で ↓) はキー処理を横取りして
- * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない
+ * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。Tab は編集をやめる (blur)
  */
 export function SectionEditor({
   value,
@@ -68,6 +70,7 @@ export function SectionEditor({
   onDeleteAtEnd,
   onArrowUpAtFirstLine,
   onArrowDownAtLastLine,
+  onTab,
   placeholder,
   readOnly = false,
   "aria-label": ariaLabel,
@@ -88,6 +91,7 @@ export function SectionEditor({
     onDeleteAtEnd,
     onArrowUpAtFirstLine,
     onArrowDownAtLastLine,
+    onTab,
   });
   callbacksRef.current = {
     onChange,
@@ -97,6 +101,7 @@ export function SectionEditor({
     onDeleteAtEnd,
     onArrowUpAtFirstLine,
     onArrowDownAtLastLine,
+    onTab,
   };
   // マウント後に変わりうる設定 (aria-label はセクション番号なので前が消えると変わる。placeholder は
   // セクションが 1 つのときだけ) は Compartment で差し替える
@@ -220,7 +225,7 @@ export function SectionEditor({
 
 type Callbacks = Pick<
   Props,
-  "onBackspaceAtStart" | "onDeleteAtEnd" | "onArrowUpAtFirstLine" | "onArrowDownAtLastLine"
+  "onBackspaceAtStart" | "onDeleteAtEnd" | "onArrowUpAtFirstLine" | "onArrowDownAtLastLine" | "onTab"
 >;
 
 /** 選択が無い (カーソルだけ) なら head。IME 変換中は境界処理をしない (null) */
@@ -294,5 +299,18 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
     // Enter は単純な改行にする (standardKeymap の insertNewlineAndIndent は行頭の空白を次の行にコピーし、
     // カーソル直後の空白を食うので Textarea の挙動から変わってしまう)
     { key: "Enter", run: insertNewline, shift: insertNewline },
+    // Tab で編集をやめる (blur して onTab → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
+    // ブラウザ既定の Tab (次の要素へ) に任せると、最後のセクションではフォーカスがページの外 (ブラウザの UI) へ
+    // 抜けて document.hasFocus() が false になり、Board の onBlur が編集中のまま残してしまう。
+    // Shift+Tab は既定のまま (前の要素へ。blur で Markdown 表示になる)。IME 変換中は触らない
+    {
+      key: "Tab",
+      run(view) {
+        if (view.composing) return false;
+        view.contentDOM.blur();
+        callbacks.current.onTab();
+        return true;
+      },
+    },
   ];
 }

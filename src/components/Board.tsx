@@ -53,10 +53,6 @@ const AUTOSAVE_DELAY_MS = 1000;
 // セクションを削除したあと「元に戻す」を出しておく時間
 const UNDO_DELETE_MS = 8000;
 
-// マウント時に自動でカーソルを置くのはマウス環境だけ (タッチ端末では開くたびにキーボードが出てしまう)
-const hasFinePointer = () =>
-  typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
  * 見た目は 1 枚の文書: 枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
@@ -64,7 +60,7 @@ const hasFinePointer = () =>
  * 見出し・記号・URL を装飾して表示する) で、それ以外は Markdown をレンダリングして表示する (MarkdownView。
  * クリックするとエディタに戻る)。内容はそのまま Markdown テキストとして保存する
  * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次のセクションへ移る (空行 1 つはセクションの中に残る)。
- *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。
+ *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。Tab で編集をやめる (Markdown 表示に戻る)。
  *   境界の判定はエディタが行い (SectionEditor のコールバック)、ここでは何をするかだけ決める。
  *   分割 / 結合ではフォーカスのあるエディタの DOM (key) をそのまま使い回し、カーソルだけ動かす
  *   (エディタを作り直してフォーカスを移すと、タッチ端末ではキーボードが閉じたり新しいエディタに
@@ -110,6 +106,9 @@ export function Board({
   const boxesRef = useRef(new Map<string, HTMLDivElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
+  // Tab で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (次の Tab はそこから先へ進み、
+  // Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
+  const pendingViewFocusRef = useRef<string | null>(null);
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -136,6 +135,12 @@ export function Board({
     if (!editor) return; // 次の描画でエディタが現れるまで待つ
     pendingFocusRef.current = null;
     editor.focus(pending.pos);
+  });
+  useLayoutEffect(() => {
+    const key = pendingViewFocusRef.current;
+    if (key === null) return;
+    pendingViewFocusRef.current = null;
+    viewsRef.current.get(key)?.focus({ preventScroll: true });
   });
 
   // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
@@ -363,16 +368,20 @@ export function Board({
     focus(next.key, 0);
     return true;
   };
+  // Tab: エディタを Markdown 表示に戻し、描画後にその表示へフォーカスを移す。
+  // CodeMirror の blur 通知 (onBlur) は 10ms 遅れて届くので待たない (その間に別の描画 (自動保存の状態表示など) が
+  // 入ると上の layout effect が pendingViewFocusRef を消費してしまい、フォーカスが移らない)
+  const exitEditing = (key: string) => {
+    pendingViewFocusRef.current = key;
+    setEditingKey((k) => (k === key ? null : k));
+  };
 
-  // マウント時: 最後のセクションの冒頭を画面の上端に出し、末尾から書き足せるようその末尾にカーソルを置く。
+  // マウント時: 最後のセクションの冒頭を画面の上端に出す。カーソルは置かない (全部 Markdown 表示のまま。
+  // まず読み返すことが多く、タッチ端末では開くたびにキーボードが出てしまう)。
   // アンマウント時: タイマーを片付け、debounce 待ちの編集があればその場で保存する。
   // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
   // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
   useEffect(() => {
-    if (!readOnly && hasFinePointer()) {
-      const last = latestRef.current.at(-1);
-      if (last) focus(last.key, last.content.length);
-    }
     revealLast();
     return () => {
       cancelTimer();
@@ -563,6 +572,7 @@ export function Board({
                 onDeleteAtEnd={() => deleteAtEnd(i)}
                 onArrowUpAtFirstLine={() => arrowUpAtFirstLine(i)}
                 onArrowDownAtLastLine={() => arrowDownAtLastLine(i)}
+                onTab={() => exitEditing(s.key)}
                 readOnly={readOnly}
                 ref={(editor) => {
                   if (editor) elementsRef.current.set(s.key, editor);
