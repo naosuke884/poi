@@ -58,7 +58,7 @@ const UNDO_DELETE_MS = 8000;
  * 見た目は 1 枚の文書: 枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
  * 編集中 (フォーカスのある) セクションだけエディタ (SectionEditor = CodeMirror。Markdown ソースのまま、
  * 見出し・記号・URL を装飾して表示する) で、それ以外は Markdown をレンダリングして表示する (MarkdownView。
- * クリックするとエディタに戻る)。内容はそのまま Markdown テキストとして保存する
+ * クリックするとその場所にカーソルを置いてエディタに戻る)。内容はそのまま Markdown テキストとして保存する
  * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次のセクションへ移る (空行 1 つはセクションの中に残る)。
  *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。Tab で編集をやめる (Markdown 表示に戻る)。
  *   境界の判定はエディタが行い (SectionEditor のコールバック)、ここでは何をするかだけ決める。
@@ -545,7 +545,7 @@ export function Board({
               <MarkdownView
                 content={s.content}
                 aria-label={`セクション ${i + 1}`}
-                onClick={readOnly ? undefined : () => focus(s.key, s.content.length)}
+                onEdit={readOnly ? undefined : (pos) => focus(s.key, pos)}
                 ref={(el) => {
                   if (el) viewsRef.current.set(s.key, el);
                   else viewsRef.current.delete(s.key);
