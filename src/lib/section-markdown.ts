@@ -27,13 +27,15 @@ export const MD_CLASS = {
   heading: (level: number) => `md-h${level}`,
   mark: "md-mark",
   url: "md-url",
-  /** 箇条書きの行 (項目の 1 行目も、その続きの行も)。深さは CSS 変数 --md-li-depth (1 始まり) */
-  listLine: "md-li",
-  /** 行頭に空白も記号も無い続きの行 (lazy continuation)。ぶら下げの分を戻して本文の位置から始める */
-  listLazy: "md-li-lazy",
-  /** 行頭の空白 + 記号 (`  - ` / `1. `)。深さぶんの幅の箱に右寄せして、本文の開始位置を揃える */
-  listPrefix: "md-li-prefix",
+  /** 箇条書きの記号 (`-` / `1.`)。深さの色 (listColor) と組み合わせる */
+  listMark: "md-li-mark",
+  /** 箇条書きの行頭のインデント (空白)。深さの色の薄い帯にする */
+  listIndent: "md-li-indent",
+  /** 箇条書きの深さの色 (1 始まり、LIST_COLORS 個で一巡) */
+  listColor: (depth: number) => `md-li-c${((depth - 1) % LIST_COLORS) + 1}`,
 } as const;
+// 箇条書きの深さの色数 (SectionEditor.module.css の .md-li-c1 〜 と同じ数)
+export const LIST_COLORS = 4;
 
 // Language の言語データ facet (載せるものは無いが、Language は Document ノードに付いたものを探す)
 const languageData = defineLanguageFacet();
@@ -116,7 +118,7 @@ const headingLine = new Map(
     Decoration.line({ class: MD_CLASS.heading(level) }),
   ]),
 );
-// `#` / `-` / `1.` などの記号 (薄くするだけで隠さない: カーソル移動で行の高さや幅がガタつかないように)
+// 見出しの `#` (薄くするだけで隠さない: カーソル移動で行の高さや幅がガタつかないように)
 const markDecoration = Decoration.mark({ class: MD_CLASS.mark });
 // URL (リンク色 + 下線。通常クリックはカーソル移動なので、開き方を title で示す)
 const urlDecoration = Decoration.mark({
@@ -124,37 +126,26 @@ const urlDecoration = Decoration.mark({
   attributes: { title: "Ctrl / Cmd + クリックで開く" },
 });
 
-// 箇条書きの行 (深さ × MarkdownView のリストの字下げ幅だけ本文を下げ、折り返した行も本文の位置に揃える)。
-// 深さごとに Decoration を作り直さないようキャッシュする
-const listLineCache = new Map<string, Decoration>();
-function listLine(depth: number, lazy: boolean): Decoration {
-  const key = `${depth}${lazy ? "l" : ""}`;
-  let deco = listLineCache.get(key);
+// 箇条書き: レイアウト (インデント幅や記号の位置) は変えず、色でネストの深さを示す。
+// 記号は深さの色、行頭のインデント (空白) は同じ色の薄い帯 (プロポーショナルフォントではスペース 2 つの
+// 字下げが細くて見えにくいので、幅はそのままに色で見せる)。深さごとに Decoration をキャッシュする
+const listMarkCache = new Map<number, Decoration>();
+const listIndentCache = new Map<number, Decoration>();
+function listDecoration(cache: Map<number, Decoration>, base: string, depth: number): Decoration {
+  let deco = cache.get(depth);
   if (!deco) {
-    deco = Decoration.line({
-      class: lazy ? `${MD_CLASS.listLine} ${MD_CLASS.listLazy}` : MD_CLASS.listLine,
-      attributes: { style: `--md-li-depth:${depth}` },
-    });
-    listLineCache.set(key, deco);
+    deco = Decoration.mark({ class: `${base} ${MD_CLASS.listColor(depth)}` });
+    cache.set(depth, deco);
   }
   return deco;
 }
-// 行頭の空白 + 記号。記号 (ListMark) 用の md-mark とは重ねない: mark 装飾が入れ子になると span が分かれ、
-// inline-block の箱が 1 つにならない。薄い色はこのクラスで付ける
-const listPrefixDecoration = Decoration.mark({ class: MD_CLASS.listPrefix });
-
-/**
- * 箇条書きの行ごとの情報を構文木から集める。
- * depth は ListItem の入れ子の深さ (1 始まり)。行が複数の ListItem に含まれる (親の範囲は子の行も含む) ときは
- * 最も深いもの。prefixTo は項目の 1 行目の「空白 + 記号 (+ 直後のスペース)」の終わり。続きの行では行頭の空白の終わり
- */
-type ListLineInfo = { depth: number; prefixTo: number | null };
 
 function buildDecorations(view: EditorView): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   const { doc } = view.state;
   const tree = syntaxTree(view.state);
-  const listLines = new Map<number, ListLineInfo>();
+  // 行番号 → その行を含む最も深い ListItem の深さ (親の範囲は子の行も含むので、後から来る子で上書きされる)
+  const listLines = new Map<number, number>();
   for (const { from, to } of view.visibleRanges) {
     let depth = 0;
     tree.iterate({
@@ -170,20 +161,11 @@ function buildDecorations(view: EditorView): DecorationSet {
           ranges.push(urlDecoration.range(node.from, node.to));
         } else if (node.name === "ListItem") {
           depth++;
-          const first = doc.lineAt(node.from);
-          const last = doc.lineAt(node.to);
-          for (let n = first.number; n <= last.number; n++) {
-            const info = listLines.get(n);
-            if (!info) listLines.set(n, { depth, prefixTo: null });
-            else info.depth = Math.max(info.depth, depth);
-          }
-          // 1 行目: 記号の直後のスペース (貼り付けで入るタブも) までを prefix にする (`- ` で本文の位置が決まる。
-          // タブを箱の外に残すと本文がタブ幅ぶん右にずれる)
+          const first = doc.lineAt(node.from).number;
+          const last = doc.lineAt(node.to).number;
+          for (let n = first; n <= last; n++) listLines.set(n, Math.max(listLines.get(n) ?? 0, depth));
           const mark = node.node.getChild("ListMark");
-          if (mark) {
-            const after = doc.sliceString(mark.to, mark.to + 1);
-            listLines.get(first.number)!.prefixTo = after === " " || after === "\t" ? mark.to + 1 : mark.to;
-          }
+          if (mark) ranges.push(listDecoration(listMarkCache, MD_CLASS.listMark, depth).range(mark.from, mark.to));
         }
       },
       leave(node) {
@@ -191,12 +173,11 @@ function buildDecorations(view: EditorView): DecorationSet {
       },
     });
   }
-  for (const [n, info] of listLines) {
+  // 行頭のインデント (項目の 1 行目の記号の前も、続きの行も)。空白が無い行 (深さ 1 の項目など) には何も付けない
+  for (const [n, depth] of listLines) {
     const line = doc.line(n);
-    // 続きの行 (記号なし): 行頭の空白を prefix にする。空白も無ければ lazy (本文が行頭から始まる)
-    const prefixTo = info.prefixTo ?? line.from + (/^[ \t]*/.exec(line.text)?.[0].length ?? 0);
-    ranges.push(listLine(info.depth, prefixTo === line.from).range(line.from));
-    if (prefixTo > line.from) ranges.push(listPrefixDecoration.range(line.from, prefixTo));
+    const indent = /^[ \t]+/.exec(line.text)?.[0].length ?? 0;
+    if (indent > 0) ranges.push(listDecoration(listIndentCache, MD_CLASS.listIndent, depth).range(line.from, line.from + indent));
   }
   // 行装飾と mark が混ざり、visibleRanges の順にも依存するので sort させる
   return Decoration.set(ranges, true);

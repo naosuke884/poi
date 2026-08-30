@@ -81,35 +81,31 @@
   text-decoration: underline;
 }
 
-/* 箇条書き: 本文の位置を「深さ × MarkdownView のリストの字下げ幅 (Typography の ul / ol の padding-inline-start)」に
-   揃え、折り返した行もそこから始める (ぶら下げ)。行頭の空白 + 記号は同じ幅の箱 (inline-block) に右寄せするので、
-   ネストが深いほど記号が右に寄り、本文は blur したときの表示と同じ位置に来る。
-   文字は隠さず幅を足すだけなので、カーソルはそのまま記号や空白の上を通れる。
-   --md-li-depth は行の style 属性で src/lib/section-markdown.ts が付ける (1 始まり)。
-   .cm-line の padding: 0 より後に置く (同じ要素に効くので、順番でこちらを勝たせる) */
-.root :global(.cm-editor .cm-line.md-li) {
-  --md-li-indent: calc(var(--md-li-depth) * var(--mantine-spacing-xl));
-  padding-left: var(--md-li-indent);
-  text-indent: calc(-1 * var(--md-li-indent));
+/* 箇条書き: レイアウト (インデント幅・記号の位置) は変えず、色でネストの深さを示す。
+   記号は深さの色、行頭のインデント (空白) は同じ色の薄い帯 (幅はそのまま。スペース 2 つの字下げは細くて見えにくい)。
+   深さ 1 → primary、2 → teal、3 → grape、4 → orange で一巡 (src/lib/section-markdown.ts の LIST_COLORS と同じ数)。
+   色は Mantine の変数 (filled / light) なのでダークモードでもそのまま使える */
+.root :global(.cm-editor .md-li-c1) {
+  --md-li-color: var(--mantine-primary-color-filled);
+  --md-li-band: var(--mantine-primary-color-light);
 }
-/* 行頭に空白も記号も無い続きの行は箱が無いので、ぶら下げを戻して本文の位置から始める */
-.root :global(.cm-editor .cm-line.md-li-lazy) {
-  text-indent: 0;
+.root :global(.cm-editor .md-li-c2) {
+  --md-li-color: var(--mantine-color-teal-filled);
+  --md-li-band: var(--mantine-color-teal-light);
 }
-.root :global(.cm-editor .md-li-prefix) {
-  display: inline-block;
-  min-width: var(--md-li-indent);
-  text-align: right;
-  /* .md-li の負の text-indent は継承されて inline-block の中の行にも効くので打ち消す。
-     打ち消さないと prefix が箱より広いとき (`100. ` やスペース 5 つ以上の続きの行) 箱が広がらず左にはみ出す */
-  text-indent: 0;
-  /* 箱の中では折り返さない (CodeMirror の折り返しは break-spaces なので末尾のスペースは幅に入るが、
-     長い prefix が箱の中で 2 行になると本文の位置がずれる) */
-  white-space: pre;
-  color: var(--mantine-color-dimmed);
+.root :global(.cm-editor .md-li-c3) {
+  --md-li-color: var(--mantine-color-grape-filled);
+  --md-li-band: var(--mantine-color-grape-light);
 }
-/* 箇条書きの中の見出し (`- # 見出し`): 縦棒は行の左端 (箱の手前) に出て MarkdownView (li の中) と位置が合わないので
-   出さない。記号 (#) と大きさで見出しだと分かる */
-.root :global(.cm-editor .cm-line.md-li:is(.md-h1, .md-h2)) {
-  border-left-style: none;
+.root :global(.cm-editor .md-li-c4) {
+  --md-li-color: var(--mantine-color-orange-filled);
+  --md-li-band: var(--mantine-color-orange-light);
+}
+.root :global(.cm-editor .md-li-mark) {
+  color: var(--md-li-color);
+  font-weight: 600;
+}
+.root :global(.cm-editor .md-li-indent) {
+  background-color: var(--md-li-band);
+  border-radius: 2px;
 }
