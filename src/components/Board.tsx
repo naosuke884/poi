@@ -105,6 +105,8 @@ export function Board({
   const elementsRef = useRef(new Map<string, HTMLTextAreaElement>());
   // key → Markdown 表示の要素 (スクショの対象)
   const viewsRef = useRef(new Map<string, HTMLDivElement>());
+  // key → セクションの外枠 (区切り線を含む。スクロール位置を合わせる対象)
+  const boxesRef = useRef(new Map<string, HTMLDivElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しい Textarea が無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
   // 編集中 (Textarea で表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
@@ -134,6 +136,20 @@ export function Board({
     el.focus();
     el.setSelectionRange(pending.pos, pending.pos);
   });
+
+  // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
+  // 開いたときと、末尾に新しいセクションができたときに使う (下端に張り付いたまま書き続けなくて済むように)。
+  // 描画後に行う (末尾のセクションがまだ無いことがある)。同じ key でも毎回動かすので値はオブジェクトで持つ。
+  // 上の effect (フォーカス) より後に置く: フォーカスでカーソル位置へスクロールした後に、こちらで上書きする
+  const [reveal, setReveal] = useState<{ key: string } | null>(null);
+  const revealLast = () => {
+    const last = latestRef.current.at(-1);
+    if (last) setReveal({ key: last.key });
+  };
+  useLayoutEffect(() => {
+    if (!reveal) return;
+    boxesRef.current.get(reveal.key)?.scrollIntoView({ block: "start" });
+  }, [reveal]);
 
   const cancelTimer = () => {
     if (timerRef.current !== null) {
@@ -267,6 +283,8 @@ export function Board({
     );
     focusLater(orig.key, split.focus.offset);
     update([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
+    // 末尾に新しいセクションができてそこへ移るなら、その冒頭を画面の上端に持ってくる
+    if (i === cur.length - 1 && split.focus.index === parts.length - 1) revealLast();
   };
 
   // i 番目と i+1 番目をつなげる。前のセクションが id (期限) を保ち、フォーカスのある方 (focused) が key を保つ。
@@ -359,7 +377,7 @@ export function Board({
     }
   };
 
-  // マウント時: 末尾から書き足せるよう最後のセクションの末尾にカーソルを置く。
+  // マウント時: 最後のセクションの冒頭を画面の上端に出し、末尾から書き足せるようその末尾にカーソルを置く。
   // アンマウント時: タイマーを片付け、debounce 待ちの編集があればその場で保存する。
   // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
   // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
@@ -368,6 +386,7 @@ export function Board({
       const last = latestRef.current.at(-1);
       if (last) focus(last.key, last.content.length);
     }
+    revealLast();
     return () => {
       cancelTimer();
       const draft = toDraft(latestRef.current);
@@ -467,7 +486,24 @@ export function Board({
         onMouseDown={keepFocus}
       >
         {sections.map((s, i) => (
-          <Box key={s.key} data-section>
+          <Box
+            key={s.key}
+            data-section
+            ref={(el) => {
+              if (el) boxesRef.current.set(s.key, el);
+              else boxesRef.current.delete(s.key);
+            }}
+            style={{
+              // scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)
+              scrollMarginTop: "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
+              // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
+              // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。文字数表示のぶんは少し余る)
+              minHeight:
+                i === sections.length - 1 && sections.length > 1
+                  ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
+                  : undefined,
+            }}
+          >
             {/* 区切り: 期限ラベルとコピー / スクショは線の中 (左)、削除は線の外の右端 (誤って押しにくいように離す) */}
             <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
