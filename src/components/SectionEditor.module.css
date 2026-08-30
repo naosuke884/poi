@@ -35,9 +35,10 @@
   white-space: pre-line;
 }
 
-/* 見出し行: 大きさと左の縦棒は MarkdownView.module.css と同じ。
+/* 見出し行: 大きさは MarkdownView.module.css と同じ。
    上の余白は MarkdownView の margin-top と合わせる (セクション先頭では 0)。
-   記号 (#) は隠さず薄く残すだけなので、カーソルの出入りで行の高さは変わらない */
+   記号 (#) は隠さず残すだけなので、カーソルの出入りで行の高さは変わらない。
+   MarkdownView の左の縦棒は編集中は出さない (行頭が動いて書きにくい): 代わりに記号の色でレベルを示す (下) */
 .root :global(.cm-editor .cm-line:is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6)) {
   font-weight: 700;
   padding-top: var(--mantine-spacing-md);
@@ -57,22 +58,15 @@
 .root :global(.cm-editor .cm-line:is(.md-h4, .md-h5, .md-h6)) {
   font-size: 1rem;
 }
-.root :global(.cm-editor .cm-line:is(.md-h1, .md-h2)) {
-  padding-left: 12px;
-  border-left-style: solid;
-}
-.root :global(.cm-editor .cm-line.md-h1) {
-  border-left-width: 4px;
-  border-left-color: var(--mantine-primary-color-filled);
-}
-.root :global(.cm-editor .cm-line.md-h2) {
-  border-left-width: 3px;
-  border-left-color: var(--mantine-color-default-border);
-}
-
-/* 記号 (# / - / 1.) は薄く */
+/* 見出しの記号 (#) は薄く。h1 / h2 は色でレベルを示す (MarkdownView の縦棒の代わり。h3 以下は大きさだけ) */
 .root :global(.cm-editor .md-mark) {
   color: var(--mantine-color-dimmed);
+}
+.root :global(.cm-editor .md-h1 .md-mark) {
+  color: var(--mantine-primary-color-filled);
+}
+.root :global(.cm-editor .md-h2 .md-mark) {
+  color: var(--mantine-color-teal-filled);
 }
 
 /* URL はリンクの見た目。カーソルは text のまま (通常クリックはカーソル移動で、開くのは Ctrl / Cmd + クリック) */
