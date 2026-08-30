@@ -16,8 +16,9 @@ Cloudflare Worker 1 つと D1 だけで動くので、無料枠で自分用に�
 - **セクションごとに勝手に消える** — 空行 2 つ (Enter 3 回) で次のセクション。セクションは最初に書いてから 30 日で
   それぞれ期限切れになり、毎時の Cron が物理削除する
 - **自動保存** — 保存ボタンは無く、入力が止まって 1 秒後に保存される。保存状態はヘッダーの雲アイコンに出る
-- **軽い Markdown** — 編集していないセクションは Markdown として表示する。使えるのは見出し・箇条書き / 番号付きリスト・
-  URL の自動リンクだけで、それ以外 (強調・コード・引用・表・HTML など) は書いた文字のまま表示されるので、
+- **軽い Markdown** — 編集していないセクションは Markdown として表示する。編集中のセクションも Markdown ソースのまま
+  見出し・箇条書きの記号・URL がその場で装飾される (iA Writer 風。記号は隠さない)。使えるのは見出し・箇条書き /
+  番号付きリスト・URL の自動リンクだけで、それ以外 (強調・コード・引用・表・HTML など) は書いた文字のまま表示されるので、
   `*` や `>` を書いてもメモが崩れない
 - **セクションのコピー / スクショ** — 区切り線のボタンでそのセクションのテキスト (書いたままの Markdown) をコピー、
   または Markdown 表示のまま PNG にしてクリップボードへ入れる (クリップボードに画像を入れられないブラウザではダウンロード)
@@ -33,7 +34,7 @@ Cloudflare Worker 1 つと D1 だけで動くので、無料枠で自分用に�
 | API            | [Hono](https://hono.dev/) (型付き RPC クライアント) + [Zod](https://zod.dev/) |
 | 認証           | [Better Auth](https://www.better-auth.com/) (Google OAuth)                 |
 | DB             | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit マイグレーション    |
-| フロントエンド | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown) |
+| フロントエンド | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (エディタ) |
 | ビルド         | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
 
 ## セルフホスト
@@ -150,7 +151,8 @@ public/     PWA アイコン
 ```
 
 板エディタ、`/api/board` の仕様、期限切れ削除の Cron、PWA のキャッシュ、オフライン時の挙動などの詳細は、
-それぞれのファイル冒頭のコメント (`src/components/Board.tsx`、`worker/memo/routes.ts`、`worker/memo/sweep.ts`、
+それぞれのファイル冒頭のコメント (`src/components/Board.tsx`、`src/components/SectionEditor.tsx`、
+`src/lib/section-markdown.ts`、`worker/memo/routes.ts`、`worker/memo/sweep.ts`、
 `vite.config.ts`、`src/routes/index.tsx`) に書いてある。
 
 ## コントリビュート

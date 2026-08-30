@@ -8,7 +8,7 @@ const FEEDBACK_MS = 1500;
  * セクションの区切り線に並べる「コピー」「スクショ」ボタン。
  * 押した結果は Tooltip とアイコン (チェック / ×) で短く知らせる (通知ライブラリは使わない)。
  * 読み上げ用には同じ文言を隠しテキストのライブリージョンに出す。
- * どちらも mousedown を止めて、編集中の Textarea を blur させない (削除ボタンと同じ)
+ * どちらも mousedown を止めて、編集中のエディタを blur させない (削除ボタンと同じ)
  */
 export function SectionActions({
   index,

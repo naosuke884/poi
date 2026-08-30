@@ -8,12 +8,10 @@ import {
   Notification,
   Stack,
   Text,
-  Textarea,
   Tooltip,
 } from "@mantine/core";
 import { useBlocker } from "@tanstack/react-router";
 import {
-  type KeyboardEvent,
   type MouseEvent,
   useCallback,
   useEffect,
@@ -45,6 +43,7 @@ import {
 import { writeCachedBoard } from "@/lib/board-cache";
 import { MarkdownView } from "@/components/MarkdownView";
 import { SectionActions } from "@/components/SectionActions";
+import { SectionEditor, type SectionEditorHandle } from "@/components/SectionEditor";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
 import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
@@ -59,14 +58,16 @@ const hasFinePointer = () =>
   typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
 /**
- * 板。セクション (= 1 つの memo、30 日で消える) ごとに 1 つの Textarea を縦に並べる。
- * 見た目は 1 枚の文書: Textarea は枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
- * 編集中 (フォーカスのある) セクションだけ Textarea で、それ以外は Markdown をレンダリングして表示する
- * (クリックすると Textarea に戻る)。内容はそのまま Markdown テキストとして保存する
- * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次の Textarea へ移る (空行 1 つはセクションの中に残る)。
- *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣の Textarea へ移る (Notion のブロック風)。
- *   分割 / 結合ではフォーカスのある Textarea の DOM (key) をそのまま使い回し、カーソルだけ動かす
- *   (Textarea を作り直してフォーカスを移すと、タッチ端末ではキーボードが閉じたり新しい Textarea に
+ * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
+ * 見た目は 1 枚の文書: 枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
+ * 編集中 (フォーカスのある) セクションだけエディタ (SectionEditor = CodeMirror。Markdown ソースのまま、
+ * 見出し・記号・URL を装飾して表示する) で、それ以外は Markdown をレンダリングして表示する (MarkdownView。
+ * クリックするとエディタに戻る)。内容はそのまま Markdown テキストとして保存する
+ * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次のセクションへ移る (空行 1 つはセクションの中に残る)。
+ *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。
+ *   境界の判定はエディタが行い (SectionEditor のコールバック)、ここでは何をするかだけ決める。
+ *   分割 / 結合ではフォーカスのあるエディタの DOM (key) をそのまま使い回し、カーソルだけ動かす
+ *   (エディタを作り直してフォーカスを移すと、タッチ端末ではキーボードが閉じたり新しいエディタに
  *   フォーカスが渡らなかったりする)
  * - 各セクションが自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
  *   空のセクションは送らない (画面には残る)
@@ -101,46 +102,47 @@ export function Board({
   const inFlightRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // key → Textarea 要素。分割 / 結合 / ↑↓ の後にカーソルを移すのに使う
-  const elementsRef = useRef(new Map<string, HTMLTextAreaElement>());
+  // key → エディタのハンドル。分割 / 結合 / ↑↓ の後にカーソルを移すのに使う
+  const elementsRef = useRef(new Map<string, SectionEditorHandle>());
   // key → Markdown 表示の要素 (スクショの対象)
   const viewsRef = useRef(new Map<string, HTMLDivElement>());
   // key → セクションの外枠 (区切り線を含む。スクロール位置を合わせる対象)
   const boxesRef = useRef(new Map<string, HTMLDivElement>());
-  // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しい Textarea が無い)
+  // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
-  // 編集中 (Textarea で表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
-  // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックで Textarea に切り替わる)
+  // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
+  // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  // 描画後にカーソルを置く (Textarea がまだ無いセクションを編集状態にしてから)
+  // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
   const focusLater = (key: string, pos: number) => {
     pendingFocusRef.current = { key, pos };
     setEditingKey(key);
   };
   const focus = (key: string, pos: number) => {
-    const el = elementsRef.current.get(key);
-    if (!el) {
+    const editor = elementsRef.current.get(key);
+    if (!editor) {
       focusLater(key, pos);
       return;
     }
     setEditingKey(key);
-    el.focus();
-    el.setSelectionRange(pos, pos);
+    editor.focus(pos);
   };
+  // SectionEditor は自分の layout effect (親より先に走る) で value を doc に反映済みなので、ここで置く
+  // カーソル位置は新しい内容に対するもの
   useLayoutEffect(() => {
     const pending = pendingFocusRef.current;
     if (!pending) return;
-    const el = elementsRef.current.get(pending.key);
-    if (!el) return; // 次の描画で Textarea が現れるまで待つ
+    const editor = elementsRef.current.get(pending.key);
+    if (!editor) return; // 次の描画でエディタが現れるまで待つ
     pendingFocusRef.current = null;
-    el.focus();
-    el.setSelectionRange(pending.pos, pending.pos);
+    editor.focus(pending.pos);
   });
 
   // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
   // 開いたときと、末尾に新しいセクションができたときに使う (下端に張り付いたまま書き続けなくて済むように)。
   // 描画後に行う (末尾のセクションがまだ無いことがある)。同じ key でも毎回動かすので値はオブジェクトで持つ。
   // 上の effect (フォーカス) より後に置く: フォーカスでカーソル位置へスクロールした後に、こちらで上書きする
+  // (SectionEditor の focus はそのためにカーソルへのスクロールを同期的に済ませる)
   const [reveal, setReveal] = useState<{ key: string } | null>(null);
   const revealLast = () => {
     const last = latestRef.current.at(-1);
@@ -261,7 +263,7 @@ export function Board({
   const indexOf = (key: string) => latestRef.current.findIndex((s) => s.key === key);
 
   // 入力。区切り (空行 2 つ) が入ったらそこで分ける。
-  // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key (= 今フォーカスのある Textarea の DOM) を引き継ぐ。
+  // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key (= 今フォーカスのあるエディタの DOM) を引き継ぐ。
   // 残りは新しいセクション
   const changeSection = (key: string, value: string, cursor: number) => {
     const cur = latestRef.current;
@@ -340,41 +342,26 @@ export function Board({
     update([...base.slice(0, i), deleted.section, ...base.slice(i)]);
   };
 
-  // 隣のセクションとの結合 / 移動。文字変換中 (IME) のキーは触らない
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>, i: number) => {
-    if (e.nativeEvent.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+  // 隣のセクションとの結合 / 移動。境界にいるかの判定 (選択なし・IME 変換中でない・先頭 / 末尾 / 表示上の
+  // 最初 / 最後の行) は SectionEditor が行い、ここは隣が無ければ何もしない (↑↓ は false を返して通常の動きに任せる)
+  const backspaceAtStart = (i: number) => {
+    if (i > 0) mergeSections(i - 1, latestRef.current[i]!.key);
+  };
+  const deleteAtEnd = (i: number) => {
     const cur = latestRef.current;
-    const { selectionStart, selectionEnd, value } = e.currentTarget;
-    const collapsed = selectionStart === selectionEnd;
-    const key = cur[i]!.key;
-    switch (e.key) {
-      case "Backspace":
-        if (collapsed && selectionStart === 0 && i > 0) {
-          e.preventDefault();
-          mergeSections(i - 1, key);
-        }
-        break;
-      case "Delete":
-        if (collapsed && selectionStart === value.length && i < cur.length - 1) {
-          e.preventDefault();
-          mergeSections(i, key);
-        }
-        break;
-      case "ArrowUp":
-        // 1 行目 (折り返しは考えない) なら前のセクションの末尾へ
-        if (collapsed && i > 0 && !value.slice(0, selectionStart).includes("\n")) {
-          e.preventDefault();
-          const prev = cur[i - 1]!;
-          focus(prev.key, prev.content.length);
-        }
-        break;
-      case "ArrowDown":
-        if (collapsed && i < cur.length - 1 && !value.slice(selectionStart).includes("\n")) {
-          e.preventDefault();
-          focus(cur[i + 1]!.key, 0);
-        }
-        break;
-    }
+    if (i < cur.length - 1) mergeSections(i, cur[i]!.key);
+  };
+  const arrowUpAtFirstLine = (i: number) => {
+    const prev = latestRef.current[i - 1];
+    if (!prev) return false;
+    focus(prev.key, prev.content.length);
+    return true;
+  };
+  const arrowDownAtLastLine = (i: number) => {
+    const next = latestRef.current[i + 1];
+    if (!next) return false;
+    focus(next.key, 0);
+    return true;
   };
 
   // マウント時: 最後のセクションの冒頭を画面の上端に出し、末尾から書き足せるようその末尾にカーソルを置く。
@@ -449,7 +436,7 @@ export function Board({
 
   // 最後のセクションより下の空き領域 (やセクションの外枠の余白) をクリックしたら末尾にカーソルを置く
   // (画面全体が書ける場所に見えるように)。
-  // mousedown を止めて、編集中の Textarea がクリックの途中で blur (→ Markdown 表示) しないようにする
+  // mousedown を止めて、編集中のエディタがクリックの途中で blur (→ Markdown 表示) しないようにする
   const isBlank = (e: MouseEvent<HTMLDivElement>) =>
     e.target === e.currentTarget || (e.target as HTMLElement).hasAttribute("data-section");
   const focusEnd = (e: MouseEvent<HTMLDivElement>) => {
@@ -461,7 +448,7 @@ export function Board({
     if (isBlank(e)) e.preventDefault();
   };
 
-  // セクションを画像にする。編集中 (Textarea) なら先に Markdown 表示へ切り替え、その描画を同期的に済ませてから
+  // セクションを画像にする。編集中 (エディタ) なら先に Markdown 表示へ切り替え、その描画を同期的に済ませてから
   // (flushSync) その要素を撮る。空のセクションには表示要素が無いのでボタン自体を出さない
   const screenshot = (key: string) => {
     flushSync(() => setEditingKey((k) => (k === key ? null : k)));
@@ -538,7 +525,7 @@ export function Board({
                     size="xs"
                     c="red"
                     aria-label={`セクション ${i + 1} を削除`}
-                    // 編集中の Textarea を blur させない (blur でレイアウトが動くとクリックが外れる)
+                    // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる)
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => removeSection(s.key)}
                   />
@@ -556,37 +543,32 @@ export function Board({
                 }}
               />
             ) : (
-            <Textarea
-              aria-label={`セクション ${i + 1}`}
-              name={`section-${i + 1}`}
-              autoComplete="off"
-              placeholder={
-                sections.length === 1
-                  ? [
-                      "ここに書く…",
-                      `セクションごとに ${MEMO_TTL_DAYS} 日で消えます`,
-                      "空行 2 つで次のセクションへ",
-                      "Markdown が使えます (# 見出し、- 箇条書き)",
-                    ].join("\n")
-                  : undefined
-              }
-              value={s.content}
-              onChange={(e) => changeSection(s.key, e.currentTarget.value, e.currentTarget.selectionStart)}
-              onKeyDown={(e) => onKeyDown(e, i)}
-              onFocus={() => setEditingKey(s.key)}
-              onBlur={() => onBlur(s.key)}
-              maxLength={BOARD_MAX_LENGTH}
-              variant="unstyled"
-              // Markdown 表示 (fz="md") と文字サイズを揃える。16px 以上なら iOS でフォーカス時に拡大されない
-              size="md"
-              autosize
-              minRows={1}
-              readOnly={readOnly}
-              ref={(el) => {
-                if (el) elementsRef.current.set(s.key, el);
-                else elementsRef.current.delete(s.key);
-              }}
-            />
+              <SectionEditor
+                aria-label={`セクション ${i + 1}`}
+                placeholder={
+                  sections.length === 1
+                    ? [
+                        "ここに書く…",
+                        `セクションごとに ${MEMO_TTL_DAYS} 日で消えます`,
+                        "空行 2 つで次のセクションへ",
+                        "Markdown が使えます (# 見出し、- 箇条書き)",
+                      ].join("\n")
+                    : undefined
+                }
+                value={s.content}
+                onChange={(value, cursor) => changeSection(s.key, value, cursor)}
+                onFocus={() => setEditingKey(s.key)}
+                onBlur={() => onBlur(s.key)}
+                onBackspaceAtStart={() => backspaceAtStart(i)}
+                onDeleteAtEnd={() => deleteAtEnd(i)}
+                onArrowUpAtFirstLine={() => arrowUpAtFirstLine(i)}
+                onArrowDownAtLastLine={() => arrowDownAtLastLine(i)}
+                readOnly={readOnly}
+                ref={(editor) => {
+                  if (editor) elementsRef.current.set(s.key, editor);
+                  else elementsRef.current.delete(s.key);
+                }}
+              />
             )}
           </Box>
         ))}

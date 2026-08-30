@@ -15,8 +15,8 @@ import classes from "./MarkdownView.module.css";
  * - 表は横スクロールする箱で包む (幅広の表でページ全体が横に伸びないように)
  * - onClick があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
  *   ドラッグで文字を選択しただけのときは切り替えない (選択が残っている click は無視)
- * - 他の Textarea が編集中のときは mousedown でそれを blur させない (blur で先にレイアウトが
- *   変わるとクリック位置がずれるため。フォーカスの移動は onClick 側が行う)。
+ * - 他のセクションのエディタ (CodeMirror) が編集中のときは mousedown でそれを blur させない (blur で先に
+ *   レイアウトが変わるとクリック位置がずれるため。フォーカスの移動は onClick 側が行う)。
  *   編集中のものが無ければ止めない (文字の選択ができるように)
  * - ref は外側の要素 (スクショはこの要素をそのまま画像にする)
  */
@@ -61,7 +61,7 @@ export function MarkdownView({
       onMouseDown={
         editable
           ? (e) => {
-              if (document.activeElement instanceof HTMLTextAreaElement) e.preventDefault();
+              if (document.activeElement?.closest(".cm-content")) e.preventDefault();
             }
           : undefined
       }

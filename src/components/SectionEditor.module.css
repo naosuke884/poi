@@ -1,0 +1,82 @@
+/* CodeMirror の既定はコード向け (monospace / フォーカス枠 / 内側の余白) なので、Textarea (unstyled) と
+   MarkdownView.module.css の見た目に揃える。
+   CodeMirror 自身のテーマのセレクタはクラス 2 つ (.ͼ1 .cm-content など) なので、ここはクラス 3 つ
+   (.root + .cm-editor + 対象) にして、読み込み順によらず必ずこちらが勝つようにする。
+   色は Mantine の CSS 変数に任せる (ダークモードも変数で切り替わる) */
+
+.root :global(.cm-editor.cm-focused) {
+  outline: none;
+}
+
+/* 既定の overflow: auto だと箱の中でスクロールしてしまう。Textarea (autosize) と同じく内容の高さに広がる */
+.root :global(.cm-editor .cm-scroller) {
+  font-family: var(--mantine-font-family);
+  line-height: 1.55;
+  overflow: visible;
+}
+
+/* 16px 以上なら iOS でフォーカス時に拡大されない (Textarea size="md" と同じ)。
+   caret-color の既定は light / dark の facet 依存 (Mantine のカラースキームを知らない) ので文字色に合わせる */
+.root :global(.cm-editor .cm-content) {
+  font-size: var(--mantine-font-size-md);
+  padding: 0;
+  caret-color: var(--mantine-color-text);
+  overflow-wrap: anywhere;
+}
+
+/* 既定の左右の余白を消して MarkdownView と左端を揃える */
+.root :global(.cm-editor .cm-line) {
+  padding: 0;
+}
+
+/* 複数行のプレースホルダ (\n 区切り) */
+.root :global(.cm-editor .cm-placeholder) {
+  color: var(--mantine-color-placeholder);
+  white-space: pre-line;
+}
+
+/* 見出し行: 大きさと左の縦棒は MarkdownView.module.css と同じ。
+   上の余白は MarkdownView の margin-top と合わせる (セクション先頭では 0)。
+   記号 (#) は隠さず薄く残すだけなので、カーソルの出入りで行の高さは変わらない */
+.root :global(.cm-editor .cm-line:is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6)) {
+  font-weight: 700;
+  padding-top: var(--mantine-spacing-md);
+}
+.root :global(.cm-editor .cm-content > .cm-line:first-child) {
+  padding-top: 0;
+}
+.root :global(.cm-editor .cm-line.md-h1) {
+  font-size: 1.75rem;
+}
+.root :global(.cm-editor .cm-line.md-h2) {
+  font-size: 1.375rem;
+}
+.root :global(.cm-editor .cm-line.md-h3) {
+  font-size: 1.125rem;
+}
+.root :global(.cm-editor .cm-line:is(.md-h4, .md-h5, .md-h6)) {
+  font-size: 1rem;
+}
+.root :global(.cm-editor .cm-line:is(.md-h1, .md-h2)) {
+  padding-left: 12px;
+  border-left-style: solid;
+}
+.root :global(.cm-editor .cm-line.md-h1) {
+  border-left-width: 4px;
+  border-left-color: var(--mantine-primary-color-filled);
+}
+.root :global(.cm-editor .cm-line.md-h2) {
+  border-left-width: 3px;
+  border-left-color: var(--mantine-color-default-border);
+}
+
+/* 記号 (# / - / 1.) は薄く */
+.root :global(.cm-editor .md-mark) {
+  color: var(--mantine-color-dimmed);
+}
+
+/* URL はリンクの見た目。カーソルは text のまま (通常クリックはカーソル移動で、開くのは Ctrl / Cmd + クリック) */
+.root :global(.cm-editor .md-url) {
+  color: var(--mantine-color-anchor);
+  text-decoration: underline;
+}

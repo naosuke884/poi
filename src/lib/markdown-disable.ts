@@ -19,7 +19,9 @@ export const remarkDisable: Plugin<[readonly string[]]> = function (names) {
  * メモ用途なので、使えるのは「# 見出し」「- 箇条書き / 1. 番号付き」と URL の自動リンク
  * (裸の URL: remark-gfm、<url>: autolink) だけ。それ以外の記法は書いた文字がそのまま表示される。
  * (裸の URL の自動リンクは構文ではなくパース後の処理なので、消すなら remark-gfm ごと外す。
- *  autolink を消すと <url> の末尾 > まで裸 URL として拾われるので残している)
+ *  autolink を消すと <url> の末尾 > まで裸 URL として拾われるので残している)。
+ * 編集中セクションの装飾 (src/lib/section-markdown.ts の parser の remove) と対応させること:
+ * 片方だけ変えると、編集中と表示で見た目が食い違う
  */
 export const BOARD_MARKDOWN_DISABLED: readonly string[] = [
   // 見出しの別記法・区切り

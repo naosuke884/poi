@@ -9,9 +9,9 @@ export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sectio
 export type DraftSection = { id: string | null; content: string };
 
 /**
- * 画面上の 1 セクション (= 1 つの Textarea)。
- * key は React の key と Textarea の参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
- * 分割 / 結合ではフォーカスのある Textarea の DOM を使い回すため、key と id は別々に引き継がれる
+ * 画面上の 1 セクション (編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示)。
+ * key は React の key とエディタの参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
+ * 分割 / 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
  * (key はフォーカスのある部分に、id は先頭の部分に付く)。
  * id / expiresAt はサーバに保存済みのときだけ入る
  */
@@ -52,10 +52,10 @@ export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
 }
 
 /**
- * Textarea の入力に区切り (空行 2 つ = SECTION_SEPARATOR) が含まれていたら、そこでセクションを分ける。
+ * エディタの入力に区切り (空行 2 つ = SECTION_SEPARATOR) が含まれていたら、そこでセクションを分ける。
  * 区切りが無ければ null。
  * parts は分けた後の各セクションの内容 (区切りちょうどで分けるだけで、それ以外の改行は残す)。
- * focus はカーソル (cursor: 入力後の selectionStart) を置く先の part とその中の位置。
+ * focus はカーソル (cursor: 入力後のカーソル位置) を置く先の part とその中の位置。
  * カーソルが区切りの途中 (改行 3 つの間) にあるときは次の part の先頭に置く
  */
 export function splitAtSeparator(

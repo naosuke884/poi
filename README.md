@@ -21,9 +21,10 @@ It runs entirely on a single Cloudflare Worker with a D1 database, so you can se
   physically deletes expired ones.
 - **Autosave** — there is no save button. Changes are saved one second after you stop typing.
   A cloud icon in the header shows the save state.
-- **Lightweight Markdown** — sections you are not editing are rendered as Markdown. Only headings,
-  bullet / numbered lists and auto-linked URLs are enabled; everything else (emphasis, code, quotes, tables,
-  HTML, …) is shown literally so a stray `*` or `>` never mangles a note.
+- **Lightweight Markdown** — sections you are not editing are rendered as Markdown; the section you are
+  editing keeps the Markdown source as is but styles headings, list markers and URLs in place (iA Writer style,
+  markers stay visible). Only headings, bullet / numbered lists and auto-linked URLs are enabled; everything
+  else (emphasis, code, quotes, tables, HTML, …) is shown literally so a stray `*` or `>` never mangles a note.
 - **Copy / screenshot a section** — the buttons on each section's divider copy its text (Markdown as written)
   or turn its rendered view into a PNG, placed on the clipboard (downloaded where the browser can't do that).
 - **Installable PWA** — add it to your home screen. When offline it shows the last fetched board read-only,
@@ -39,7 +40,7 @@ It runs entirely on a single Cloudflare Worker with a D1 database, so you can se
 | API       | [Hono](https://hono.dev/) with typed RPC client, [Zod](https://zod.dev/) validation |
 | Auth      | [Better Auth](https://www.better-auth.com/) (Google OAuth)                  |
 | DB        | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit migrations           |
-| Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown) |
+| Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
 | Build     | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
 
 ## Self-hosting
@@ -158,6 +159,7 @@ public/     PWA icons
 
 How things work — the board editor, the `/api/board` contract, the expiry cron, PWA caching and offline
 handling — is explained in comments at the top of the relevant files (`src/components/Board.tsx`,
+`src/components/SectionEditor.tsx`, `src/lib/section-markdown.ts`,
 `worker/memo/routes.ts`, `worker/memo/sweep.ts`, `vite.config.ts`, `src/routes/index.tsx`).
 
 ## Contributing
