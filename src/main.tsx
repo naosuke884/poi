@@ -10,7 +10,10 @@ import { routeTree } from "./routeTree.gen";
 const router = createRouter({
   routeTree,
   defaultPreload: "intent",
-  scrollRestoration: true,
+  // 板 (/) 以外はスクロール位置を復元する (履歴で戻ったときなど)。
+  // 板は Board が描画後に最後のセクションの冒頭へスクロールするので、ルーターには触らせない
+  // (true だと onRendered で保存位置 or 先頭へ scrollTo され、Board のスクロールが上書きされる)
+  scrollRestoration: ({ location }) => location.pathname !== "/",
   // loader / beforeLoad の例外 (オフラインでキャッシュも無い場合など) の共通表示
   defaultErrorComponent: RouteErrorFallback,
 });
