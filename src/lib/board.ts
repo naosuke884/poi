@@ -75,6 +75,11 @@ export function splitAtSeparator(
   return { parts, focus: { index: last, offset: parts[last]!.length } };
 }
 
+/** 折り畳み表示用のプレビュー (最初の空でない行。無ければ空文字) */
+export function firstLine(content: string): string {
+  return content.split("\n").find((line) => line.trim() !== "")?.trim() ?? "";
+}
+
 /**
  * 期限までの残り日数 (切り上げ)。書いた直後は TTL と同じ日数、最終日は 1。期限切れなら 0
  * (期限切れのセクションはサーバが返さないので、通常 0 にはならない)

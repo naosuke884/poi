@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
+import { clearCollapsed } from "@/lib/collapsed-sections";
 import { OfflineError, isNetworkError } from "@/lib/offline";
 import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } from "@/lib/session-cache";
 
@@ -35,7 +36,10 @@ export async function requireLogin(location: { href: string }): Promise<LoginCon
     if (!error) {
       const stale = readCachedUser();
       clearCachedUser();
-      if (stale) clearBoardCache(stale.id);
+      if (stale) {
+        clearBoardCache(stale.id);
+        clearCollapsed(stale.id);
+      }
     }
     throw redirect({ to: "/login", search: { redirect: location.href } });
   }

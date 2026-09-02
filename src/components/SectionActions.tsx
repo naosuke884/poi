@@ -47,6 +47,38 @@ export function SectionActions({
   );
 }
 
+/**
+ * 区切り線に置く折り畳みトグル (▾ / ▸)。折り畳み状態は Board が持つ。
+ * mousedown を止めるのは他のボタンと同じ (編集中のエディタを blur させない)
+ */
+export function SectionCollapseToggle({
+  index,
+  collapsed,
+  onToggle,
+}: {
+  index: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Tooltip label={collapsed ? "展開" : "折り畳む"} withArrow>
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="xs"
+        aria-label={
+          collapsed ? `セクション ${index + 1} を展開` : `セクション ${index + 1} を折り畳む`
+        }
+        aria-expanded={!collapsed}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onToggle}
+      >
+        {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
 type Feedback = { ok: boolean; message: string };
 
 function ActionButton({
@@ -164,6 +196,22 @@ function XIcon() {
     <Svg>
       <path d="M18 6l-12 12" />
       <path d="M6 6l12 12" />
+    </Svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <Svg>
+      <path d="M6 9l6 6l6 -6" />
+    </Svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <Svg>
+      <path d="M9 6l6 6l-6 6" />
     </Svg>
   );
 }

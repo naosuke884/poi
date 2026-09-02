@@ -32,6 +32,7 @@ import {
   type DraftSection,
   type EditableSection,
   daysUntil,
+  firstLine,
   formatDate,
   newKey,
   newSection,
@@ -41,8 +42,9 @@ import {
   toEditable,
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
+import { readCollapsedIds, writeCollapsedIds } from "@/lib/collapsed-sections";
 import { MarkdownView } from "@/components/MarkdownView";
-import { SectionActions } from "@/components/SectionActions";
+import { SectionActions, SectionCollapseToggle } from "@/components/SectionActions";
 import { SectionEditor, type SectionEditorHandle } from "@/components/SectionEditor";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
@@ -69,6 +71,9 @@ const UNDO_DELETE_MS = 8000;
  *   空のセクションは送らない (画面には残る)
  * - 入力停止から 1 秒後に丸ごと保存する (自動保存)。保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
+ * - 区切り線の ▾ でセクションを折り畳める (内容を隠して最初の行だけ薄く出す。クリックか ▸ で開く)。
+ *   折り畳みは保存済みのセクションの id で localStorage に記録し、次に開いたときも折り畳んだまま (端末ごと)。
+ *   折り畳んだセクションは編集に入れず、↑↓ は飛ばし、隣からの結合 (Backspace / Delete) もしない
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  */
@@ -89,6 +94,38 @@ export function Board({
   const latestRef = useRef(sections);
   // サーバに保存済みのもの (差分の有無の判定用)
   const savedRef = useRef<DraftSection[]>(initial.map(({ id, content }) => ({ id, content })));
+
+  // 折り畳んだセクション (key の集合)。保存済みのセクションは id を localStorage に記録して
+  // 次に開いたときも折り畳んだまま (未保存のセクションの折り畳みは画面内だけ)
+  const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => {
+    const ids = new Set(readCollapsedIds(userId));
+    return new Set(sections.filter((s) => s.id !== null && ids.has(s.id)).map((s) => s.key));
+  });
+  const collapsedRef = useRef(collapsedKeys);
+  collapsedRef.current = collapsedKeys;
+  // localStorage の記録を今の画面に合わせて書き直す (板から消えたセクションの id はここで落ちる)
+  const persistCollapsed = (keys: ReadonlySet<string>) => {
+    writeCollapsedIds(
+      userId,
+      latestRef.current.flatMap((s) => (keys.has(s.key) && s.id !== null ? [s.id] : [])),
+    );
+  };
+  const toggleCollapsed = (key: string) => {
+    const next = new Set(collapsedRef.current);
+    if (!next.delete(key)) next.add(key);
+    setCollapsedKeys(next);
+    persistCollapsed(next);
+    // 編集中のセクションを折り畳んだら編集をやめる
+    if (next.has(key)) setEditingKey((k) => (k === key ? null : k));
+  };
+  // フォーカス (= 編集) するときは開く。折り畳んだままではエディタが描画されない
+  const expandFor = (key: string) => {
+    if (!collapsedRef.current.has(key)) return;
+    const next = new Set(collapsedRef.current);
+    next.delete(key);
+    setCollapsedKeys(next);
+    persistCollapsed(next);
+  };
 
   const [status, setStatus] = useState<SaveStatus>("saved");
   const statusRef = useRef(status);
@@ -114,6 +151,7 @@ export function Board({
   const [editingKey, setEditingKey] = useState<string | null>(null);
   // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
   const focusLater = (key: string, pos: number) => {
+    expandFor(key);
     pendingFocusRef.current = { key, pos };
     setEditingKey(key);
   };
@@ -219,6 +257,7 @@ export function Board({
           return s.id === null ? s : { ...s, id: null, expiresAt: null };
         }),
       );
+      persistCollapsed(collapsedRef.current); // 保存で id が付いた / 消えたセクションを記録に反映
       saved = true;
       setStatus("saved");
     } catch (e) {
@@ -349,21 +388,25 @@ export function Board({
 
   // 隣のセクションとの結合 / 移動。境界にいるかの判定 (選択なし・IME 変換中でない・先頭 / 末尾 / 表示上の
   // 最初 / 最後の行) は SectionEditor が行い、ここは隣が無ければ何もしない (↑↓ は false を返して通常の動きに任せる)
+  // 折り畳んだ隣とは結合しない (見えていない内容が変わってしまうため)
   const backspaceAtStart = (i: number) => {
-    if (i > 0) mergeSections(i - 1, latestRef.current[i]!.key);
+    const prev = latestRef.current[i - 1];
+    if (prev && !collapsedRef.current.has(prev.key)) mergeSections(i - 1, latestRef.current[i]!.key);
   };
   const deleteAtEnd = (i: number) => {
     const cur = latestRef.current;
-    if (i < cur.length - 1) mergeSections(i, cur[i]!.key);
+    const next = cur[i + 1];
+    if (next && !collapsedRef.current.has(next.key)) mergeSections(i, cur[i]!.key);
   };
+  // ↑↓ は折り畳んだセクションを飛ばして次の開いているセクションへ
   const arrowUpAtFirstLine = (i: number) => {
-    const prev = latestRef.current[i - 1];
+    const prev = latestRef.current.slice(0, i).findLast((s) => !collapsedRef.current.has(s.key));
     if (!prev) return false;
     focus(prev.key, prev.content.length);
     return true;
   };
   const arrowDownAtLastLine = (i: number) => {
-    const next = latestRef.current[i + 1];
+    const next = latestRef.current.slice(i + 1).find((s) => !collapsedRef.current.has(s.key));
     if (!next) return false;
     focus(next.key, 0);
     return true;
@@ -382,6 +425,7 @@ export function Board({
   // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
   // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
   useEffect(() => {
+    persistCollapsed(collapsedRef.current);
     revealLast();
     return () => {
       cancelTimer();
@@ -450,7 +494,8 @@ export function Board({
     e.target === e.currentTarget || (e.target as HTMLElement).hasAttribute("data-section");
   const focusEnd = (e: MouseEvent<HTMLDivElement>) => {
     if (readOnly || !isBlank(e)) return;
-    const last = latestRef.current.at(-1);
+    // 末尾が折り畳まれていたら、その上の開いているセクションへ
+    const last = latestRef.current.findLast((s) => !collapsedRef.current.has(s.key));
     if (last) focus(last.key, last.content.length);
   };
   const keepFocus = (e: MouseEvent<HTMLDivElement>) => {
@@ -495,7 +540,7 @@ export function Board({
               // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
               // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。文字数表示のぶんは少し余る)
               minHeight:
-                i === sections.length - 1 && sections.length > 1
+                i === sections.length - 1 && sections.length > 1 && !collapsedKeys.has(s.key)
                   ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
                   : undefined,
             }}
@@ -507,6 +552,13 @@ export function Board({
                 style={{ flex: 1 }}
                 label={
                   <Group gap="sm" wrap="nowrap">
+                    {s.content.trim() !== "" && (
+                      <SectionCollapseToggle
+                        index={i}
+                        collapsed={collapsedKeys.has(s.key)}
+                        onToggle={() => toggleCollapsed(s.key)}
+                      />
+                    )}
                     {s.expiresAt !== null ? (
                       <span>
                         あと {daysUntil(s.expiresAt)} 日で消えます
@@ -518,7 +570,7 @@ export function Board({
                     ) : (
                       <span>新しいセクション</span>
                     )}
-                    {s.content.trim() !== "" && (
+                    {s.content.trim() !== "" && !collapsedKeys.has(s.key) && (
                       <SectionActions
                         index={i}
                         onCopy={() => copySectionText(s.content)}
@@ -541,7 +593,17 @@ export function Board({
                 </Tooltip>
               )}
             </Group>
-            {(readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
+            {collapsedKeys.has(s.key) && s.content.trim() !== "" ? (
+              /* 折り畳み中: 最初の行だけ薄く出す。クリックで開く (キーボードは区切り線の ▸ から) */
+              <Text
+                c="dimmed"
+                lineClamp={1}
+                style={{ cursor: "pointer", overflowWrap: "anywhere" }}
+                onClick={() => toggleCollapsed(s.key)}
+              >
+                {firstLine(s.content)}
+              </Text>
+            ) : (readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
               <MarkdownView
                 content={s.content}
                 aria-label={`セクション ${i + 1}`}

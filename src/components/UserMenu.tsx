@@ -3,6 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
+import { clearCollapsed } from "@/lib/collapsed-sections";
 import { CONTACT_URL } from "@/components/LegalPage";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
 import { useOnline } from "@/lib/use-online";
@@ -55,6 +56,7 @@ export function UserMenu() {
     // この端末に残るオフライン閲覧用のキャッシュも消す
     clearCachedUser();
     clearBoardCache(user.id);
+    clearCollapsed(user.id);
     await router.invalidate();
     await router.navigate({ to: "/" });
     setLoggingOut(false);
