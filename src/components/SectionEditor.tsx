@@ -3,6 +3,7 @@ import { Annotation, Compartment, EditorSelection, EditorState, Prec, Transactio
 import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { type Ref, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
+import { insertNewlineContinueList } from "@/lib/list-continue";
 import { sectionMarkdown } from "@/lib/section-markdown";
 import classes from "./SectionEditor.module.css";
 
@@ -296,9 +297,10 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
         return last && callbacks.current.onArrowDownAtLastLine();
       },
     },
-    // Enter は単純な改行にする (standardKeymap の insertNewlineAndIndent は行頭の空白を次の行にコピーし、
-    // カーソル直後の空白を食うので Textarea の挙動から変わってしまう)
-    { key: "Enter", run: insertNewline, shift: insertNewline },
+    // Enter は箇条書きだけ同じ階層で続け、それ以外は単純な改行 (standardKeymap の insertNewlineAndIndent は
+    // 行頭の空白を次の行にコピーし、カーソル直後の空白を食うので Textarea の挙動から変わってしまう)。
+    // Shift+Enter は常に単純な改行 (項目の中で続きの行を書く逃げ道)
+    { key: "Enter", run: insertNewlineContinueList, shift: insertNewline },
     // Tab で編集をやめる (blur して onTab → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
     // ブラウザ既定の Tab (次の要素へ) に任せると、最後のセクションではフォーカスがページの外 (ブラウザの UI) へ
     // 抜けて document.hasFocus() が false になり、Board の onBlur が編集中のまま残してしまう。
