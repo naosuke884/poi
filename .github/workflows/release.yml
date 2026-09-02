@@ -1,0 +1,56 @@
+# v* タグの push で GitHub Release を作る。
+#
+# リリースノートは注釈付きタグのメッセージ本文 (1 行目のサブジェクトを除く) をそのまま使う。
+# タグの切り方・リリース前の留意事項は .claude/skills/release/SKILL.md を参照。
+# デプロイはこのワークフローとは無関係に、main への push ごとに deploy.yml が行う。
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: gh release create
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # 前のタグを探すのに全履歴が要る
+
+      # actions/checkout はタグを peel して注釈を落とすことがあるので取り直す
+      # (https://github.com/actions/checkout/issues/290)
+      - name: Re-fetch the annotated tag
+        run: git fetch --force origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+
+          # 再実行や手動作成済みの場合は何もしない
+          if gh release view "$tag" --json name >/dev/null 2>&1; then
+            echo "release $tag already exists; skipping"
+            exit 0
+          fi
+
+          # 本文 = タグ注釈のメッセージ本文。空 (軽量タグ等) なら前タグ以降のコミット見出しで代用
+          notes="$(git tag -l --format='%(contents:body)' "$tag")"
+          prev="$(git describe --tags --abbrev=0 "$tag^" 2>/dev/null || true)"
+          if [ -z "${notes//[[:space:]]/}" ]; then
+            range="${prev:+$prev..}$tag"
+            notes="$(git log --reverse --format='- %s' "$range" | grep -v '^- Release v' || true)"
+          fi
+
+          if [ -n "$prev" ]; then
+            notes="$notes
+
+          **Full changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$tag"
+          fi
+
+          gh release create "$tag" --title "$tag" --verify-tag --notes "$notes"
