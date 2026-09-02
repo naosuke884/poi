@@ -9,7 +9,7 @@
   },
   "homepage": "https://github.com/naosuke884/poi#readme",
   "bugs": "https://github.com/naosuke884/poi/issues",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "engines": {
     "node": "24"
