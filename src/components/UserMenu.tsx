@@ -1,4 +1,4 @@
-import { Avatar, Button, Group, Loader, Menu, Skeleton, Text, UnstyledButton } from "@mantine/core";
+import { Avatar, Button, Group, Loader, Menu, Modal, Skeleton, Stack, Text, UnstyledButton } from "@mantine/core";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
@@ -16,6 +16,7 @@ export function UserMenu() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
@@ -63,9 +64,8 @@ export function UserMenu() {
     await router.navigate({ to: "/" });
     setLoggingOut(false);
   };
+  // 確認は Modal (下記) で済ませてから呼ばれる
   const deleteAccount = async () => {
-    // 確認は Board の離脱確認と同じく window.confirm で統一する
-    if (!window.confirm("アカウントを削除しますか?板の内容もすべて消え、元に戻せません。")) return;
     setDeleteError(null);
     setDeleting(true);
     try {
@@ -124,11 +124,41 @@ export function UserMenu() {
           <Menu.Item color="red" disabled={offline || busy} onClick={() => void logout()}>
             ログアウト
           </Menu.Item>
-          <Menu.Item color="red" disabled={offline || busy} onClick={() => void deleteAccount()}>
+          <Menu.Item color="red" disabled={offline || busy} onClick={() => setConfirmingDelete(true)}>
             アカウント削除
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      <Modal
+        opened={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        title="アカウント削除"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            アカウントを削除しますか？
+            <br />
+            メモした内容はすべて消え、元に戻せません。
+          </Text>
+          {/* 取り返しがつかない操作なので、キャンセルを主ボタン (塗り + 初期フォーカス) にして強調する */}
+          <Group justify="flex-end" gap="sm">
+            <Button
+              color="red"
+              variant="outline"
+              onClick={() => {
+                setConfirmingDelete(false);
+                void deleteAccount();
+              }}
+            >
+              削除する
+            </Button>
+            <Button data-autofocus onClick={() => setConfirmingDelete(false)}>
+              キャンセル
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
       {loggingOut && <Loader size="xs" aria-label="ログアウト中…" />}
       {deleting && <Loader size="xs" aria-label="アカウント削除中…" />}
       {(logoutError ?? deleteError) && (
