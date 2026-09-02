@@ -14,6 +14,8 @@ export function UserMenu() {
   const online = useOnline();
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
@@ -61,6 +63,36 @@ export function UserMenu() {
     await router.navigate({ to: "/" });
     setLoggingOut(false);
   };
+  const deleteAccount = async () => {
+    // 確認は Board の離脱確認と同じく window.confirm で統一する
+    if (!window.confirm("アカウントを削除しますか?板の内容もすべて消え、元に戻せません。")) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const { error: deleteApiError } = await authClient.deleteUser();
+      if (deleteApiError) {
+        // 主な失敗はログインから 1 日以上経ったセッション (Better Auth の鮮度チェック)。
+        // 再ログインすれば新しいセッションになり削除できる
+        setDeleteError(
+          "アカウントを削除できませんでした。一度ログアウトして再ログインし、もう一度お試しください",
+        );
+        setDeleting(false);
+        return;
+      }
+    } catch {
+      setDeleteError("オフラインのためアカウントを削除できません");
+      setDeleting(false);
+      return;
+    }
+    // この端末に残るオフライン閲覧用のキャッシュも消す
+    clearCachedUser();
+    clearBoardCache(user.id);
+    clearCollapsed(user.id);
+    await router.invalidate();
+    await router.navigate({ to: "/" });
+    setDeleting(false);
+  };
+  const busy = loggingOut || deleting;
   return (
     <Group gap="xs" wrap="nowrap">
       <Menu shadow="md" width={200}>
@@ -88,16 +120,20 @@ export function UserMenu() {
             問い合わせ (GitHub Issues)
           </Menu.Item>
           <Menu.Divider />
-          {offline &&<Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
-          <Menu.Item color="red" disabled={offline || loggingOut} onClick={() => void logout()}>
+          {offline && <Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
+          <Menu.Item color="red" disabled={offline || busy} onClick={() => void logout()}>
             ログアウト
+          </Menu.Item>
+          <Menu.Item color="red" disabled={offline || busy} onClick={() => void deleteAccount()}>
+            アカウント削除
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
       {loggingOut && <Loader size="xs" aria-label="ログアウト中…" />}
-      {logoutError && (
+      {deleting && <Loader size="xs" aria-label="アカウント削除中…" />}
+      {(logoutError ?? deleteError) && (
         <Text size="xs" c="red" role="alert">
-          {logoutError}
+          {logoutError ?? deleteError}
         </Text>
       )}
     </Group>
