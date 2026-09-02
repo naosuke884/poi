@@ -129,12 +129,8 @@ export function UserMenu() {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      <Modal
-        opened={confirmingDelete}
-        onClose={() => setConfirmingDelete(false)}
-        title="アカウント削除"
-        centered
-      >
+      {/* 見出しは付けない (本文だけで足りる)。閉じるのはキャンセル / Esc / 外側クリック */}
+      <Modal opened={confirmingDelete} onClose={() => setConfirmingDelete(false)} withCloseButton={false} centered>
         <Stack gap="md">
           <Text size="sm">
             アカウントを削除しますか？
@@ -142,7 +138,7 @@ export function UserMenu() {
             メモした内容はすべて消え、元に戻せません。
           </Text>
           {/* 取り返しがつかない操作なので、キャンセルを主ボタン (塗り + 初期フォーカス) にして強調する */}
-          <Group justify="flex-end" gap="sm">
+          <Group gap="sm">
             <Button
               color="red"
               variant="outline"
