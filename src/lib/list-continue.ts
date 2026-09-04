@@ -2,8 +2,9 @@ import { insertNewline } from "@codemirror/commands";
 import type { Command } from "@codemirror/view";
 
 // 箇条書きの項目の行頭: インデント + 記号 (`-` / `+` / `*` / `1.` / `1)`) + 空白。
-// MarkdownView (micromark) が項目と見なす形と揃えている (記号の後に空白が必要)
-const LIST_ITEM_RE = /^([ \t]*)([-+*]|\d+[.)])([ \t]+)/;
+// MarkdownView (micromark) が項目と見なす形と揃えている (記号の後に空白が必要。
+// 番号は CommonMark と同じ 9 桁まで: 10 桁以上の数字で始まる行はリストではなくただの文)
+export const LIST_ITEM_RE = /^([ \t]*)([-+*]|\d{1,9}[.)])([ \t]+)/;
 
 /**
  * Enter で箇条書きを同じ階層で続ける。

@@ -53,9 +53,30 @@ function interruptsParagraph(line: Line): boolean {
   const text = line.text.slice(line.pos);
   return /^#{1,6}(\s|$)/.test(text) || /^[-+*]\s+\S/.test(text) || /^1[.)]\s+\S/.test(text);
 }
+/**
+ * 開いている番号付きリストの兄弟項目 (番号は 1 でなくてよい)。
+ * micromark は開いているリストの続きの項目なら番号を問わず前の項目の本文 (段落) を閉じるが、
+ * interruptsParagraph は「段落を新しいリストで中断する」規則 (1 始まりのみ) しか見ていないため、
+ * `\t1. a\n\t2. b` (リストを選択して Tab した形) の 2 行目が前の項目の本文に飲み込まれてしまう。
+ * 「最内の文脈が番号付きリストの項目」かつ「この行でその項目が継続しなかった (line.depth < cx.depth。
+ * 継続していれば行は項目の本文の深いインデントで、新しいリスト = 1 始まり規則の対象)」なら兄弟と見なす。
+ * line.depth は公開 API に無い (実装にはある) ので、無くなったら従来どおりに落とす (装飾だけの違いに留まる)
+ */
+function continuesOrderedList(cx: BlockContext, line: Line): boolean {
+  const lineDepth = (line as { depth?: number }).depth;
+  return (
+    typeof lineDepth === "number" &&
+    lineDepth < cx.depth &&
+    cx.depth >= 2 &&
+    cx.parentType(cx.depth - 1).name === "ListItem" &&
+    cx.parentType(cx.depth - 2).name === "OrderedList" &&
+    /^\d{1,9}[.)][ \t]+\S/.test(line.text.slice(line.pos))
+  );
+}
 class DeepIndentBreak implements LeafBlockParser {
   nextLine(cx: BlockContext, line: Line, leaf: LeafBlock): boolean {
-    if (line.indent < line.baseIndent + 4 || !interruptsParagraph(line)) return false;
+    if (line.indent < line.baseIndent + 4) return false;
+    if (!interruptsParagraph(line) && !continuesOrderedList(cx, line)) return false;
     cx.addLeafElement(
       leaf,
       cx.elt("Paragraph", leaf.start, leaf.start + leaf.content.length, cx.parser.parseInline(leaf.content, leaf.start)),
@@ -77,8 +98,11 @@ class DeepIndentBreak implements LeafBlockParser {
  * GFM の `Autolink` 拡張は裸 URL (https:// / www. / メールアドレス) 用。どちらもノード名は `URL`。
  *
  * 揃いきらない細部 (装飾だけの違いで、文字は変えないので許容している):
- * - `#<タブ>見出し` は micromark では見出しだが lezer は `#` の後にスペースしか認めない (タブは Tab キーで
- *   入らず、貼り付けでしか来ない)
+ * - `#<タブ>見出し` は micromark では見出しだが lezer は `#` の後にスペースしか認めない (Tab キーはリスト外では
+ *   タブを挿すので `#` の直後に入れれば作れるが、まず書かない形)
+ * - 段落 (項目の本文) の直後の `2.` などで始まる番号付き項目は、micromark では段落の続き (1 始まりしか段落を
+ *   中断できない) だが lezer は入れ子のリストにする。Tab のインデント (src/lib/list-indent.ts) は番号を
+ *   振り直してこの形を作らないので、手でインデントを書いたときだけ食い違う
  * - 裸 URL の境界は remark-gfm と「ほぼ同じ」: `HTTPS://` (大文字) や `_https://`、ドット無しのホスト、
  *   `<!-- -->` / `<a>` の中の URL は編集中はリンクにならず、末尾の `]` や `」` の含め方が 1 文字ずれることがある
  */

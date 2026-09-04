@@ -62,7 +62,8 @@ const UNDO_DELETE_MS = 8000;
  * 見出し・記号・URL を装飾して表示する) で、それ以外は Markdown をレンダリングして表示する (MarkdownView。
  * クリックするとその場所にカーソルを置いてエディタに戻る)。内容はそのまま Markdown テキストとして保存する
  * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次のセクションへ移る (空行 1 つはセクションの中に残る)。
- *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。Tab で編集をやめる (Markdown 表示に戻る)。
+ *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。
+ *   Tab / Shift+Tab はインデント操作、Esc で編集をやめる (Markdown 表示に戻る)。
  *   境界の判定はエディタが行い (SectionEditor のコールバック)、ここでは何をするかだけ決める。
  *   分割 / 結合ではフォーカスのあるエディタの DOM (key) をそのまま使い回し、カーソルだけ動かす
  *   (エディタを作り直してフォーカスを移すと、タッチ端末ではキーボードが閉じたり新しいエディタに
@@ -143,7 +144,7 @@ export function Board({
   const boxesRef = useRef(new Map<string, HTMLDivElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
-  // Tab で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (次の Tab はそこから先へ進み、
+  // Esc で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (Tab はそこから先へ進み、
   // Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
   const pendingViewFocusRef = useRef<string | null>(null);
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
@@ -411,7 +412,7 @@ export function Board({
     focus(next.key, 0);
     return true;
   };
-  // Tab: エディタを Markdown 表示に戻し、描画後にその表示へフォーカスを移す。
+  // Esc: エディタを Markdown 表示に戻し、描画後にその表示へフォーカスを移す。
   // CodeMirror の blur 通知 (onBlur) は 10ms 遅れて届くので待たない (その間に別の描画 (自動保存の状態表示など) が
   // 入ると上の layout effect が pendingViewFocusRef を消費してしまい、フォーカスが移らない)
   const exitEditing = (key: string) => {
@@ -615,7 +616,9 @@ export function Board({
               />
             ) : (
               <SectionEditor
-                aria-label={`セクション ${i + 1}`}
+                // Tab がインデントに使われて外へ出ないので、抜け方 (Esc) を読み上げでも案内する
+                // (MarkdownView の「(Enter で編集)」と対)
+                aria-label={`セクション ${i + 1} (Esc で編集をやめる)`}
                 placeholder={
                   sections.length === 1
                     ? [
@@ -623,6 +626,7 @@ export function Board({
                         `セクションごとに ${MEMO_TTL_DAYS} 日で消えます`,
                         "空行 2 つで次のセクションへ",
                         "Markdown が使えます (# 見出し、- 箇条書き)",
+                        "Tab でインデント、Esc で編集をやめる",
                       ].join("\n")
                     : undefined
                 }
@@ -634,7 +638,7 @@ export function Board({
                 onDeleteAtEnd={() => deleteAtEnd(i)}
                 onArrowUpAtFirstLine={() => arrowUpAtFirstLine(i)}
                 onArrowDownAtLastLine={() => arrowDownAtLastLine(i)}
-                onTab={() => exitEditing(s.key)}
+                onEscape={() => exitEditing(s.key)}
                 readOnly={readOnly}
                 ref={(editor) => {
                   if (editor) elementsRef.current.set(s.key, editor);

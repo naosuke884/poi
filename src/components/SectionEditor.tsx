@@ -1,9 +1,17 @@
-import { history, historyKeymap, insertNewline, standardKeymap, deleteCharBackwardStrict } from "@codemirror/commands";
+import {
+  history,
+  historyKeymap,
+  insertNewline,
+  simplifySelection,
+  standardKeymap,
+  deleteCharBackwardStrict,
+} from "@codemirror/commands";
 import { Annotation, Compartment, EditorSelection, EditorState, Prec, Transaction } from "@codemirror/state";
 import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { type Ref, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
 import { insertNewlineContinueList } from "@/lib/list-continue";
+import { indentLess, indentMoreOrInsertTab } from "@/lib/list-indent";
 import { sectionMarkdown } from "@/lib/section-markdown";
 import classes from "./SectionEditor.module.css";
 
@@ -26,8 +34,8 @@ type Props = {
   onArrowUpAtFirstLine(): boolean;
   /** 最後の (表示上の) 行で ↓。false を返せば通常の動き */
   onArrowDownAtLastLine(): boolean;
-  /** Tab で編集をやめた (blur 済み)。Board は Markdown 表示に切り替えてそこへフォーカスを移す */
-  onTab(): void;
+  /** Esc で編集をやめた (blur 済み)。Board は Markdown 表示に切り替えてそこへフォーカスを移す */
+  onEscape(): void;
   /** 複数行なら \n 区切り */
   placeholder?: string;
   readOnly?: boolean;
@@ -60,7 +68,8 @@ function applyFocus(view: EditorView, pos: number) {
  * Textarea と同じ使い勝手にする: 散文向けの spellcheck / 自動大文字化、Enter は単純な改行、
  * 文字数上限、複数行のプレースホルダ。
  * セクションの境界 (先頭で Backspace / 末尾で Delete / 最初の行で ↑ / 最後の行で ↓) はキー処理を横取りして
- * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。Tab は編集をやめる (blur)
+ * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。
+ * Tab / Shift+Tab はインデント操作 (src/lib/list-indent.ts)、Esc は編集をやめる (blur)
  */
 export function SectionEditor({
   value,
@@ -71,7 +80,7 @@ export function SectionEditor({
   onDeleteAtEnd,
   onArrowUpAtFirstLine,
   onArrowDownAtLastLine,
-  onTab,
+  onEscape,
   placeholder,
   readOnly = false,
   "aria-label": ariaLabel,
@@ -92,7 +101,7 @@ export function SectionEditor({
     onDeleteAtEnd,
     onArrowUpAtFirstLine,
     onArrowDownAtLastLine,
-    onTab,
+    onEscape,
   });
   callbacksRef.current = {
     onChange,
@@ -102,7 +111,7 @@ export function SectionEditor({
     onDeleteAtEnd,
     onArrowUpAtFirstLine,
     onArrowDownAtLastLine,
-    onTab,
+    onEscape,
   };
   // マウント後に変わりうる設定 (aria-label はセクション番号なので前が消えると変わる。placeholder は
   // セクションが 1 つのときだけ) は Compartment で差し替える
@@ -226,7 +235,7 @@ export function SectionEditor({
 
 type Callbacks = Pick<
   Props,
-  "onBackspaceAtStart" | "onDeleteAtEnd" | "onArrowUpAtFirstLine" | "onArrowDownAtLastLine" | "onTab"
+  "onBackspaceAtStart" | "onDeleteAtEnd" | "onArrowUpAtFirstLine" | "onArrowDownAtLastLine" | "onEscape"
 >;
 
 /** 選択が無い (カーソルだけ) なら head。IME 変換中は境界処理をしない (null) */
@@ -301,16 +310,18 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
     // 行頭の空白を次の行にコピーし、カーソル直後の空白を食うので Textarea の挙動から変わってしまう)。
     // Shift+Enter は常に単純な改行 (項目の中で続きの行を書く逃げ道)
     { key: "Enter", run: insertNewlineContinueList, shift: insertNewline },
-    // Tab で編集をやめる (blur して onTab → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
-    // ブラウザ既定の Tab (次の要素へ) に任せると、最後のセクションではフォーカスがページの外 (ブラウザの UI) へ
-    // 抜けて document.hasFocus() が false になり、Board の onBlur が編集中のまま残してしまう。
-    // Shift+Tab は既定のまま (前の要素へ。blur で Markdown 表示になる)。IME 変換中は触らない
+    // Tab はインデント (リストの階層下げ / タブ挿入)、Shift+Tab は戻し (src/lib/list-indent.ts)
+    { key: "Tab", run: indentMoreOrInsertTab, shift: indentLess },
+    // Esc で編集をやめる (blur して onEscape → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
+    // 選択があれば 1 回目の Esc は選択の解除だけ (多くのエディタと同じ。いきなり抜けると選択とカーソル位置を失う)。
+    // IME 変換中の Esc は変換の取り消しなので触らない
     {
-      key: "Tab",
+      key: "Escape",
       run(view) {
         if (view.composing) return false;
+        if (simplifySelection(view)) return true;
         view.contentDOM.blur();
-        callbacks.current.onTab();
+        callbacks.current.onEscape();
         return true;
       },
     },
