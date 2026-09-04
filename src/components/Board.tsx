@@ -72,7 +72,8 @@ const UNDO_DELETE_MS = 8000;
  *   空のセクションは送らない (画面には残る)
  * - 入力停止から 1 秒後に丸ごと保存する (自動保存)。保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
- * - 区切り線の ▾ でセクションを折り畳める (内容を隠して最初の行だけ薄く出す。クリックか ▸ で開く)。
+ * - 区切り線の ▾ でセクションを折り畳める (セクション全体が区切り線 1 行に収まり、最初の行を線の中に
+ *   薄く出す。プレビューのクリックか ▸ で開く)。
  *   折り畳みは保存済みのセクションの id で localStorage に記録し、次に開いたときも折り畳んだまま (端末ごと)。
  *   折り畳んだセクションは編集に入れず、↑↓ は飛ばし、隣からの結合 (Backspace / Delete) もしない
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
@@ -550,9 +551,12 @@ export function Board({
             <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
                 labelPosition="left"
-                style={{ flex: 1 }}
+                // minWidth 0: flex の既定 (min-width: auto) だと折り畳みプレビューの長い 1 行が
+                // 縮まず右へはみ出す。ラベル → Group → Text まで同じ理由で縮小を許す
+                style={{ flex: 1, minWidth: 0 }}
+                styles={{ label: { maxWidth: "100%", minWidth: 0 } }}
                 label={
-                  <Group gap="sm" wrap="nowrap">
+                  <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
                     {s.content.trim() !== "" && (
                       <SectionCollapseToggle
                         index={i}
@@ -561,7 +565,7 @@ export function Board({
                       />
                     )}
                     {s.expiresAt !== null ? (
-                      <span>
+                      <span style={{ flexShrink: 0 }}>
                         あと {daysUntil(s.expiresAt)} 日で消えます
                         {/* 期限の日付。狭い画面では省く (title 属性だとタッチ / キーボードで見られないので文字で出す) */}
                         <Text span inherit c="dimmed" visibleFrom="sm">
@@ -569,7 +573,7 @@ export function Board({
                         </Text>
                       </span>
                     ) : (
-                      <span>新しいセクション</span>
+                      <span style={{ flexShrink: 0 }}>新しいセクション</span>
                     )}
                     {s.content.trim() !== "" && !collapsedKeys.has(s.key) && (
                       <SectionActions
@@ -577,6 +581,25 @@ export function Board({
                         onCopy={() => copySectionText(s.content)}
                         onScreenshot={() => screenshot(s.key)}
                       />
+                    )}
+                    {collapsedKeys.has(s.key) && s.content.trim() !== "" && (
+                      /* 折り畳み中: 最初の行を区切り線の中に出す (長ければ省略)。クリックで開く
+                         (キーボードは区切り線の ▸ から) */
+                      <Text
+                        span
+                        inherit
+                        c="dimmed"
+                        style={{
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => toggleCollapsed(s.key)}
+                      >
+                        {firstLine(s.content)}
+                      </Text>
                     )}
                   </Group>
                 }
@@ -595,15 +618,8 @@ export function Board({
               )}
             </Group>
             {collapsedKeys.has(s.key) && s.content.trim() !== "" ? (
-              /* 折り畳み中: 最初の行だけ薄く出す。クリックで開く (キーボードは区切り線の ▸ から) */
-              <Text
-                c="dimmed"
-                lineClamp={1}
-                style={{ cursor: "pointer", overflowWrap: "anywhere" }}
-                onClick={() => toggleCollapsed(s.key)}
-              >
-                {firstLine(s.content)}
-              </Text>
+              /* 折り畳み中: セクション全体が区切り線 1 行に収まる (プレビューは区切り線のラベル内) */
+              null
             ) : (readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
               <MarkdownView
                 content={s.content}
