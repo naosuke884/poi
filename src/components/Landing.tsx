@@ -1,5 +1,6 @@
 import { Anchor, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
+import { useLayoutEffect } from "react";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 
 /**
@@ -7,6 +8,11 @@ import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
  * ログインの実処理 (OAuth 開始・規約への同意文) は /login に任せ、ここからは誘導するだけ
  */
 export function Landing() {
+  // ルーターのスクロール復元は "/" を除外している (Board が自分で末尾へ合わせるため) ので、
+  // 板以外を表示するときはここで先頭に戻す (例: /terms から戻ってきた場合)
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <Stack gap="xl" py="xl" align="center">
       <Stack gap="sm" align="center" ta="center">
@@ -21,30 +27,37 @@ export function Landing() {
       </Stack>
 
       <Paper withBorder radius="md" p={0} style={{ overflow: "hidden", maxWidth: 860, width: "100%" }}>
-        <img
-          src="/landing-board.png"
-          alt={`poi の画面: 1 枚の板にセクションが並び、区切り線に「あと n 日で消えます」の期限が表示されている`}
-          style={{ display: "block", width: "100%", height: "auto" }}
-        />
+        {/* 配色に合わせたスクショを出す (width/height はロード中のレイアウトシフト防止) */}
+        <picture>
+          <source srcSet="/landing-board-dark.png" media="(prefers-color-scheme: dark)" />
+          <img
+            src="/landing-board.png"
+            width={2000}
+            height={1080}
+            alt={`poi の画面: 1 枚の板にセクションが並び、区切り線に「あと n 日で消えます」の期限が表示されている`}
+            style={{ display: "block", width: "100%", height: "auto" }}
+          />
+        </picture>
       </Paper>
 
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" maw={860} w="100%">
+        {/* 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る) */}
         <Stack gap={4}>
           <Text fw={600}>開いてすぐ書ける</Text>
-          <Text size="sm" c="dimmed">
+          <Text size="sm">
             1 枚の板に上から書くだけ。# 見出しや - 箇条書きなど、メモに要る分だけの Markdown が使えます。
           </Text>
         </Stack>
         <Stack gap={4}>
           <Text fw={600}>{MEMO_TTL_DAYS} 日で消える</Text>
-          <Text size="sm" c="dimmed">
+          <Text size="sm">
             空行 2 つかボタンで区切ったセクションごとに期限が付き、{MEMO_TTL_DAYS}{" "}
             日後に自動で消えます。期限は区切り線にいつも見えています。
           </Text>
         </Stack>
         <Stack gap={4}>
           <Text fw={600}>身軽に持ち出せる</Text>
-          <Text size="sm" c="dimmed">
+          <Text size="sm">
             セクションはコピーや画像化、折り畳みができ、スマホにはアプリとしてインストールも。オフラインでも読めます。
           </Text>
         </Stack>

@@ -2,13 +2,22 @@ import { Anchor, Button, Paper, Stack, Text, Title } from "@mantine/core";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { isNetworkError } from "@/lib/offline";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: typeof search.redirect === "string" ? search.redirect : undefined,
   }),
   beforeLoad: async ({ search }) => {
-    const { data } = await authClient.getSession();
+    // オフラインで getSession の fetch 自体が失敗したら未ログイン扱いでフォームを出す
+    // (ランディングの CTA から来られるので、ここで throw するとエラーページで行き止まりになる。
+    //  ログインボタンを押せば既存のエラーメッセージが状況を伝える)
+    let data: Awaited<ReturnType<typeof authClient.getSession>>["data"] | null = null;
+    try {
+      ({ data } = await authClient.getSession());
+    } catch (e) {
+      if (!isNetworkError(e)) throw e;
+    }
     if (data) throw redirect({ to: search.redirect ?? "/" });
   },
   component: Login,

@@ -490,11 +490,12 @@ export function Board({
   const length = boardLength(toDraft(sections));
 
   // 「セクションを追加」ボタン: 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
-  // 末尾が既に空のセクションならそれを使う (空のセクションは保存されないので、増やしても意味がない)
+  // 末尾が既に空 (完全に空文字。空白だけのセクションは保存されて期限を持っているので使い回さない)
+  // なら、それを使う (空のセクションは保存されないので、増やしても意味がない)
   const addSection = () => {
     const cur = latestRef.current;
     const last = cur.at(-1);
-    if (last && last.content.trim() === "") {
+    if (last && last.content === "") {
       focus(last.key, last.content.length);
     } else {
       const s = newSection();
@@ -704,6 +705,8 @@ export function Board({
                 <path d="M5 12l14 0" />
               </svg>
             }
+            // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。削除ボタンと同じ)
+            onMouseDown={(e) => e.preventDefault()}
             onClick={addSection}
           >
             セクションを追加
