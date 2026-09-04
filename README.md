@@ -5,32 +5,19 @@
 [日本語版 README](./README.ja.md)
 
 **poi** (ぽい, Japanese for "toss it away") is a single-page scratchpad for the things you only need for a
-little while: today's errands, a phone number, a half-formed thought. You sign in with Google, you get one
-board, and whatever you type is saved as you go and quietly deleted a month later. Nothing to organize,
-nothing to clean up.
+little while. You sign in with Google, you get one board, and whatever you type is autosaved as you go —
+each section expires 30 days after it was first written. **Try it at [poinote.app](https://poinote.app/)**
+(the UI is Japanese only).
 
-It runs entirely on a single Cloudflare Worker with a D1 database, so you can self-host it for free.
+This repository is the whole app: one Cloudflare Worker with a D1 database, so you can self-host it for free.
 
-> **Note:** The user interface is currently Japanese only.
+![The board: sections separated by dividers that show when each one expires](./public/landing-board.png)
 
-## Features
-
-- **One board, synced everywhere** — sign in with the same Google account on your laptop and phone and see the same board.
-- **Sections that expire on their own** — two blank lines (press Enter three times) start a new section.
-  Each section expires 30 days after it was first written, independently of the others; an hourly cron job
-  physically deletes expired ones.
-- **Autosave** — there is no save button. Changes are saved one second after you stop typing.
-  A cloud icon in the header shows the save state.
-- **Lightweight Markdown** — sections you are not editing are rendered as Markdown; the section you are
-  editing keeps the Markdown source as is but styles headings, list markers and URLs in place (iA Writer style,
-  markers stay visible). Only headings, bullet / numbered lists and auto-linked URLs are enabled; everything
-  else (emphasis, code, quotes, tables, HTML, …) is shown literally so a stray `*` or `>` never mangles a note.
-- **Copy / screenshot a section** — the buttons on each section's divider copy its text (Markdown as written)
-  or turn its rendered view into a PNG, placed on the clipboard (downloaded where the browser can't do that).
-- **Installable PWA** — add it to your home screen. When offline it shows the last fetched board read-only,
-  and edits made while the connection drops are kept and re-sent when you're back online.
-- **Small footprint** — one Worker, one D1 database, no third-party services beyond Google sign-in.
-  Fits comfortably in Cloudflare's free tier for personal use.
+In one screen: sections split on two blank lines (or a button) and expire independently (an hourly cron
+deletes them); editing keeps the Markdown source visible with headings / list markers / URLs styled in place
+(iA Writer style), everything else renders on blur. Only the memo-sized Markdown subset is enabled — stray
+`*` or `>` never mangles a note. Sections can be copied, exported as PNG, or collapsed into their divider,
+and the installable PWA keeps the last board readable offline.
 
 ## Tech stack
 
@@ -102,7 +89,7 @@ First-time setup (steps 1–6), then deploy (step 7). Later deploys only need st
    npm run deploy
    ```
 
-After deploying, open `https://<your-domain>/` — you should be redirected to `/login` and be able to sign in
+After deploying, open `https://<your-domain>/` — you should see the landing page and be able to sign in
 with Google. `GET /api/board` without a session returns `401`. The Workers dashboard logs should show
 `[memo sweep] deleted N ...` once an hour.
 
