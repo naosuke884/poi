@@ -489,6 +489,21 @@ export function Board({
 
   const length = boardLength(toDraft(sections));
 
+  // 「セクションを追加」ボタン: 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
+  // 末尾が既に空のセクションならそれを使う (空のセクションは保存されないので、増やしても意味がない)
+  const addSection = () => {
+    const cur = latestRef.current;
+    const last = cur.at(-1);
+    if (last && last.content.trim() === "") {
+      focus(last.key, last.content.length);
+    } else {
+      const s = newSection();
+      focusLater(s.key, 0);
+      update([...cur, s]);
+    }
+    revealLast();
+  };
+
   // 最後のセクションより下の空き領域 (やセクションの外枠の余白) をクリックしたら末尾にカーソルを置く
   // (画面全体が書ける場所に見えるように)。
   // mousedown を止めて、編集中のエディタがクリックの途中で blur (→ Markdown 表示) しないようにする
@@ -664,6 +679,36 @@ export function Board({
             )}
           </Box>
         ))}
+        {/* 末尾にセクションを追加 (Notion の「+ New」風の控えめなボタン)。区切りの入力 (空行 2 つ) を
+            知らなくても増やせるように。最後のセクションが画面 1 つ分の高さを取るので、ボタンはページの
+            いちばん下 (スクロールの終端) に現れる */}
+        {!readOnly && (
+          <Button
+            variant="subtle"
+            color="gray"
+            size="xs"
+            c="dimmed"
+            leftSection={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                width={14}
+                height={14}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5l0 14" />
+                <path d="M5 12l14 0" />
+              </svg>
+            }
+            onClick={addSection}
+          >
+            セクションを追加
+          </Button>
+        )}
       </Box>
 
       {/* 文字数は打つたびに変わるので等幅の数字にして幅がぶれないようにする */}
