@@ -1,33 +1,29 @@
-import { redirect } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
 import { clearCollapsed } from "@/lib/collapsed-sections";
-import { OfflineError, isNetworkError } from "@/lib/offline";
+import { isNetworkError } from "@/lib/offline";
 import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } from "@/lib/session-cache";
 
-// ログイン必須ルートの beforeLoad の戻り値 (ルートの context にマージされる)。
-// オンラインなら Better Auth のセッション、オフラインなら前回キャッシュしたユーザー情報。
+// beforeLoad の戻り値 (ルートの context にマージされる)。
+// オンラインなら Better Auth のセッション、オフラインなら前回キャッシュしたユーザー情報 (未ログインなら null)。
 // どちらも user.id / name / email / image を持つので、loader や画面はこの形だけを見ればよい。
-export type LoginContext = { session: { user: CachedUser } };
+export type LoginContext = { session: { user: CachedUser } | null };
 
-// ログイン必須ルートの beforeLoad で使うガード。
-// 未ログインなら /login へ redirect し、戻り先を search.redirect に保持する。
+// ログイン状態を調べる beforeLoad 用のガード。未ログインでも redirect しない
+// (トップはログインしていなければランディングページを見せる。issue #24)。
 // 戻り値はルートの context にマージされる (Route.useRouteContext() で session を参照できる)。
 //
 // オフライン (getSession の fetch 自体が失敗) のときは、前回ログイン時にキャッシュした
 // ユーザー情報で通す。loader 側はキャッシュ済みの板を表示する (src/lib/board-cache.ts)。
-// サーバが「未ログイン」と答えた場合とは区別する (その場合はキャッシュを消して /login へ)。
-export async function requireLogin(location: { href: string }): Promise<LoginContext> {
+// サーバが「未ログイン」と答えた場合とは区別する (その場合は端末のキャッシュを消して未ログイン扱い)
+export async function optionalLogin(): Promise<LoginContext> {
   let result: Awaited<ReturnType<typeof authClient.getSession>>;
   try {
     result = await authClient.getSession();
   } catch (e) {
     if (!isNetworkError(e)) throw e;
     const cached = readCachedUser();
-    if (cached) return { session: { user: cached } };
-    throw new OfflineError(
-      "オフラインのため、ログイン状態を確認できません。オンラインに戻ってから再度お試しください。",
-    );
+    return { session: cached ? { user: cached } : null };
   }
   const { data, error } = result;
   if (!data) {
@@ -41,7 +37,7 @@ export async function requireLogin(location: { href: string }): Promise<LoginCon
         clearCollapsed(stale.id);
       }
     }
-    throw redirect({ to: "/login", search: { redirect: location.href } });
+    return { session: null };
   }
   writeCachedUser(data.user);
   return { session: data };

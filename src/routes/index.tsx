@@ -6,15 +6,17 @@ import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/board";
 import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
 import { OfflineError, fetchOrOffline } from "@/lib/offline";
-import { requireLogin } from "@/lib/require-login";
+import { Landing } from "@/components/Landing";
+import { optionalLogin } from "@/lib/require-login";
 
-// ログイン後のメイン画面: 自分の板 (未ログインなら /login へ)
+// メイン画面: ログイン済みなら自分の板、未ログインならランディング (何ができるか + ログイン導線)
 export const Route = createFileRoute("/")({
-  beforeLoad: ({ location }) => requireLogin(location),
+  beforeLoad: () => optionalLogin(),
   // Board は loader の結果を初期値にして以後は自身の state で管理するため、
   // 戻ってきたときに古いキャッシュを一瞬でも表示しないよう、離れたら即キャッシュを捨てる
   gcTime: 0,
   loader: async ({ location, context }) => {
+    if (context.session === null) return { landing: true as const };
     const userId = context.session.user.id;
     let res;
     try {
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/")({
           "オフラインのため、板を取得できません (まだ一度も取得していないためキャッシュもありません)。",
         );
       }
-      return { sections: cached.sections, offline: true, cachedAt: cached.cachedAt };
+      return { sections: cached.sections, offline: true as const, cachedAt: cached.cachedAt };
     }
     if (res.status === 401) {
       // beforeLoad 後にセッションが切れた場合
@@ -38,14 +40,25 @@ export const Route = createFileRoute("/")({
     const { sections } = await res.json();
     // オフライン閲覧用に最新の内容で上書きする
     writeCachedBoard(userId, sections);
-    return { sections, offline: false, cachedAt: null };
+    return { sections, offline: false as const, cachedAt: null };
   },
   component: BoardPage,
 });
 
 function BoardPage() {
-  const { sections, offline, cachedAt } = Route.useLoaderData();
+  const data = Route.useLoaderData();
   const { session } = Route.useRouteContext();
+  if ("landing" in data || session === null) return <Landing />;
+  return <BoardView data={data} userId={session.user.id} />;
+}
+
+function BoardView({
+  data: { sections, offline, cachedAt },
+  userId,
+}: {
+  data: Exclude<ReturnType<typeof Route.useLoaderData>, { landing: true }>;
+  userId: string;
+}) {
   // 一度でもオンラインで (最新の内容で) 開いたかどうか。
   // オンラインで開いた後にオフラインになり、復帰時の再取得 (OfflineBanner の router.invalidate) が
   // まだ失敗して loader がキャッシュを返しても、編集中の板を閲覧専用に作り直さない
@@ -67,7 +80,7 @@ function BoardPage() {
       <Board
         key={readOnly ? "offline" : "online"}
         sections={sections}
-        userId={session.user.id}
+        userId={userId}
         readOnly={readOnly}
       />
     </Stack>
