@@ -1,6 +1,7 @@
 import { AppShell, Container, Group, Title, Anchor, Stack, Text } from "@mantine/core";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { AddSectionButton } from "@/components/AddSectionButton";
 import { SaveStatusIcon } from "@/components/SaveStatusIcon";
 import { UserMenu } from "@/components/UserMenu";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -49,6 +50,7 @@ function RootLayout() {
               </Group>
             </Anchor>
             <Group gap="md">
+              <AddSectionButton />
               <SaveStatusIcon />
               <UserMenu />
             </Group>

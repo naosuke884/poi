@@ -29,6 +29,7 @@ import {
 } from "../../worker/memo/constants";
 import { affixInset } from "@/lib/affix";
 import { api } from "@/lib/api";
+import { publishBoardActions } from "@/lib/board-actions";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import {
   type BoardSection,
@@ -492,7 +493,8 @@ export function Board({
     enableBeforeUnload: false,
   });
 
-  // 「セクションを追加」ボタン: 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
+  // 「セクションを追加」ボタン (PC 幅ではヘッダー、狭い画面では右下固定):
+  // 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
   // 末尾が既に空 (完全に空文字。空白だけのセクションは保存されて期限を持っているので使い回さない)
   // なら、それを使う (空のセクションは保存されないので、増やしても意味がない)
   const addSection = () => {
@@ -508,15 +510,27 @@ export function Board({
     revealLast();
   };
 
+  // ヘッダーの「セクションを追加」ボタン (AddSectionButton) に操作を渡す (編集できるときだけ。離れたら消す)。
+  // addSection は毎描画作り直されるが、ref と安定な setter しか触らないので初回のもので足りる
+  useEffect(() => {
+    if (readOnly) return;
+    publishBoardActions({ addSection });
+    return () => publishBoardActions(null);
+    // readOnly はマウント後に変わらない (変わるときは key で作り直される)
+  }, [readOnly]);
+
   // 最後のセクションより下の空き領域 (やセクションの外枠の余白) をクリックしたら末尾にカーソルを置く
   // (画面全体が書ける場所に見えるように)。
   // mousedown を止めて、編集中のエディタがクリックの途中で blur (→ Markdown 表示) しないようにする
   const isBlank = (e: MouseEvent<HTMLDivElement>) =>
-    e.target === e.currentTarget || (e.target as HTMLElement).hasAttribute("data-section");
+    e.target === e.currentTarget ||
+    (e.target as HTMLElement).hasAttribute("data-section");
   const focusEnd = (e: MouseEvent<HTMLDivElement>) => {
     if (readOnly || !isBlank(e)) return;
     // 末尾が折り畳まれていたら、その上の開いているセクションへ
-    const last = latestRef.current.findLast((s) => !collapsedRef.current.has(s.key));
+    const last = latestRef.current.findLast(
+      (s) => !collapsedRef.current.has(s.key),
+    );
     if (last) focus(last.key, last.content.length);
   };
   const keepFocus = (e: MouseEvent<HTMLDivElement>) => {
@@ -688,10 +702,12 @@ export function Board({
       {/* 右下固定の追加ボタンの下に本文が隠れないよう、スクロールの終端に余白を足しておく */}
       <Box h={64} />
 
-      {/* セクションを追加 (右下固定)。区切りの入力 (空行 2 つ) を知らなくても増やせるように。
+      {/* セクションを追加 (右下固定。狭い画面のみ: PC 幅 (sm 以上) ではヘッダーの AddSectionButton)。
+          区切りの入力 (空行 2 つ) を知らなくても増やせるように。
           固定表示なので、板が長くてもスクロールせずに押せる */}
       {!readOnly && (
         <Affix
+          hiddenFrom="sm"
           position={{
             bottom: `calc(16px + env(safe-area-inset-bottom) + ${keyboardInset}px)`,
             right: affixInset("right"),
