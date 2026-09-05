@@ -21,10 +21,11 @@ export function PwaUpdateBanner() {
   if (!needRefresh) return null;
 
   return (
-    // ホームインジケータ / ノッチ (safe-area) の分だけ内側に寄せる
+    // ホームインジケータ / ノッチ (safe-area) の分だけ内側に寄せる。
+    // 右下角は板の「セクションを追加」ボタン (Board.tsx の Affix) が使うので、その上に出す
     <Affix
       position={{
-        bottom: "calc(16px + env(safe-area-inset-bottom))",
+        bottom: "calc(72px + env(safe-area-inset-bottom))",
         right: "calc(16px + env(safe-area-inset-right))",
       }}
     >

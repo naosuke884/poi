@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Affix,
   Box,
   Button,
@@ -27,6 +28,7 @@ import {
   boardLength,
 } from "../../worker/memo/constants";
 import { api } from "@/lib/api";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import {
   type BoardSection,
   type DraftSection,
@@ -356,6 +358,8 @@ export function Board({
   // 戻すときは元の位置に差し込む。保存が済んだ後なら id は無効になっているが、サーバは未知の id を
   // 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)
   const [deleted, setDeleted] = useState<{ section: EditableSection; index: number } | null>(null);
+  // 右下固定の追加ボタンがソフトキーボードの裏に隠れないよう、キーボード分だけ持ち上げる
+  const keyboardInset = useKeyboardInset();
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelUndo = () => {
     if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
@@ -680,21 +684,44 @@ export function Board({
             )}
           </Box>
         ))}
-        {/* 末尾にセクションを追加 (Notion の「+ New」風の控えめなボタン)。区切りの入力 (空行 2 つ) を
-            知らなくても増やせるように。最後のセクションが画面 1 つ分の高さを取るので、ボタンはページの
-            いちばん下 (スクロールの終端) に現れる */}
-        {!readOnly && (
-          <Button
-            variant="subtle"
-            color="gray"
-            size="xs"
-            c="dimmed"
-            leftSection={
+      </Box>
+
+      {/* 文字数は打つたびに変わるので等幅の数字にして幅がぶれないようにする。
+          右下固定の追加ボタンの下に隠れないよう、スクロールの終端に余白を足しておく */}
+      <Text
+        size="xs"
+        c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"}
+        ta="right"
+        mb={48}
+        style={{ fontVariantNumeric: "tabular-nums" }}
+      >
+        {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
+      </Text>
+
+      {/* セクションを追加 (右下固定)。区切りの入力 (空行 2 つ) を知らなくても増やせるように。
+          固定表示なので、板が長くてもスクロールせずに押せる */}
+      {!readOnly && (
+        <Affix
+          position={{
+            bottom: `calc(16px + env(safe-area-inset-bottom) + ${keyboardInset}px)`,
+            right: "calc(16px + env(safe-area-inset-right))",
+          }}
+        >
+          <Tooltip label="セクションを追加" withArrow>
+            <ActionIcon
+              size="xl"
+              radius="xl"
+              aria-label="セクションを追加"
+              style={{ boxShadow: "var(--mantine-shadow-md)" }}
+              // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。削除ボタンと同じ)
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={addSection}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
-                width={14}
-                height={14}
+                width={22}
+                height={22}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2}
@@ -704,27 +731,12 @@ export function Board({
                 <path d="M12 5l0 14" />
                 <path d="M5 12l14 0" />
               </svg>
-            }
-            // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。削除ボタンと同じ)
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={addSection}
-          >
-            セクションを追加
-          </Button>
-        )}
-      </Box>
+            </ActionIcon>
+          </Tooltip>
+        </Affix>
+      )}
 
-      {/* 文字数は打つたびに変わるので等幅の数字にして幅がぶれないようにする */}
-      <Text
-        size="xs"
-        c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"}
-        ta="right"
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
-      </Text>
-
-      {/* 削除の取り消し (左下。右下は PwaUpdateBanner) */}
+      {/* 削除の取り消し (左下。右下は追加ボタンと PwaUpdateBanner) */}
       {deleted && (
         <Affix
           position={{
