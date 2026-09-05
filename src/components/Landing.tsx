@@ -4,6 +4,34 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 
+// 特徴カード。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
+const FEATURES: { title: string; body: string }[] = [
+  {
+    title: "開いてすぐ書ける",
+    body: "1 枚の板に上から書いていくだけ。ページ分けもファイル名も要りません。",
+  },
+  {
+    title: `${MEMO_TTL_DAYS} 日で消える`,
+    body: `空行 2 つかボタンで区切ったセクションごとに期限が付き、${MEMO_TTL_DAYS} 日後に自動で消えます。期限は区切り線にいつも見えています。`,
+  },
+  {
+    title: "Markdown のまま読みやすい",
+    body: "# 見出しは見出しの大きさのまま編集でき、- 箇条書きは Tab でインデント。メモに要る分だけの Markdown が使えます。",
+  },
+  {
+    title: "セクションごとに操作",
+    body: "コピー、画像にして共有、折り畳みがセクション単位でできます。消しても直後なら元に戻せます。",
+  },
+  {
+    title: "オフラインでも読める",
+    body: "前回開いた内容を端末が覚えているので、圏外でも読み返せます。",
+  },
+  {
+    title: "スマホではアプリに",
+    body: "ホーム画面に追加すれば、アプリのようにワンタップで開けます。",
+  },
+];
+
 /**
  * 未ログインで / に来た人向けのランディング。何ができるか + スクショ + ログイン導線だけのミニマル構成。
  * ログイン専用ページは無く、CTA がそのまま Google OAuth を開始する (同意文もここに置く)
@@ -81,27 +109,16 @@ export function Landing() {
         </picture>
       </Paper>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" maw={860} w="100%">
-        {/* 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る) */}
-        <Stack gap={4}>
-          <Text fw={600}>開いてすぐ書ける</Text>
-          <Text size="sm">
-            1 枚の板に上から書くだけ。# 見出しや - 箇条書きなど、メモに要る分だけの Markdown が使えます。
-          </Text>
-        </Stack>
-        <Stack gap={4}>
-          <Text fw={600}>{MEMO_TTL_DAYS} 日で消える</Text>
-          <Text size="sm">
-            空行 2 つかボタンで区切ったセクションごとに期限が付き、{MEMO_TTL_DAYS}{" "}
-            日後に自動で消えます。期限は区切り線にいつも見えています。
-          </Text>
-        </Stack>
-        <Stack gap={4}>
-          <Text fw={600}>身軽に持ち出せる</Text>
-          <Text size="sm">
-            セクションはコピーや画像化、折り畳みができ、スマホにはアプリとしてインストールも。オフラインでも読めます。
-          </Text>
-        </Stack>
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md" maw={860} w="100%">
+        {FEATURES.map((f) => (
+          // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
+          <Paper key={f.title} withBorder radius="md" p="md">
+            <Stack gap={4}>
+              <Text fw={600}>{f.title}</Text>
+              <Text size="sm">{f.body}</Text>
+            </Stack>
+          </Paper>
+        ))}
       </SimpleGrid>
 
       <Text size="xs" c="dimmed" ta="center">
