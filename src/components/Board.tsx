@@ -491,8 +491,6 @@ export function Board({
     enableBeforeUnload: false,
   });
 
-  const length = boardLength(toDraft(sections));
-
   // 「セクションを追加」ボタン: 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
   // 末尾が既に空 (完全に空文字。空白だけのセクションは保存されて期限を持っているので使い回さない)
   // なら、それを使う (空のセクションは保存されないので、増やしても意味がない)
@@ -560,7 +558,7 @@ export function Board({
               // scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)
               scrollMarginTop: "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
               // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
-              // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。文字数表示のぶんは少し余る)
+              // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る)
               minHeight:
                 i === sections.length - 1 && sections.length > 1 && !collapsedKeys.has(s.key)
                   ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
@@ -686,17 +684,8 @@ export function Board({
         ))}
       </Box>
 
-      {/* 文字数は打つたびに変わるので等幅の数字にして幅がぶれないようにする。
-          右下固定の追加ボタンの下に隠れないよう、スクロールの終端に余白を足しておく */}
-      <Text
-        size="xs"
-        c={length >= BOARD_MAX_LENGTH ? "red" : "dimmed"}
-        ta="right"
-        mb={48}
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        {length.toLocaleString()} / {BOARD_MAX_LENGTH.toLocaleString()}
-      </Text>
+      {/* 右下固定の追加ボタンの下に本文が隠れないよう、スクロールの終端に余白を足しておく */}
+      <Box h={64} />
 
       {/* セクションを追加 (右下固定)。区切りの入力 (空行 2 つ) を知らなくても増やせるように。
           固定表示なので、板が長くてもスクロールせずに押せる */}
