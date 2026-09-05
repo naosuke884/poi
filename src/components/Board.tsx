@@ -27,6 +27,7 @@ import {
   MEMO_TTL_DAYS,
   boardLength,
 } from "../../worker/memo/constants";
+import { affixInset } from "@/lib/affix";
 import { api } from "@/lib/api";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import {
@@ -693,7 +694,7 @@ export function Board({
         <Affix
           position={{
             bottom: `calc(16px + env(safe-area-inset-bottom) + ${keyboardInset}px)`,
-            right: "calc(16px + env(safe-area-inset-right))",
+            right: affixInset("right"),
           }}
         >
           <Tooltip label="セクションを追加" withArrow>
@@ -730,7 +731,7 @@ export function Board({
         <Affix
           position={{
             bottom: "calc(16px + env(safe-area-inset-bottom))",
-            left: "calc(16px + env(safe-area-inset-left))",
+            left: affixInset("left"),
           }}
         >
           <Notification

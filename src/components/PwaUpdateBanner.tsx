@@ -1,5 +1,6 @@
 import { Affix, Button, Notification } from "@mantine/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { affixInset } from "@/lib/affix";
 
 /**
  * Service Worker を登録し、新バージョンが待機状態になったら「更新があります」のバナーを出す。
@@ -26,7 +27,7 @@ export function PwaUpdateBanner() {
     <Affix
       position={{
         bottom: "calc(72px + env(safe-area-inset-bottom))",
-        right: "calc(16px + env(safe-area-inset-right))",
+        right: affixInset("right"),
       }}
     >
       <Notification
