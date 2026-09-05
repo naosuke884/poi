@@ -1,10 +1,12 @@
 import { Alert, Stack } from "@mantine/core";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useRef } from "react";
 import { Board } from "@/components/Board";
 import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/board";
-import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
+import { clearBoardCache, readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
+import { clearCollapsed } from "@/lib/collapsed-sections";
+import { clearCachedUser } from "@/lib/session-cache";
 import { OfflineError, fetchOrOffline } from "@/lib/offline";
 import { Landing } from "@/components/Landing";
 import { optionalLogin } from "@/lib/require-login";
@@ -15,7 +17,7 @@ export const Route = createFileRoute("/")({
   // Board は loader の結果を初期値にして以後は自身の state で管理するため、
   // 戻ってきたときに古いキャッシュを一瞬でも表示しないよう、離れたら即キャッシュを捨てる
   gcTime: 0,
-  loader: async ({ location, context }) => {
+  loader: async ({ context }) => {
     if (context.session === null) return { landing: true as const };
     const userId = context.session.user.id;
     let res;
@@ -33,8 +35,12 @@ export const Route = createFileRoute("/")({
       return { sections: cached.sections, offline: true as const, cachedAt: cached.cachedAt };
     }
     if (res.status === 401) {
-      // beforeLoad 後にセッションが切れた場合
-      throw redirect({ to: "/login", search: { redirect: location.href } });
+      // beforeLoad 後にセッションが切れた場合。optionalLogin がサーバの「未ログイン」に
+      // する後始末と同じく、この端末に残るキャッシュを消してランディングを見せる
+      clearCachedUser();
+      clearBoardCache(userId);
+      clearCollapsed(userId);
+      return { landing: true as const };
     }
     if (!res.ok) throw new Error("板の取得に失敗しました");
     const { sections } = await res.json();

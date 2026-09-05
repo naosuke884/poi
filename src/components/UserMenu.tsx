@@ -1,5 +1,5 @@
 import { Avatar, Button, Group, Loader, Menu, Modal, Skeleton, Stack, Text, UnstyledButton } from "@mantine/core";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
@@ -11,6 +11,7 @@ import { useOnline } from "@/lib/use-online";
 export function UserMenu() {
   const { data, isPending, error, refetch } = authClient.useSession();
   const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const online = useOnline();
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -35,8 +36,11 @@ export function UserMenu() {
 
   const user = data?.user ?? cachedUser;
   if (!user) {
+    // ログイン専用ページは無いので、ログイン導線 (CTA) のあるランディングへ。
+    // ランディング表示中 (=/) は行き先が同じで押しても何も起きないため出さない
+    if (pathname === "/") return null;
     return (
-      <Button component={Link} to="/login" size="compact-sm">
+      <Button component={Link} to="/" size="compact-sm">
         ログイン
       </Button>
     );
