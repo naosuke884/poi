@@ -101,10 +101,13 @@ export function Landing() {
             // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
             <Paper key={f.title} withBorder radius="md" p="md">
               <Stack gap={4}>
-                <Text fw={600} size="xl" ta="center">
+                {/* balance: 折り返しが必要なとき「消え/る」のような不格好な位置で切らず 2 行を均等にする */}
+                <Text fw={600} size="xl" ta="center" style={{ textWrap: "balance" }}>
                   {f.title}
                 </Text>
-                <Text size="sm">{f.body}</Text>
+                <Text size="sm" ta="center">
+                  {f.body}
+                </Text>
               </Stack>
             </Paper>
           ))}
