@@ -1,7 +1,11 @@
-import { Box, Divider, Group, Paper, Text } from "@mantine/core";
+import { Box, CloseButton, Divider, Group, Paper, Text, Tooltip } from "@mantine/core";
 import { useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
-import { newKey, splitAtSeparator } from "@/lib/board";
+import { firstLine, newKey, splitAtSeparator } from "@/lib/board";
+import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
+import { MarkdownView } from "@/components/MarkdownView";
+import { SectionActions, SectionCollapseToggle } from "@/components/SectionActions";
 import {
   SectionEditor,
   type SectionEditorHandle,
@@ -10,8 +14,7 @@ import {
 // 板の代わりにローカル state だけで持つデモ用セクション。期限は日数の数字をそのまま持つ
 type DemoSection = { key: string; content: string; daysLeft: number };
 
-// 期限のばらつきを見せる 2 セクション (残り日数が違うと「セクションごとに消える」が伝わる)。
-// 下のスクショ画像とは別の文面にする (同じだと 2 回読まされる)
+// 期限のばらつきを見せる 2 セクション (残り日数が違うと「セクションごとに消える」が伝わる)
 const initialSections = (): DemoSection[] => [
   {
     key: newKey(),
@@ -33,23 +36,45 @@ const initialSections = (): DemoSection[] => [
   },
 ];
 
-const noop = () => {};
-
 /**
  * ランディングのヒーロー直下に置く、ログイン不要で書き味を試せるミニデモ。
- * Board の縮小版: 実物の SectionEditor をそのまま使い、空行 2 つでの分割・境界での結合・
- * ↑↓ でのセクション間移動だけ再現する。保存はどこにもしない (リロードで消えるのは仕様)
+ * Board の縮小版で、見た目と操作は本物に合わせる: 非編集時は Markdown 表示 (クリックで編集)、
+ * 区切り線に折り畳み・コピー・スクショ・期限ラベル・削除。空行 2 つでの分割・境界での結合・
+ * ↑↓ でのセクション間移動も同じ。保存はどこにもしない (リロードで消えるのは仕様)。
+ * 本物との差分: 保存 / 「元に戻す」/ 折り畳みへの peek は無し
  */
 export function LandingDemo() {
   const [sections, setSections] = useState<DemoSection[]>(initialSections);
+  // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示 (Board と同じ)
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   // コールバック (エディタの keymap から呼ばれる) は最新の並びを見る
   const latestRef = useRef(sections);
   latestRef.current = sections;
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
   const elementsRef = useRef(new Map<string, SectionEditorHandle>());
-  // 描画後にカーソルを置く (分割 / 結合でエディタが作り直された後)
+  const viewsRef = useRef(new Map<string, HTMLDivElement>());
+  // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
   const focusLater = (key: string, pos: number) => {
+    setCollapsed((c) => {
+      if (!c.has(key)) return c;
+      const next = new Set(c);
+      next.delete(key);
+      return next;
+    });
     pendingFocusRef.current = { key, pos };
+    setEditingKey(key);
+  };
+  const focus = (key: string, pos: number) => {
+    const editor = elementsRef.current.get(key);
+    if (!editor) {
+      focusLater(key, pos);
+      return;
+    }
+    setEditingKey(key);
+    editor.focus(pos);
   };
   // SectionEditor は自分の layout effect (親より先に走る) で value を doc に反映済みなので、ここで置く
   useLayoutEffect(() => {
@@ -81,12 +106,15 @@ export function LandingDemo() {
     setSections([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
   };
 
-  // i 番目と i+1 番目をつなげる。前のセクションが期限を保ち、フォーカスのある方 (focused) が key を保つ
+  // i 番目と i+1 番目をつなげる。前のセクションが期限を保ち、フォーカスのある方 (focused) が key を保つ。
+  // 折り畳んだ隣とは結合しない (Board と同じ)
   const mergeSections = (i: number, focused: string) => {
     const cur = latestRef.current;
     const a = cur[i];
     const b = cur[i + 1];
     if (!a || !b) return;
+    const other = a.key === focused ? b : a;
+    if (collapsedRef.current.has(other.key)) return;
     focusLater(focused, a.content.length);
     setSections([
       ...cur.slice(0, i),
@@ -95,13 +123,69 @@ export function LandingDemo() {
     ]);
   };
 
-  const focusNeighbor = (i: number, pos: "start" | "end") => {
-    const s = latestRef.current[i];
-    if (!s) return false;
-    elementsRef.current
-      .get(s.key)
-      ?.focus(pos === "end" ? s.content.length : 0);
+  // ↑↓ は折り畳んだセクションを飛ばして次の開いているセクションへ (Board と同じ)
+  const arrowUpAtFirstLine = (i: number) => {
+    const prev = latestRef.current
+      .slice(0, i)
+      .findLast((s) => !collapsedRef.current.has(s.key));
+    if (!prev) return false;
+    focus(prev.key, prev.content.length);
     return true;
+  };
+  const arrowDownAtLastLine = (i: number) => {
+    const next = latestRef.current
+      .slice(i + 1)
+      .find((s) => !collapsedRef.current.has(s.key));
+    if (!next) return false;
+    focus(next.key, 0);
+    return true;
+  };
+
+  // フォーカスしたセクション表示 (MarkdownView) からの ↑↓: 隣の表示へ移る (空と折り畳みは飛ばす)
+  const focusViewFrom = (i: number, dir: -1 | 1) => {
+    const cur = latestRef.current;
+    for (let j = i + dir; j >= 0 && j < cur.length; j += dir) {
+      const s = cur[j]!;
+      if (s.content.trim() === "" || collapsedRef.current.has(s.key)) continue;
+      viewsRef.current.get(s.key)?.focus({ preventScroll: true });
+      return true;
+    }
+    return false;
+  };
+
+  // フォーカスが外れたら Markdown 表示に戻す (Board と同じ。ウィンドウ自体の喪失では戻さない)
+  const onEditorBlur = (key: string) => {
+    if (!document.hasFocus()) return;
+    setEditingKey((k) => (k === key ? null : k));
+  };
+
+  const toggleCollapsed = (key: string) => {
+    setCollapsed((c) => {
+      const next = new Set(c);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setEditingKey((k) => (k === key ? null : k));
+  };
+
+  // 削除は即時 (デモなので「元に戻す」は無し)。最後の 1 つを消したら空のセクションに置き換える
+  const removeSection = (key: string) => {
+    const cur = latestRef.current;
+    const next = cur.filter((s) => s.key !== key);
+    setSections(
+      next.length > 0
+        ? next
+        : [{ key: newKey(), content: "", daysLeft: MEMO_TTL_DAYS }],
+    );
+  };
+
+  // 画像化は Markdown 表示の要素から (編集中ならまず表示に戻す。Board と同じ)
+  const screenshot = (key: string) => {
+    flushSync(() => setEditingKey((k) => (k === key ? null : k)));
+    const el = viewsRef.current.get(key);
+    if (!el) throw new Error("空のセクションは画像にできません");
+    return deliverImage(renderSectionImage(el));
   };
 
   return (
@@ -126,29 +210,92 @@ export function LandingDemo() {
               "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
           }}
         >
-          {/* Board の区切りの簡略版: 線と期限ラベルだけ (操作ボタンは置かない) */}
+          {/* 区切り: Board と同じ並び (折り畳み・コピー・スクショは線の中、期限と削除は線の外の右端) */}
           <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
-            <Divider style={{ flex: 1 }} />
+            <Divider
+              labelPosition="left"
+              style={{ flex: 1, minWidth: 0 }}
+              styles={{ label: { maxWidth: "100%", minWidth: 0 } }}
+              label={
+                s.content.trim() === "" ? undefined : (
+                  <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                    <SectionCollapseToggle
+                      index={i}
+                      collapsed={collapsed.has(s.key)}
+                      onToggle={() => toggleCollapsed(s.key)}
+                    />
+                    {!collapsed.has(s.key) && (
+                      <SectionActions
+                        index={i}
+                        onCopy={() => copySectionText(s.content)}
+                        onScreenshot={() => screenshot(s.key)}
+                      />
+                    )}
+                    {collapsed.has(s.key) && (
+                      /* 折り畳み中: 最初の行を区切り線の中に出す。クリックで開く (Board と同じ) */
+                      <Text
+                        span
+                        inherit
+                        c="dimmed"
+                        style={{
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => toggleCollapsed(s.key)}
+                      >
+                        {firstLine(s.content)}
+                      </Text>
+                    )}
+                  </Group>
+                )
+              }
+            />
             <Text span size="xs" c="dimmed" style={{ flexShrink: 0 }}>
               あと {s.daysLeft} 日
             </Text>
+            <Tooltip label="削除" withArrow>
+              <CloseButton
+                size="xs"
+                c="red"
+                aria-label={`お試しセクション ${i + 1} を削除`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => removeSection(s.key)}
+              />
+            </Tooltip>
           </Group>
-          <SectionEditor
-            aria-label={`お試しエディタ セクション ${i + 1} (Esc で編集をやめる)`}
-            value={s.content}
-            onChange={(value, cursor) => changeSection(s.key, value, cursor)}
-            onFocus={noop}
-            onBlur={noop}
-            onBackspaceAtStart={() => mergeSections(i - 1, s.key)}
-            onDeleteAtEnd={() => mergeSections(i, s.key)}
-            onArrowUpAtFirstLine={() => focusNeighbor(i - 1, "end")}
-            onArrowDownAtLastLine={() => focusNeighbor(i + 1, "start")}
-            onEscape={noop}
-            ref={(editor) => {
-              if (editor) elementsRef.current.set(s.key, editor);
-              else elementsRef.current.delete(s.key);
-            }}
-          />
+          {collapsed.has(s.key) ? null : s.key !== editingKey &&
+            s.content.trim() !== "" ? (
+            <MarkdownView
+              content={s.content}
+              aria-label={`お試しセクション ${i + 1}`}
+              onEdit={(pos) => focus(s.key, pos)}
+              onNavigate={(dir) => focusViewFrom(i, dir)}
+              ref={(el) => {
+                if (el) viewsRef.current.set(s.key, el);
+                else viewsRef.current.delete(s.key);
+              }}
+            />
+          ) : (
+            <SectionEditor
+              aria-label={`お試しセクション ${i + 1} (Esc で編集をやめる)`}
+              value={s.content}
+              onChange={(value, cursor) => changeSection(s.key, value, cursor)}
+              onFocus={() => setEditingKey(s.key)}
+              onBlur={() => onEditorBlur(s.key)}
+              onBackspaceAtStart={() => mergeSections(i - 1, s.key)}
+              onDeleteAtEnd={() => mergeSections(i, s.key)}
+              onArrowUpAtFirstLine={() => arrowUpAtFirstLine(i)}
+              onArrowDownAtLastLine={() => arrowDownAtLastLine(i)}
+              onEscape={() => setEditingKey(null)}
+              ref={(editor) => {
+                if (editor) elementsRef.current.set(s.key, editor);
+                else elementsRef.current.delete(s.key);
+              }}
+            />
+          )}
         </Box>
       ))}
     </Paper>
