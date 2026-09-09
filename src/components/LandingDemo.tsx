@@ -107,12 +107,13 @@ export function LandingDemo() {
   return (
     <Paper
       withBorder
+      shadow="sm"
       radius="md"
       p="md"
       style={{ maxWidth: 860, width: "100%" }}
     >
       <Text size="xs" c="dimmed" mb="xs">
-        そのまま試し書きできます (保存されません)
+        試し書きできます (保存されません)
       </Text>
       {sections.map((s, i) => (
         <Box

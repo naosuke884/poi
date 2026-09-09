@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { LandingDemo } from "@/components/LandingDemo";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
+import classes from "./Landing.module.css";
 
 // 特徴カード。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
 const FEATURES: { title: string; body: string }[] = [
@@ -56,9 +57,13 @@ export function Landing() {
     }
   };
   return (
-    <Stack gap="xl" py="xl" align="center">
+    <Stack gap={72} py="xl" align="center">
       <Stack gap="sm" align="center" ta="center">
-        <Title order={1}>書いたら {MEMO_TTL_DAYS} 日で消えるメモ帳</Title>
+        <Title order={1} className={classes.heroTitle}>
+          書いたら{" "}
+          <span className={classes.heroAccent}>{MEMO_TTL_DAYS} 日で消える</span>
+          メモ帳
+        </Title>
         <Button size="md" mt="xs" loading={busy} onClick={() => void login()}>
           Google でログインして始める
         </Button>
@@ -94,8 +99,8 @@ export function Landing() {
         ))}
       </SimpleGrid>
 
-      <Text size="xs" c="dimmed" ta="center">
-        オープンソースです:{" "}
+      <Text size="xs" c="dimmed" ta="center" mt="xl">
+        © {new Date().getFullYear()} poi{" ・ "}
         <Anchor href="https://github.com/naosuke884/poi" target="_blank" rel="noopener noreferrer" size="xs">
           GitHub
         </Anchor>

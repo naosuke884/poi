@@ -1,0 +1,12 @@
+/* ランディング専用の見た目 (色は Mantine の変数だけを使い、ダーク配色に追従させる) */
+
+/* 画面幅に応じて伸びる見出し (Title の固定サイズより狭い画面で収まり、広い画面で映える) */
+.heroTitle {
+  font-size: clamp(1.9rem, 4vw + 0.6rem, 3rem);
+  line-height: 1.25;
+}
+
+/* 見出し内の「消える」だけ主要色でアクセント */
+.heroAccent {
+  color: var(--mantine-primary-color-filled);
+}
