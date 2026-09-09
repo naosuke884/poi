@@ -13,7 +13,7 @@ const FEATURES: { title: string; body: string }[] = [
     body: "セクションごとに期限が付く。",
   },
   {
-    title: "メモをシェア",
+    title: "メモをシェアできる",
     body: "セクションごとに、テキストをコピー、もしくは、画像にして共有。",
   },
   {

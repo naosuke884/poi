@@ -14,7 +14,8 @@ import {
 // 板の代わりにローカル state だけで持つデモ用セクション。期限は日数の数字をそのまま持つ
 type DemoSection = { key: string; content: string; daysLeft: number };
 
-// 期限のばらつきを見せる 2 セクション (残り日数が違うと「セクションごとに消える」が伝わる)
+// 期限のばらつきを見せる 2 セクション (残り日数が違うと「セクションごとに消える」が伝わる)。
+// 上ほど古い = 残り日数が少ない (本物の板は下に書き足していくため)
 const initialSections = (): DemoSection[] => [
   {
     key: newKey(),
@@ -27,12 +28,12 @@ const initialSections = (): DemoSection[] => [
       "- 空行 2 つで新しいセクション",
       "    - Tab で 1 段下げる",
     ].join("\n"),
-    daysLeft: MEMO_TTL_DAYS,
+    daysLeft: 7,
   },
   {
     key: newKey(),
     content: ["今日のやること", "", "- 返信を 2 件", "- 会議室の予約"].join("\n"),
-    daysLeft: 7,
+    daysLeft: MEMO_TTL_DAYS,
   },
 ];
 
