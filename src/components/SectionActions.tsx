@@ -1,4 +1,5 @@
 import { ActionIcon, Tooltip, VisuallyHidden } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 // 結果の表示 (チェック / ×) を出しておく時間
@@ -60,8 +61,10 @@ export function SectionCollapseToggle({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  // ホバーの無い端末 (スマホ) では、タップで出たツールチップが残って邪魔なだけなので出さない
+  const noHover = useMediaQuery("(hover: none)");
   return (
-    <Tooltip label={collapsed ? "展開" : "折り畳む"} withArrow>
+    <Tooltip label={collapsed ? "展開" : "折り畳む"} withArrow disabled={noHover}>
       <ActionIcon
         variant="subtle"
         color="gray"
