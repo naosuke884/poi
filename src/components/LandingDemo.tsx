@@ -196,9 +196,6 @@ export function LandingDemo() {
       p="md"
       style={{ maxWidth: 860, width: "100%" }}
     >
-      <Text size="xs" c="dimmed" mb="xs">
-        試し書きできます (保存されません)
-      </Text>
       {sections.map((s, i) => (
         <Box
           key={s.key}

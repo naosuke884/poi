@@ -85,19 +85,29 @@ export function Landing() {
         </Text>
       </Stack>
 
-      <LandingDemo />
+      <Stack gap="sm" maw={860} w="100%">
+        <Title order={2} size="h4">
+          試し書き
+        </Title>
+        <LandingDemo />
+      </Stack>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" maw={860} w="100%">
-        {FEATURES.map((f) => (
-          // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
-          <Paper key={f.title} withBorder radius="md" p="md">
-            <Stack gap={4}>
-              <Text fw={600}>{f.title}</Text>
-              <Text size="sm">{f.body}</Text>
-            </Stack>
-          </Paper>
-        ))}
-      </SimpleGrid>
+      <Stack gap="sm" maw={860} w="100%">
+        <Title order={2} size="h4">
+          できること
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" w="100%">
+          {FEATURES.map((f) => (
+            // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
+            <Paper key={f.title} withBorder radius="md" p="md">
+              <Stack gap={4}>
+                <Text fw={600}>{f.title}</Text>
+                <Text size="sm">{f.body}</Text>
+              </Stack>
+            </Paper>
+          ))}
+        </SimpleGrid>
+      </Stack>
 
       <Text size="xs" c="dimmed" ta="center" mt="xl">
         © {new Date().getFullYear()} poi{" ・ "}
