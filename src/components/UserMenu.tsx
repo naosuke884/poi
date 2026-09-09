@@ -135,7 +135,7 @@ export function UserMenu() {
             プライバシーポリシー
           </Menu.Item>
           <Menu.Item component="a" href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
-            問い合わせ (GitHub Issues)
+            問い合わせ
           </Menu.Item>
           <Menu.Divider />
           {offline && <Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
