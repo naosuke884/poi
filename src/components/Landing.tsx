@@ -2,6 +2,7 @@ import { Anchor, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { LandingDemo } from "@/components/LandingDemo";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 
 // 特徴カード。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
@@ -79,6 +80,8 @@ export function Landing() {
         </Text>
       </Stack>
 
+      <LandingDemo />
+
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" maw={860} w="100%">
         {FEATURES.map((f) => (
           // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
@@ -90,20 +93,6 @@ export function Landing() {
           </Paper>
         ))}
       </SimpleGrid>
-
-      <Paper withBorder radius="md" p={0} style={{ overflow: "hidden", maxWidth: 860, width: "100%" }}>
-        {/* 配色に合わせたスクショを出す (width/height はロード中のレイアウトシフト防止) */}
-        <picture>
-          <source srcSet="/landing-board-dark.png" media="(prefers-color-scheme: dark)" />
-          <img
-            src="/landing-board.png"
-            width={2000}
-            height={1080}
-            alt={`poi の画面: 1 枚の板にセクションが並び、区切り線に「あと n 日で消えます」の期限が表示されている`}
-            style={{ display: "block", width: "100%", height: "auto" }}
-          />
-        </picture>
-      </Paper>
 
       <Text size="xs" c="dimmed" ta="center">
         オープンソースです:{" "}
