@@ -48,11 +48,21 @@ import {
 import { writeCachedBoard } from "@/lib/board-cache";
 import { readCollapsedIds, writeCollapsedIds } from "@/lib/collapsed-sections";
 import { MarkdownView } from "@/components/MarkdownView";
-import { SectionActions, SectionCollapseToggle } from "@/components/SectionActions";
-import { SectionEditor, type SectionEditorHandle } from "@/components/SectionEditor";
+import {
+  SectionActions,
+  SectionCollapseToggle,
+} from "@/components/SectionActions";
+import {
+  SectionEditor,
+  type SectionEditorHandle,
+} from "@/components/SectionEditor";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
-import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
+import {
+  copySectionText,
+  deliverImage,
+  renderSectionImage,
+} from "@/lib/section-export";
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
@@ -67,7 +77,8 @@ const UNDO_DELETE_MS = 8000;
  * クリックするとその場所にカーソルを置いてエディタに戻る)。内容はそのまま Markdown テキストとして保存する
  * - 空行 2 つ (改行 3 つ) を入力するとそこでセクションが分かれて次のセクションへ移る (空行 1 つはセクションの中に残る)。
  *   先頭で Backspace / 末尾で Delete で隣と結合、↑↓ で隣のセクションへ移る (Notion のブロック風)。
- *   Tab / Shift+Tab はインデント操作、Esc で編集をやめる (Markdown 表示に戻る)。
+ *   Tab / Shift+Tab はインデント操作、Esc で編集をやめる (Markdown 表示に戻り、そこにフォーカスが移る。
+ *   その状態の ↑↓ で隣のセクションの表示へ移り、Enter で編集に戻る)。
  *   境界の判定はエディタが行い (SectionEditor のコールバック)、ここでは何をするかだけ決める。
  *   分割 / 結合ではフォーカスのあるエディタの DOM (key) をそのまま使い回し、カーソルだけ動かす
  *   (エディタを作り直してフォーカスを移すと、タッチ端末ではキーボードが閉じたり新しいエディタに
@@ -79,7 +90,9 @@ const UNDO_DELETE_MS = 8000;
  * - 区切り線の ▾ でセクションを折り畳める (セクション全体が区切り線 1 行に収まり、最初の行を線の中に
  *   薄く出す。プレビューのクリックか ▸ で開く)。
  *   折り畳みは保存済みのセクションの id で localStorage に記録し、次に開いたときも折り畳んだまま (端末ごと)。
- *   折り畳んだセクションは編集に入れず、↑↓ は飛ばし、隣からの結合 (Backspace / Delete) もしない
+ *   折り畳んだセクションは編集に入れず、エディタ内の ↑↓ は飛ばし、隣からの結合 (Backspace / Delete) もしない。
+ *   セクション表示 (Esc 後) の ↑↓ では折り畳んだセクションにも移れる: フォーカスしている間だけ一時的に
+ *   開いて見せ (peek)、離れたら閉じた状態に戻る (編集に入ったら正式に開く)
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  */
@@ -99,24 +112,48 @@ export function Board({
   });
   const latestRef = useRef(sections);
   // サーバに保存済みのもの (差分の有無の判定用)
-  const savedRef = useRef<DraftSection[]>(initial.map(({ id, content }) => ({ id, content })));
+  const savedRef = useRef<DraftSection[]>(
+    initial.map(({ id, content }) => ({ id, content })),
+  );
 
   // 折り畳んだセクション (key の集合)。保存済みのセクションは id を localStorage に記録して
   // 次に開いたときも折り畳んだまま (未保存のセクションの折り畳みは画面内だけ)
-  const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => {
-    const ids = new Set(readCollapsedIds(userId));
-    return new Set(sections.filter((s) => s.id !== null && ids.has(s.id)).map((s) => s.key));
-  });
+  const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(
+    () => {
+      const ids = new Set(readCollapsedIds(userId));
+      return new Set(
+        sections
+          .filter((s) => s.id !== null && ids.has(s.id))
+          .map((s) => s.key),
+      );
+    },
+  );
   const collapsedRef = useRef(collapsedKeys);
   collapsedRef.current = collapsedKeys;
   // localStorage の記録を今の画面に合わせて書き直す (板から消えたセクションの id はここで落ちる)
   const persistCollapsed = (keys: ReadonlySet<string>) => {
     writeCollapsedIds(
       userId,
-      latestRef.current.flatMap((s) => (keys.has(s.key) && s.id !== null ? [s.id] : [])),
+      latestRef.current.flatMap((s) =>
+        keys.has(s.key) && s.id !== null ? [s.id] : [],
+      ),
     );
   };
+  // ↑↓ (セクション表示のフォーカス移動) で折り畳んだセクションに来たとき、一時的に開いて見せる (peek)。
+  // collapsedKeys (と localStorage の記録) はそのままにして描画だけ開き、フォーカスが離れたら閉じた
+  // 状態に戻る。編集に入ったら expandFor が正式に開く (peek は不要になるので消す)
+  const [peekKey, setPeekKey] = useState<string | null>(null);
+  const peekRef = useRef(peekKey);
+  peekRef.current = peekKey;
+  // 描画上の折り畳み判定 (peek 中のセクションは開いているものとして描く)
+  const isCollapsedView = (key: string) =>
+    collapsedKeys.has(key) && key !== peekKey;
   const toggleCollapsed = (key: string) => {
+    // peek 中 (見た目は開いている) の折り畳み操作は peek をやめるだけ (記録上は折り畳んだまま)
+    if (peekRef.current === key && collapsedRef.current.has(key)) {
+      setPeekKey(null);
+      return;
+    }
     const next = new Set(collapsedRef.current);
     if (!next.delete(key)) next.add(key);
     setCollapsedKeys(next);
@@ -126,11 +163,20 @@ export function Board({
   };
   // フォーカス (= 編集) するときは開く。折り畳んだままではエディタが描画されない
   const expandFor = (key: string) => {
+    setPeekKey((k) => (k === key ? null : k)); // peek 中に編集へ入ったら正式に開く
     if (!collapsedRef.current.has(key)) return;
     const next = new Set(collapsedRef.current);
     next.delete(key);
     setCollapsedKeys(next);
     persistCollapsed(next);
+  };
+  // peek で開いたセクションからフォーカスが外れたら、閉じた状態に戻す。
+  // ウィンドウ自体のフォーカス喪失 (タブ切り替えなど) では戻さない (エディタの onBlur と同じ考え方。
+  // ただし blur の最中は hasFocus が当てにならないことがあるので、まず relatedTarget で
+  // 「同じ document 内の別の場所へ移った」と分かるならそれを信じる)
+  const unpeek = (key: string, relatedTarget: Element | null) => {
+    if (relatedTarget === null && !document.hasFocus()) return;
+    setPeekKey((k) => (k === key ? null : k));
   };
 
   const [status, setStatus] = useState<SaveStatus>("saved");
@@ -150,7 +196,7 @@ export function Board({
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
   // Esc で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (Tab はそこから先へ進み、
-  // Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
+  // ↑↓ で隣のセクションの表示へ、Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
   const pendingViewFocusRef = useRef<string | null>(null);
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
@@ -180,11 +226,17 @@ export function Board({
     pendingFocusRef.current = null;
     editor.focus(pending.pos);
   });
+  // セクションの Markdown 表示にフォーカスを移す。カーソルへの自動スクロールの代わりに、
+  // 区切り線 (期限ラベル) ごと見えるよう外枠を最小限だけスクロールする
+  const focusView = (key: string) => {
+    viewsRef.current.get(key)?.focus({ preventScroll: true });
+    boxesRef.current.get(key)?.scrollIntoView({ block: "nearest" });
+  };
   useLayoutEffect(() => {
     const key = pendingViewFocusRef.current;
     if (key === null) return;
     pendingViewFocusRef.current = null;
-    viewsRef.current.get(key)?.focus({ preventScroll: true });
+    focusView(key);
   });
 
   // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
@@ -226,12 +278,16 @@ export function Board({
     }
     if (draft.length > BOARD_MAX_SECTIONS) {
       setStatus("error");
-      setErrorMessage(`セクション数が上限 (${BOARD_MAX_SECTIONS.toLocaleString()}) を超えています`);
+      setErrorMessage(
+        `セクション数が上限 (${BOARD_MAX_SECTIONS.toLocaleString()}) を超えています`,
+      );
       return;
     }
     if (boardLength(draft) > BOARD_MAX_LENGTH) {
       setStatus("error");
-      setErrorMessage(`文字数が上限 (${BOARD_MAX_LENGTH.toLocaleString()}) を超えています`);
+      setErrorMessage(
+        `文字数が上限 (${BOARD_MAX_LENGTH.toLocaleString()}) を超えています`,
+      );
       return;
     }
     // 確実にオフラインなら送らずに待つ (online イベントで再試行する)
@@ -246,7 +302,9 @@ export function Board({
 
     let saved = false;
     try {
-      const json = { sections: draft.map(({ id, content }) => ({ id, content })) };
+      const json = {
+        sections: draft.map(({ id, content }) => ({ id, content })),
+      };
       const res = await fetchOrOffline(() => api.board.$put({ json }));
       if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
       const { sections: updated } = await res.json();
@@ -310,7 +368,8 @@ export function Board({
     scheduleSave();
   };
 
-  const indexOf = (key: string) => latestRef.current.findIndex((s) => s.key === key);
+  const indexOf = (key: string) =>
+    latestRef.current.findIndex((s) => s.key === key);
 
   // 入力。区切り (空行 2 つ) が入ったらそこで分ける。
   // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key (= 今フォーカスのあるエディタの DOM) を引き継ぐ。
@@ -325,18 +384,17 @@ export function Board({
       update(cur.map((s) => (s.key === key ? { ...s, content: value } : s)));
       return;
     }
-    const parts = split.parts.map(
-      (content, j): EditableSection => ({
-        key: j === split.focus.index ? orig.key : newKey(),
-        id: j === 0 ? orig.id : null,
-        expiresAt: j === 0 ? orig.expiresAt : null,
-        content,
-      }),
-    );
+    const parts = split.parts.map((content, j): EditableSection => ({
+      key: j === split.focus.index ? orig.key : newKey(),
+      id: j === 0 ? orig.id : null,
+      expiresAt: j === 0 ? orig.expiresAt : null,
+      content,
+    }));
     focusLater(orig.key, split.focus.offset);
     update([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
     // 末尾に新しいセクションができてそこへ移るなら、その冒頭を画面の上端に持ってくる
-    if (i === cur.length - 1 && split.focus.index === parts.length - 1) revealLast();
+    if (i === cur.length - 1 && split.focus.index === parts.length - 1)
+      revealLast();
   };
 
   // i 番目と i+1 番目をつなげる。前のセクションが id (期限) を保ち、フォーカスのある方 (focused) が key を保つ。
@@ -359,7 +417,10 @@ export function Board({
   // 削除は即時に反映し (1 秒後に自動保存される)、しばらく「元に戻す」を出す (確認ダイアログの代わり)。
   // 戻すときは元の位置に差し込む。保存が済んだ後なら id は無効になっているが、サーバは未知の id を
   // 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)
-  const [deleted, setDeleted] = useState<{ section: EditableSection; index: number } | null>(null);
+  const [deleted, setDeleted] = useState<{
+    section: EditableSection;
+    index: number;
+  } | null>(null);
   // 右下固定の追加ボタンがソフトキーボードの裏に隠れないよう、キーボード分だけ持ち上げる
   const keyboardInset = useKeyboardInset();
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -388,7 +449,10 @@ export function Board({
     cancelUndo();
     const cur = latestRef.current;
     // 最後の 1 つを消して空のセクションだけになっていたら、それは置き換える (書き足していなければ)
-    const base = cur.length === 1 && cur[0]!.id === null && cur[0]!.content === "" ? [] : cur;
+    const base =
+      cur.length === 1 && cur[0]!.id === null && cur[0]!.content === ""
+        ? []
+        : cur;
     const i = Math.min(deleted.index, base.length);
     focusLater(deleted.section.key, deleted.section.content.length);
     update([...base.slice(0, i), deleted.section, ...base.slice(i)]);
@@ -399,25 +463,54 @@ export function Board({
   // 折り畳んだ隣とは結合しない (見えていない内容が変わってしまうため)
   const backspaceAtStart = (i: number) => {
     const prev = latestRef.current[i - 1];
-    if (prev && !collapsedRef.current.has(prev.key)) mergeSections(i - 1, latestRef.current[i]!.key);
+    if (prev && !collapsedRef.current.has(prev.key))
+      mergeSections(i - 1, latestRef.current[i]!.key);
   };
   const deleteAtEnd = (i: number) => {
     const cur = latestRef.current;
     const next = cur[i + 1];
-    if (next && !collapsedRef.current.has(next.key)) mergeSections(i, cur[i]!.key);
+    if (next && !collapsedRef.current.has(next.key))
+      mergeSections(i, cur[i]!.key);
   };
   // ↑↓ は折り畳んだセクションを飛ばして次の開いているセクションへ
   const arrowUpAtFirstLine = (i: number) => {
-    const prev = latestRef.current.slice(0, i).findLast((s) => !collapsedRef.current.has(s.key));
+    const prev = latestRef.current
+      .slice(0, i)
+      .findLast((s) => !collapsedRef.current.has(s.key));
     if (!prev) return false;
     focus(prev.key, prev.content.length);
     return true;
   };
   const arrowDownAtLastLine = (i: number) => {
-    const next = latestRef.current.slice(i + 1).find((s) => !collapsedRef.current.has(s.key));
+    const next = latestRef.current
+      .slice(i + 1)
+      .find((s) => !collapsedRef.current.has(s.key));
     if (!next) return false;
     focus(next.key, 0);
     return true;
+  };
+  // Esc でフォーカスしたセクション表示 (MarkdownView) からの ↑↓: 隣のセクションの表示へフォーカスを移す
+  // (PC のキーボード操作。Enter で編集に戻れる)。空のセクションは表示要素が無いので飛ばす。
+  // 折り畳んだセクションへも移れる: 一時的に開いて (peek) その表示にフォーカスし、離れたら閉じた状態に戻る。
+  // peek の開閉を伴うときはレイアウトが変わるので、描画後に (layout effect 経由で) フォーカス & スクロールする
+  const focusViewFrom = (i: number, dir: -1 | 1) => {
+    const cur = latestRef.current;
+    for (let j = i + dir; j >= 0 && j < cur.length; j += dir) {
+      const s = cur[j]!;
+      if (s.content.trim() === "") continue;
+      const needsPeek =
+        collapsedRef.current.has(s.key) && peekRef.current !== s.key;
+      const closesPeek =
+        !collapsedRef.current.has(s.key) && peekRef.current !== null;
+      if (needsPeek || closesPeek) {
+        setPeekKey(needsPeek ? s.key : null);
+        pendingViewFocusRef.current = s.key;
+      } else {
+        focusView(s.key);
+      }
+      return true;
+    }
+    return false;
   };
   // Esc: エディタを Markdown 表示に戻し、描画後にその表示へフォーカスを移す。
   // CodeMirror の blur 通知 (onBlur) は 10ms 遅れて届くので待たない (その間に別の描画 (自動保存の状態表示など) が
@@ -438,9 +531,19 @@ export function Board({
     return () => {
       cancelTimer();
       const draft = toDraft(latestRef.current);
-      if (!inFlightRef.current && !isOffline() && !sameDraft(draft, savedRef.current)) {
-        if (draft.length > BOARD_MAX_SECTIONS || boardLength(draft) > BOARD_MAX_LENGTH) return;
-        const json = { sections: draft.map(({ id, content }) => ({ id, content })) };
+      if (
+        !inFlightRef.current &&
+        !isOffline() &&
+        !sameDraft(draft, savedRef.current)
+      ) {
+        if (
+          draft.length > BOARD_MAX_SECTIONS ||
+          boardLength(draft) > BOARD_MAX_LENGTH
+        )
+          return;
+        const json = {
+          sections: draft.map(({ id, content }) => ({ id, content })),
+        };
         void api.board.$put({ json }).catch(() => {
           // 離脱後なので UI には出せない。ネットワーク断ならその編集は失われる (スコープ外)
         });
@@ -571,11 +674,17 @@ export function Board({
             }}
             style={{
               // scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)
-              scrollMarginTop: "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
+              scrollMarginTop:
+                "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
+              // ↑ でのフォーカス移動 (focusView) は nearest で下端に合わせることがある。ぴったりに合うと
+              // フォーカスリング (outline 2px + offset 4px。MarkdownView) が画面の外に出るので、そのぶん余白を残す
+              scrollMarginBottom: 12,
               // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
               // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る)
               minHeight:
-                i === sections.length - 1 && sections.length > 1 && !collapsedKeys.has(s.key)
+                i === sections.length - 1 &&
+                sections.length > 1 &&
+                !isCollapsedView(s.key)
                   ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
                   : undefined,
             }}
@@ -650,14 +759,21 @@ export function Board({
                 </Tooltip>
               )}
             </Group>
-            {collapsedKeys.has(s.key) && s.content.trim() !== "" ? (
-              /* 折り畳み中: セクション全体が区切り線 1 行に収まる (プレビューは区切り線のラベル内) */
-              null
-            ) : (readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
+            {isCollapsedView(s.key) &&
+            s.content.trim() !==
+              "" /* 折り畳み中: セクション全体が区切り線 1 行に収まる (プレビューは区切り線のラベル内) */ ? null : (readOnly ||
+                s.key !== editingKey) &&
+              s.content.trim() !== "" ? (
               <MarkdownView
                 content={s.content}
                 aria-label={`セクション ${i + 1}`}
                 onEdit={readOnly ? undefined : (pos) => focus(s.key, pos)}
+                onNavigate={
+                  readOnly ? undefined : (dir) => focusViewFrom(i, dir)
+                }
+                onBlur={
+                  readOnly ? undefined : (related) => unpeek(s.key, related)
+                }
                 ref={(el) => {
                   if (el) viewsRef.current.set(s.key, el);
                   else viewsRef.current.delete(s.key);
@@ -680,7 +796,9 @@ export function Board({
                     : undefined
                 }
                 value={s.content}
-                onChange={(value, cursor) => changeSection(s.key, value, cursor)}
+                onChange={(value, cursor) =>
+                  changeSection(s.key, value, cursor)
+                }
                 onFocus={() => setEditingKey(s.key)}
                 onBlur={() => onBlur(s.key)}
                 onBackspaceAtStart={() => backspaceAtStart(i)}

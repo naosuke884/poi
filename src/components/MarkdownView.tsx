@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mantine/core";
-import type { KeyboardEvent, MouseEvent, Ref } from "react";
+import type { FocusEvent, KeyboardEvent, MouseEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -18,6 +18,8 @@ import classes from "./MarkdownView.module.css";
  *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/lib/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。
  *   ドラッグで文字を選択しただけのときは切り替えない (選択が残っている click は無視)
+ * - onNavigate があれば、フォーカス中の ↑↓ で隣のセクションへ移れる (Esc で編集をやめた後のキーボード操作)。
+ *   移れたとき (true) だけ既定の動き (ページのスクロール) を止める
  * - 他のセクションのエディタ (CodeMirror) が編集中のときは mousedown でそれを blur させない (blur で先に
  *   レイアウトが変わるとクリック位置がずれるため。フォーカスの移動は onEdit 側が行う)。
  *   編集中のものが無ければ止めない (文字の選択ができるように)
@@ -26,12 +28,19 @@ import classes from "./MarkdownView.module.css";
 export function MarkdownView({
   content,
   onEdit,
+  onNavigate,
+  onBlur,
   "aria-label": ariaLabel,
   ref,
 }: {
   content: string;
   /** 編集に切り替える。pos はカーソルを置く元テキストの位置 */
   onEdit?: (pos: number) => void;
+  /** ↑ (-1) / ↓ (1) で隣のセクションへフォーカスを移す。移れたら true */
+  onNavigate?: (dir: -1 | 1) => boolean;
+  /** フォーカスがこのセクションの外へ出た (中のリンクへの移動では呼ばない)。
+   * relatedTarget は移った先の要素 (ウィンドウ自体のフォーカス喪失などでは null) */
+  onBlur?: (relatedTarget: Element | null) => void;
   "aria-label"?: string;
   ref?: Ref<HTMLDivElement>;
 }) {
@@ -56,9 +65,18 @@ export function MarkdownView({
       onKeyDown={
         editable
           ? (e: KeyboardEvent<HTMLDivElement>) => {
-              if (e.key !== "Enter" || e.target !== e.currentTarget) return;
-              e.preventDefault();
-              onEdit(content.length);
+              // 中のリンクにフォーカスがあるときは何もしない (リンクの操作に任せる)
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onEdit(content.length);
+              } else if (
+                onNavigate &&
+                (e.key === "ArrowUp" || e.key === "ArrowDown")
+              ) {
+                if (onNavigate(e.key === "ArrowUp" ? -1 : 1))
+                  e.preventDefault();
+              }
             }
           : undefined
       }
@@ -66,6 +84,15 @@ export function MarkdownView({
         editable
           ? (e) => {
               if (document.activeElement?.closest(".cm-content")) e.preventDefault();
+            }
+          : undefined
+      }
+      onBlur={
+        onBlur
+          ? (e: FocusEvent<HTMLDivElement>) => {
+              // 中のリンクへの移動 (Tab) では外へ出ていない
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+                onBlur(e.relatedTarget as Element | null);
             }
           : undefined
       }
