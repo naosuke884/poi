@@ -64,7 +64,7 @@ export function Landing() {
           <span className={classes.heroAccent}>{MEMO_TTL_DAYS} 日で消える</span>
           メモ帳
         </Title>
-        <Button size="md" my="lg" loading={busy} onClick={() => void login()}>
+        <Button size="md" mt={40} mb="lg" loading={busy} onClick={() => void login()}>
           Google でログインして始める
         </Button>
         {error && (
