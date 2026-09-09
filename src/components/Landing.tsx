@@ -94,7 +94,7 @@ export function Landing() {
 
       <Stack gap="sm" maw={860} w="100%">
         <Title order={2} size="h4" ta="center">
-          できること
+          特徴
         </Title>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" w="100%">
           {FEATURES.map((f) => (
