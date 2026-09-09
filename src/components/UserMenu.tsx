@@ -19,6 +19,7 @@ import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
 import { clearCollapsed } from "@/lib/collapsed-sections";
 import { CONTACT_URL } from "@/components/LegalPage";
+import { InstallGuideModal, useInstallApp } from "@/components/InstallAppMenuItem";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
 import { useOnline } from "@/lib/use-online";
 
@@ -27,6 +28,7 @@ export function UserMenu() {
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const online = useOnline();
+  const install = useInstallApp();
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -128,6 +130,13 @@ export function UserMenu() {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{user.email}</Menu.Label>
+          {/* スマホでホーム画面にまだ追加していない人だけに出す (InstallAppMenuItem を参照) */}
+          {install.available && (
+            <>
+              <Menu.Item onClick={install.start}>ホーム画面に追加</Menu.Item>
+              <Menu.Divider />
+            </>
+          )}
           <Menu.Item component={Link} to="/terms">
             利用規約
           </Menu.Item>
@@ -147,6 +156,8 @@ export function UserMenu() {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      {/* Menu.Dropdown の中だと閉じたときに一緒に消えるので、Modal は Menu の外に置く */}
+      <InstallGuideModal {...install.guide} />
       {/* 見出しは付けない (本文だけで足りる)。閉じるのはキャンセル / Esc / 外側クリック */}
       <Modal opened={confirmingDelete} onClose={() => setConfirmingDelete(false)} withCloseButton={false} centered>
         <Stack gap="md">

@@ -5,6 +5,9 @@ import { createRoot } from "react-dom/client";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { RouteErrorFallback } from "@/components/RouteErrorFallback";
+// ホーム画面への追加 (beforeinstallprompt) は React のマウントより先に飛んでくることがあるので、
+// 受け取り口をここで先に用意しておく (副作用だけの import)
+import "@/lib/install-prompt";
 import { routeTree } from "./routeTree.gen";
 
 const router = createRouter({
