@@ -86,14 +86,14 @@ export function Landing() {
       </Stack>
 
       <Stack gap="sm" maw={860} w="100%">
-        <Title order={2} size="h4">
+        <Title order={2} size="h4" ta="center">
           試し書き
         </Title>
         <LandingDemo />
       </Stack>
 
       <Stack gap="sm" maw={860} w="100%">
-        <Title order={2} size="h4">
+        <Title order={2} size="h4" ta="center">
           できること
         </Title>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" w="100%">
