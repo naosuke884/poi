@@ -5,8 +5,3 @@
   font-size: clamp(1.9rem, 4vw + 0.6rem, 3rem);
   line-height: 1.25;
 }
-
-/* 見出し内の「消える」だけ主要色でアクセント */
-.heroAccent {
-  color: var(--mantine-primary-color-filled);
-}

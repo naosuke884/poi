@@ -60,9 +60,7 @@ export function Landing() {
     <Stack gap={72} py="xl" align="center">
       <Stack gap="sm" align="center" ta="center">
         <Title order={1} className={classes.heroTitle}>
-          書いたら{" "}
-          <span className={classes.heroAccent}>{MEMO_TTL_DAYS} 日で消える</span>
-          メモ帳
+          {MEMO_TTL_DAYS} 日で消えるメモ帳
         </Title>
         <Button size="md" mt={40} mb="lg" loading={busy} onClick={() => void login()}>
           Google でログインして始める
