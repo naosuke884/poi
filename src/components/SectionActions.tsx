@@ -68,6 +68,8 @@ export function SectionCollapseToggle({
       <ActionIcon
         variant="subtle"
         color="gray"
+        // 区切り線 (Divider) のラベル内にいるので、線の色 (--divider-color) がそのまま継承できる
+        c="var(--divider-color)"
         size="xs"
         aria-label={
           collapsed ? `セクション ${index + 1} を展開` : `セクション ${index + 1} を折り畳む`
@@ -131,6 +133,9 @@ function ActionButton({
         <ActionIcon
           variant="subtle"
           color={feedback ? (feedback.ok ? "teal" : "red") : "gray"}
+          // 普段は区切り線の色に合わせる (Divider のラベル内なので --divider-color が継承できる)。
+          // 結果表示中はチェック / × を variant の色 (teal / red) で見せる
+          c={feedback ? undefined : "var(--divider-color)"}
           size="xs"
           aria-label={label}
           loading={busy}
