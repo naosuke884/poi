@@ -7,28 +7,16 @@ import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 // 特徴カード。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
 const FEATURES: { title: string; body: string }[] = [
   {
-    title: "開いてすぐ書ける",
-    body: "1 枚の板に上から書いていくだけ。ページ分けもファイル名も要りません。",
+    title: `${MEMO_TTL_DAYS} 日たつと、勝手に消える`,
+    body: `空行 2 つで区切ったセクションごとに期限が付き、残り日数は区切り線にいつも見えています。残すつもりのないことほど、気軽に書けます。`,
   },
   {
-    title: `${MEMO_TTL_DAYS} 日で消える`,
-    body: `空行 2 つかボタンで区切ったセクションごとに期限が付き、${MEMO_TTL_DAYS} 日後に自動で消えます。期限は区切り線にいつも見えています。`,
+    title: "Markdown のまま、読みやすい",
+    body: "# 見出しは見出しの大きさのまま編集でき、- 箇条書きは Tab で階層を下げられます。記号は隠さないので、書いた通りに読めます。",
   },
   {
-    title: "Markdown のまま読みやすい",
-    body: "# 見出しは見出しの大きさのまま編集でき、- 箇条書きは Tab でインデント。メモに要る分だけの Markdown が使えます。",
-  },
-  {
-    title: "セクションごとに操作",
+    title: "セクションごとに、さっと操作",
     body: "コピー、画像にして共有、折り畳みがセクション単位でできます。消しても直後なら元に戻せます。",
-  },
-  {
-    title: "オフラインでも読める",
-    body: "前回開いた内容を端末が覚えているので、圏外でも読み返せます。",
-  },
-  {
-    title: "スマホではアプリに",
-    body: "ホーム画面に追加すれば、アプリのようにワンタップで開けます。",
   },
 ];
 
@@ -70,10 +58,6 @@ export function Landing() {
     <Stack gap="xl" py="xl" align="center">
       <Stack gap="sm" align="center" ta="center">
         <Title order={1}>書いたら {MEMO_TTL_DAYS} 日で消えるメモ帳</Title>
-        <Text c="dimmed" size="lg" maw={620}>
-          poi は「いま書く」ためのメモ帳。開いてすぐ書けるひとつの板に、思いついたことをそのまま置いていく。
-          セクションごとに {MEMO_TTL_DAYS} 日たつと自動で消えるので、残すつもりのないことほど気軽に書けます。
-        </Text>
         <Button size="md" mt="xs" loading={busy} onClick={() => void login()}>
           Google でログインして始める
         </Button>
@@ -95,6 +79,18 @@ export function Landing() {
         </Text>
       </Stack>
 
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" maw={860} w="100%">
+        {FEATURES.map((f) => (
+          // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
+          <Paper key={f.title} withBorder radius="md" p="md">
+            <Stack gap={4}>
+              <Text fw={600}>{f.title}</Text>
+              <Text size="sm">{f.body}</Text>
+            </Stack>
+          </Paper>
+        ))}
+      </SimpleGrid>
+
       <Paper withBorder radius="md" p={0} style={{ overflow: "hidden", maxWidth: 860, width: "100%" }}>
         {/* 配色に合わせたスクショを出す (width/height はロード中のレイアウトシフト防止) */}
         <picture>
@@ -108,18 +104,6 @@ export function Landing() {
           />
         </picture>
       </Paper>
-
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md" maw={860} w="100%">
-        {FEATURES.map((f) => (
-          // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
-          <Paper key={f.title} withBorder radius="md" p="md">
-            <Stack gap={4}>
-              <Text fw={600}>{f.title}</Text>
-              <Text size="sm">{f.body}</Text>
-            </Stack>
-          </Paper>
-        ))}
-      </SimpleGrid>
 
       <Text size="xs" c="dimmed" ta="center">
         オープンソースです:{" "}
