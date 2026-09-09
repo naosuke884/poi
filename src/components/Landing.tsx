@@ -101,7 +101,9 @@ export function Landing() {
             // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
             <Paper key={f.title} withBorder radius="md" p="md">
               <Stack gap={4}>
-                <Text fw={600}>{f.title}</Text>
+                <Text fw={600} size="lg">
+                  {f.title}
+                </Text>
                 <Text size="sm">{f.body}</Text>
               </Stack>
             </Paper>
