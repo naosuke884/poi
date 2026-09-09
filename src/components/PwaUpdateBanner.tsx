@@ -23,11 +23,11 @@ export function PwaUpdateBanner() {
 
   return (
     // ホームインジケータ / ノッチ (safe-area) の分だけ内側に寄せる。
-    // 右下角は板の「セクションを追加」ボタン (Board.tsx の Affix) が使うので、その上に出す
+    // 通知は左下に揃える。左下角は板の「削除の取り消し」通知 (Board.tsx の Affix) が使うので、その上に出す
     <Affix
       position={{
         bottom: "calc(72px + env(safe-area-inset-bottom))",
-        right: affixInset("right"),
+        left: affixInset("left"),
       }}
     >
       <Notification

@@ -1,6 +1,20 @@
-import { Avatar, Button, Group, Loader, Menu, Modal, Skeleton, Stack, Text, UnstyledButton } from "@mantine/core";
+import {
+  Affix,
+  Avatar,
+  Button,
+  Group,
+  Loader,
+  Menu,
+  Modal,
+  Notification,
+  Skeleton,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { affixInset } from "@/lib/affix";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
 import { clearCollapsed } from "@/lib/collapsed-sections";
@@ -161,10 +175,27 @@ export function UserMenu() {
       </Modal>
       {loggingOut && <Loader size="xs" aria-label="ログアウト中…" />}
       {deleting && <Loader size="xs" aria-label="アカウント削除中…" />}
+      {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
       {(logoutError ?? deleteError) && (
-        <Text size="xs" c="red" role="alert">
-          {logoutError ?? deleteError}
-        </Text>
+        <Affix
+          position={{
+            bottom: "calc(16px + env(safe-area-inset-bottom))",
+            left: affixInset("left"),
+          }}
+        >
+          <Notification
+            color="red"
+            withBorder
+            role="alert"
+            onClose={() => {
+              setLogoutError(null);
+              setDeleteError(null);
+            }}
+            closeButtonProps={{ "aria-label": "閉じる" }}
+          >
+            {logoutError ?? deleteError}
+          </Notification>
+        </Affix>
       )}
     </Group>
   );

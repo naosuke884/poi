@@ -861,7 +861,7 @@ export function Board({
         </Affix>
       )}
 
-      {/* 削除の取り消し (左下。右下は追加ボタンと PwaUpdateBanner) */}
+      {/* 削除の取り消し (左下角。PwaUpdateBanner はこの上、右下は追加ボタン) */}
       {deleted && (
         <Affix
           position={{
