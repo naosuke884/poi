@@ -37,7 +37,6 @@ import {
   type EditableSection,
   daysUntil,
   firstLine,
-  formatDate,
   newKey,
   newSection,
   sameDraft,
@@ -689,7 +688,7 @@ export function Board({
                   : undefined,
             }}
           >
-            {/* 区切り: 期限ラベルとコピー / スクショは線の中 (左)、削除は線の外の右端 (誤って押しにくいように離す) */}
+            {/* 区切り: コピー / スクショは線の中 (左)、期限ラベルと削除は線の外の右端 (削除は誤って押しにくいように離す) */}
             <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
                 labelPosition="left"
@@ -697,55 +696,57 @@ export function Board({
                 // 縮まず右へはみ出す。ラベル → Group → Text まで同じ理由で縮小を許す
                 style={{ flex: 1, minWidth: 0 }}
                 styles={{ label: { maxWidth: "100%", minWidth: 0 } }}
+                // 本文が空で期限だけあるとラベルが空になり線の左に余白が出るので、ラベル自体を消す
                 label={
-                  <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                    {s.content.trim() !== "" && (
-                      <SectionCollapseToggle
-                        index={i}
-                        collapsed={collapsedKeys.has(s.key)}
-                        onToggle={() => toggleCollapsed(s.key)}
-                      />
-                    )}
-                    {s.expiresAt !== null ? (
-                      <span style={{ flexShrink: 0 }}>
-                        あと {daysUntil(s.expiresAt)} 日で消えます
-                        {/* 期限の日付。狭い画面では省く (title 属性だとタッチ / キーボードで見られないので文字で出す) */}
-                        <Text span inherit c="dimmed" visibleFrom="sm">
-                          {` (${formatDate(s.expiresAt)})`}
-                        </Text>
-                      </span>
-                    ) : (
-                      <span style={{ flexShrink: 0 }}>新しいセクション</span>
-                    )}
-                    {s.content.trim() !== "" && !collapsedKeys.has(s.key) && (
-                      <SectionActions
-                        index={i}
-                        onCopy={() => copySectionText(s.content)}
-                        onScreenshot={() => screenshot(s.key)}
-                      />
-                    )}
-                    {collapsedKeys.has(s.key) && s.content.trim() !== "" && (
-                      /* 折り畳み中: 最初の行を区切り線の中に出す (長ければ省略)。クリックで開く
+                  s.content.trim() === "" &&
+                  s.expiresAt !== null ? undefined : (
+                    <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                      {s.content.trim() !== "" && (
+                        <SectionCollapseToggle
+                          index={i}
+                          collapsed={isCollapsedView(s.key)}
+                          onToggle={() => toggleCollapsed(s.key)}
+                        />
+                      )}
+                      {s.expiresAt === null && (
+                        <span style={{ flexShrink: 0 }}>新しいセクション</span>
+                      )}
+                      {s.content.trim() !== "" && !isCollapsedView(s.key) && (
+                        <SectionActions
+                          index={i}
+                          onCopy={() => copySectionText(s.content)}
+                          onScreenshot={() => screenshot(s.key)}
+                        />
+                      )}
+                      {isCollapsedView(s.key) && s.content.trim() !== "" && (
+                        /* 折り畳み中: 最初の行を区切り線の中に出す (長ければ省略)。クリックで開く
                          (キーボードは区切り線の ▸ から) */
-                      <Text
-                        span
-                        inherit
-                        c="dimmed"
-                        style={{
-                          minWidth: 0,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => toggleCollapsed(s.key)}
-                      >
-                        {firstLine(s.content)}
-                      </Text>
-                    )}
-                  </Group>
+                        <Text
+                          span
+                          inherit
+                          c="dimmed"
+                          style={{
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => toggleCollapsed(s.key)}
+                        >
+                          {firstLine(s.content)}
+                        </Text>
+                      )}
+                    </Group>
+                  )
                 }
               />
+              {s.expiresAt !== null && (
+                /* 区切り線のラベルと同じ見た目 (xs / dimmed) に揃える */
+                <Text span size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                  あと {daysUntil(s.expiresAt)} 日
+                </Text>
+              )}
               {!readOnly && (
                 <Tooltip label="削除" withArrow>
                   <CloseButton

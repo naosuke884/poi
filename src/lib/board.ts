@@ -89,15 +89,6 @@ export function daysUntil(value: string | number | Date, now: number = Date.now(
   return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
-/** 期限日など日付だけの表示用フォーマット (YYYY/MM/DD、端末のタイムゾーン) */
-export function formatDate(value: string | number | Date): string {
-  return new Date(value).toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
 /** 取得日時などの表示用フォーマット (端末のタイムゾーン) */
 export function formatDateTime(value: string | number | Date): string {
   return new Date(value).toLocaleString("ja-JP", {
