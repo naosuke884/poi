@@ -1,7 +1,6 @@
 import {
   history,
   historyKeymap,
-  insertNewline,
   simplifySelection,
   standardKeymap,
   deleteCharBackwardStrict,
@@ -11,6 +10,7 @@ import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } fr
 import { type Ref, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
 import { insertNewlineContinueList } from "@/lib/list-continue";
+import { deleteListMarkerBackward, deleteListMarkerForward, forceListMarkers } from "@/lib/list-force";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "@/lib/list-indent";
 import { sectionMarkdown } from "@/lib/section-markdown";
 import classes from "./SectionEditor.module.css";
@@ -65,8 +65,8 @@ function applyFocus(view: EditorView, pos: number) {
 /**
  * 編集中セクションのエディタ (CodeMirror 6)。Board が編集中の 1 セクションだけこれで表示する。
  * テキストは常に Markdown ソースそのもので、見出し・記号・URL は装飾するだけ (src/lib/section-markdown.ts)。
- * Textarea と同じ使い勝手にする: 散文向けの spellcheck / 自動大文字化、Enter は単純な改行、
- * 文字数上限、複数行のプレースホルダ。
+ * 本文は常に箇条書き: Enter は項目を続け、編集で触れた行には記号を自動で足す (src/lib/list-force.ts)。
+ * Textarea 譲りの使い勝手も保つ: 散文向けの spellcheck / 自動大文字化、文字数上限、複数行のプレースホルダ。
  * セクションの境界 (先頭で Backspace / 末尾で Delete / 最初の行で ↑ / 最後の行で ↓) はキー処理を横取りして
  * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。
  * Tab / Shift+Tab はインデント操作 (src/lib/list-indent.ts)、Esc は編集をやめる (blur)
@@ -154,6 +154,8 @@ export function SectionEditor({
           keymap.of([...standardKeymap, ...historyKeymap]),
           // 記号の直後のスペースはインデントにする (モバイルの Tab 代わり。src/lib/list-indent.ts)
           spaceIndentsListItem,
+          // 本文は常に箇条書き: 編集で触れた行に `- ` を自動で足す (src/lib/list-force.ts)
+          forceListMarkers,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
           // 下にカーソルが隠れないようにする。余白は Board が Box の scroll-margin-top に入れているものをそのまま
@@ -273,8 +275,9 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
       callbacks.current.onBackspaceAtStart();
       return true;
     }
-    // 行頭の空白をインデント単位でまとめて消さない (Textarea と同じく 1 文字ずつ)
-    return deleteCharBackwardStrict(view);
+    // 記号より左では記号やインデントをまとめて扱う (src/lib/list-force.ts)。
+    // それ以外は 1 文字ずつ (行頭の空白をインデント単位でまとめて消さない。Textarea と同じ)
+    return deleteListMarkerBackward(view) || deleteCharBackwardStrict(view);
   };
   return [
     // Shift+Backspace も同じ (standardKeymap は shift にも deleteCharBackward を割り当てていて、
@@ -283,9 +286,12 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
     {
       key: "Delete",
       run(view) {
-        if (cursorOf(view) !== view.state.doc.length) return false;
-        callbacks.current.onDeleteAtEnd();
-        return true;
+        if (cursorOf(view) === view.state.doc.length) {
+          callbacks.current.onDeleteAtEnd();
+          return true;
+        }
+        // 行末では次の行の記号ごと結合する (src/lib/list-force.ts)。それ以外は通常の削除
+        return deleteListMarkerForward(view);
       },
     },
     {
@@ -308,10 +314,9 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
         return last && callbacks.current.onArrowDownAtLastLine();
       },
     },
-    // Enter は箇条書きだけ同じ階層で続け、それ以外は単純な改行 (standardKeymap の insertNewlineAndIndent は
-    // 行頭の空白を次の行にコピーし、カーソル直後の空白を食うので Textarea の挙動から変わってしまう)。
-    // Shift+Enter は常に単純な改行 (項目の中で続きの行を書く逃げ道)
-    { key: "Enter", run: insertNewlineContinueList, shift: insertNewline },
+    // Enter は箇条書きを同じ階層で続ける (本文は常に箇条書きなので Shift+Enter も同じ。
+    // 逃げ道の単純な改行を残しても、次に書いた行へ forceListMarkers が記号を足すので意味が無い)
+    { key: "Enter", run: insertNewlineContinueList, shift: insertNewlineContinueList },
     // Tab はインデント (リストの階層下げ / タブ挿入)、Shift+Tab は戻し (src/lib/list-indent.ts)
     { key: "Tab", run: indentMoreOrInsertTab, shift: indentLess },
     // Esc で編集をやめる (blur して onEscape → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
