@@ -688,8 +688,8 @@ export function Board({
                   : undefined,
             }}
           >
-            {/* 区切り: コピー / スクショは線の中 (左)、期限ラベルと削除は線の外の右端 (削除は誤って押しにくいように離す) */}
-            <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
+            {/* 区切り: 折り畳みトグルだけ線の中 (左)、コピー / スクショ / 期限ラベル / 削除は線の外の右端 */}
+            <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
                 labelPosition="left"
                 // minWidth 0: flex の既定 (min-width: auto) だと折り畳みプレビューの長い 1 行が
@@ -710,13 +710,6 @@ export function Board({
                       )}
                       {s.expiresAt === null && (
                         <span style={{ flexShrink: 0 }}>新しいセクション</span>
-                      )}
-                      {s.content.trim() !== "" && !isCollapsedView(s.key) && (
-                        <SectionActions
-                          index={i}
-                          onCopy={() => copySectionText(s.content)}
-                          onScreenshot={() => screenshot(s.key)}
-                        />
                       )}
                       {isCollapsedView(s.key) && s.content.trim() !== "" && (
                         /* 折り畳み中: 最初の行を区切り線の中に出す (長ければ省略)。クリックで開く
@@ -741,6 +734,13 @@ export function Board({
                   )
                 }
               />
+              {s.content.trim() !== "" && !isCollapsedView(s.key) && (
+                <SectionActions
+                  index={i}
+                  onCopy={() => copySectionText(s.content)}
+                  onScreenshot={() => screenshot(s.key)}
+                />
+              )}
               {s.expiresAt !== null && (
                 /* 区切り線のラベルと同じ見た目 (xs / dimmed) に揃える */
                 <Text span size="xs" c="dimmed" style={{ flexShrink: 0 }}>
