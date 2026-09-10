@@ -14,7 +14,8 @@ import { LIST_ITEM_RE } from "@/lib/list-continue";
 /**
  * 本文を常に箇条書きに保つ (#40)。
  * 入力・削除・ペーストで触れた行が項目の形 (`- ` など。LIST_ITEM_RE) でなくなっていたら、
- * インデントの後ろに `- ` を足して項目に戻す。空行 (セクション区切りの素材) は触らない。
+ * インデントの後ろに `- ` を足して項目に戻す。空行 (セクション区切りの素材) と
+ * 見出し (`# ` など。見出しは箇条書きにしない) は触らない。
  * 既存の項目でない行も、編集で触れた時点で項目になる (触るまではそのまま)。
  * 取り消し (undo) や Board からの同期 (分割 / 結合) は対象外: userEvent の付いた編集だけ直す。
  * 直しは元の編集と 1 つのトランザクションに合成する (undo で一緒に戻る)。spec を配列で足すと
@@ -57,9 +58,13 @@ export const forceListMarkers: Extension = [
   }),
 ];
 
-/** 行が項目の形でなければ、インデントの直後に `- ` を挿す変更 (空行と項目の行は null) */
+// ATX 見出しの行頭: スペース 0〜3 + `#` 1〜6 + 空白か行末 (CommonMark。MarkdownView (micromark) が
+// 見出しと見なす形。`#` の直後がタブでも micromark は見出しにする)
+const HEADING_RE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
+
+/** 行が項目の形でなければ、インデントの直後に `- ` を挿す変更 (空行・見出し・項目の行は null) */
 function markerFor(text: string, from: number): { from: number; insert: string } | null {
-  if (/^[ \t]*$/.test(text) || LIST_ITEM_RE.test(text)) return null;
+  if (/^[ \t]*$/.test(text) || HEADING_RE.test(text) || LIST_ITEM_RE.test(text)) return null;
   return { from: from + /^[ \t]*/.exec(text)![0].length, insert: "- " };
 }
 
