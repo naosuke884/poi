@@ -39,6 +39,7 @@ import {
   firstLine,
   newKey,
   newSection,
+  partitionCollapsed,
   sameDraft,
   splitAtSeparator,
   toDraft,
@@ -105,7 +106,8 @@ export function Board({
 }) {
   // 画面上のセクション。state は描画用で、ハンドラや保存処理は常に latestRef (同じ内容) を読む
   const [sections, setSections] = useState<EditableSection[]>(() => {
-    const s = toEditable(initial);
+    // 閉じたセクションは上にまとめて表示する (以前のデータは並びが混ざっていることがある)
+    const s = partitionCollapsed(toEditable(initial));
     return s.length > 0 ? s : [newSection()];
   });
   const latestRef = useRef(sections);
@@ -336,8 +338,11 @@ export function Board({
     }, AUTOSAVE_DELAY_MS);
   }, [save]);
 
-  // 編集操作はすべてここを通す (状態を更新し、自動保存を予約する)
-  const update = (next: EditableSection[]) => {
+  // 編集操作はすべてここを通す (状態を更新し、自動保存を予約する)。
+  // 閉じたセクションを上にまとめる並べ替えもここで行う: 折り畳み以外の編集では並びは既に
+  // 揃っているので何も動かず、折り畳み / 展開のときだけそのセクションが移る
+  const update = (raw: EditableSection[]) => {
+    const next = partitionCollapsed(raw);
     commit(next);
     if (sameDraft(toDraft(next), savedRef.current)) {
       cancelTimer();

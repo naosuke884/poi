@@ -44,6 +44,18 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
 }
 
 /**
+ * 閉じたセクションが上、開いたセクションが下にまとまるように並べ替える (それぞれの中の順序は保つ)。
+ * Board が状態を変えるたびに通すので、折り畳むとそのセクションは閉じた群の末尾へ、
+ * 開くと開いた群の先頭 (閉じた群のすぐ下) へ動く。並び順は保存 (position) にもそのまま反映される
+ */
+export function partitionCollapsed(sections: EditableSection[]): EditableSection[] {
+  const collapsed = sections.filter((s) => s.collapsed);
+  return collapsed.length === 0
+    ? sections
+    : [...collapsed, ...sections.filter((s) => !s.collapsed)];
+}
+
+/**
  * 画面上のセクションから保存するものを選ぶ。空のセクションは送らない (= サーバには残らない。
  * 画面には残るので、書き足せば新しいセクションとして保存される)。
  * key は保存後にサーバが付けた id / 期限を画面のセクションへ戻すために持つ
