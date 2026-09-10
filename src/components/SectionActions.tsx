@@ -132,10 +132,11 @@ function ActionButton({
       <Tooltip label={feedback?.message ?? tooltip} opened={feedback ? true : undefined} withArrow>
         <ActionIcon
           variant="subtle"
-          color={feedback ? (feedback.ok ? "teal" : "red") : "gray"}
+          color="gray"
           // 普段は区切り線の期限ラベル (dimmed) と同じ色に揃える。
-          // 結果表示中はチェック / × を variant の色 (teal / red) で見せる
-          c={feedback ? undefined : "dimmed"}
+          // 結果表示中はチェック / × を teal / red で見せる。
+          // variant の色は gray のまま (色付きにするとクリック直後のホバー背景が緑/赤に光る)
+          c={feedback ? (feedback.ok ? "teal" : "red") : "dimmed"}
           size="xs"
           aria-label={label}
           loading={busy}
