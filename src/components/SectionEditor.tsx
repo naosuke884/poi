@@ -11,7 +11,7 @@ import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } fr
 import { type Ref, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
 import { insertNewlineContinueList } from "@/lib/list-continue";
-import { indentLess, indentMoreOrInsertTab } from "@/lib/list-indent";
+import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "@/lib/list-indent";
 import { sectionMarkdown } from "@/lib/section-markdown";
 import classes from "./SectionEditor.module.css";
 
@@ -152,6 +152,8 @@ export function SectionEditor({
           history(),
           Prec.highest(keymap.of(boundaryKeymap(callbacksRef))),
           keymap.of([...standardKeymap, ...historyKeymap]),
+          // 記号の直後のスペースはインデントにする (モバイルの Tab 代わり。src/lib/list-indent.ts)
+          spaceIndentsListItem,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
           // 下にカーソルが隠れないようにする。余白は Board が Box の scroll-margin-top に入れているものをそのまま

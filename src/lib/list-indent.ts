@@ -1,5 +1,5 @@
 import type { Line, Text } from "@codemirror/state";
-import type { Command, EditorView } from "@codemirror/view";
+import { type Command, EditorView } from "@codemirror/view";
 import { LIST_ITEM_RE } from "@/lib/list-continue";
 
 /**
@@ -111,6 +111,30 @@ export const indentMoreOrInsertTab: Command = (view) => {
   });
   return true;
 };
+
+/**
+ * 項目の本文の先頭 (記号の直後) でスペースを打ったら、Tab と同じく階層を下げる。
+ * モバイルには Tab キーが無いのでこれがインデントの入り口になる (PC でも効く。記号の直後に
+ * スペースを足しても表示は変わらないので、普通のスペースとして通す意味が無い位置だけ横取りする)。
+ * 仮想キーボードは keydown を出さないことがある (keyCode 229) ので、キーマップではなく
+ * inputHandler で文字の挿入として受ける。IME 変換中のスペース (候補選択) は触らない
+ */
+export const spaceIndentsListItem = EditorView.inputHandler.of((view, from, to, text) => {
+  if (text !== " " || from !== to || view.composing) return false;
+  const { state } = view;
+  const sel = state.selection.main;
+  if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
+  const line = state.doc.lineAt(from);
+  const m = LIST_ITEM_RE.exec(line.text);
+  if (!m || from !== line.from + m[0].length) return false;
+  const renumber = renumberFor(state.doc, line, new Set([line.number]), new Map());
+  view.dispatch({
+    changes: [{ from: line.from, insert: "\t" }, ...(renumber ? [renumber] : [])],
+    scrollIntoView: true,
+    userEvent: "input.indent",
+  });
+  return true;
+});
 
 /**
  * Shift+Tab: 触れている行の行頭からタブ 1 つ分 (タブ停止 1 つ = スペース最大 4 つ。` \t` のような
