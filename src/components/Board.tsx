@@ -89,6 +89,8 @@ const UNDO_DELETE_MS = 8000;
  * - 区切り線の ▾ でセクションを折り畳める (セクション全体が区切り線 1 行に収まり、最初の行を線の中に
  *   薄く出す。プレビューのクリックか ▸ で開く)。
  *   折り畳みはセクションの一部 (collapsed) としてサーバに保存され、どのデバイスでも同じ開閉状態になる。
+ *   閉じたセクションは表示のときだけ上にまとめる (partitionCollapsed)。データの並びは変えないので、
+ *   開くと元の位置に戻る。
  *   折り畳んだセクションは編集に入れず、エディタ内の ↑↓ は飛ばし、隣からの結合 (Backspace / Delete) もしない。
  *   セクション表示 (Esc 後) の ↑↓ では折り畳んだセクションにも移れる: フォーカスしている間だけ一時的に
  *   開いて見せ (peek)、離れたら閉じた状態に戻る (編集に入ったら正式に開く)
@@ -106,8 +108,7 @@ export function Board({
 }) {
   // 画面上のセクション。state は描画用で、ハンドラや保存処理は常に latestRef (同じ内容) を読む
   const [sections, setSections] = useState<EditableSection[]>(() => {
-    // 閉じたセクションは上にまとめて表示する (以前のデータは並びが混ざっていることがある)
-    const s = partitionCollapsed(toEditable(initial));
+    const s = toEditable(initial);
     return s.length > 0 ? s : [newSection()];
   });
   const latestRef = useRef(sections);
@@ -230,7 +231,8 @@ export function Board({
   // (SectionEditor の focus はそのためにカーソルへのスクロールを同期的に済ませる)
   const [reveal, setReveal] = useState<{ key: string } | null>(null);
   const revealLast = () => {
-    const last = latestRef.current.at(-1);
+    // 「最後」は表示順で見る (データ上の最後のセクションが折り畳まれて上に居ることがある)
+    const last = partitionCollapsed(latestRef.current).at(-1);
     if (last) setReveal({ key: last.key });
   };
   useLayoutEffect(() => {
@@ -338,11 +340,8 @@ export function Board({
     }, AUTOSAVE_DELAY_MS);
   }, [save]);
 
-  // 編集操作はすべてここを通す (状態を更新し、自動保存を予約する)。
-  // 閉じたセクションを上にまとめる並べ替えもここで行う: 折り畳み以外の編集では並びは既に
-  // 揃っているので何も動かず、折り畳み / 展開のときだけそのセクションが移る
-  const update = (raw: EditableSection[]) => {
-    const next = partitionCollapsed(raw);
+  // 編集操作はすべてここを通す (状態を更新し、自動保存を予約する)
+  const update = (next: EditableSection[]) => {
     commit(next);
     if (sameDraft(toDraft(next), savedRef.current)) {
       cancelTimer();
@@ -477,8 +476,11 @@ export function Board({
   // (PC のキーボード操作。Enter で編集に戻れる)。空のセクションは表示要素が無いので飛ばす。
   // 折り畳んだセクションへも移れる: 一時的に開いて (peek) その表示にフォーカスし、離れたら閉じた状態に戻る。
   // peek の開閉を伴うときはレイアウトが変わるので、描画後に (layout effect 経由で) フォーカス & スクロールする
-  const focusViewFrom = (i: number, dir: -1 | 1) => {
-    const cur = latestRef.current;
+  const focusViewFrom = (key: string, dir: -1 | 1) => {
+    // 表示順で隣を探す (閉じたセクションは上にまとまって見えているので、その順に移る)
+    const cur = partitionCollapsed(latestRef.current);
+    const i = cur.findIndex((s) => s.key === key);
+    if (i < 0) return false;
     for (let j = i + dir; j >= 0 && j < cur.length; j += dir) {
       const s = cur[j]!;
       if (s.content.trim() === "") continue;
@@ -636,6 +638,11 @@ export function Board({
     setEditingKey((k) => (k === key ? null : k));
   };
 
+  // 表示は閉じたセクションを上にまとめる (#36)。データの並び (保存される position) はそのままなので、
+  // 開くと元の位置に戻る。i は表示上の番号 (ラベルや最後の判定用)。データ上の位置が要る操作
+  // (結合や ↑↓) は key から引き直す
+  const displaySections = partitionCollapsed(sections);
+
   return (
     <Stack gap="xs" style={{ flex: 1 }}>
       <Box
@@ -643,7 +650,7 @@ export function Board({
         onClick={focusEnd}
         onMouseDown={keepFocus}
       >
-        {sections.map((s, i) => (
+        {displaySections.map((s, i) => (
           <Box
             key={s.key}
             data-section
@@ -661,8 +668,8 @@ export function Board({
               // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
               // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る)
               minHeight:
-                i === sections.length - 1 &&
-                sections.length > 1 &&
+                i === displaySections.length - 1 &&
+                displaySections.length > 1 &&
                 !isCollapsedView(s.key)
                   ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
                   : undefined,
@@ -750,7 +757,7 @@ export function Board({
                 aria-label={`セクション ${i + 1}`}
                 onEdit={readOnly ? undefined : (pos) => focus(s.key, pos)}
                 onNavigate={
-                  readOnly ? undefined : (dir) => focusViewFrom(i, dir)
+                  readOnly ? undefined : (dir) => focusViewFrom(s.key, dir)
                 }
                 onBlur={
                   readOnly ? undefined : (related) => unpeek(s.key, related)
@@ -782,10 +789,12 @@ export function Board({
                 }
                 onFocus={() => setEditingKey(s.key)}
                 onBlur={() => onBlur(s.key)}
-                onBackspaceAtStart={() => backspaceAtStart(i)}
-                onDeleteAtEnd={() => deleteAtEnd(i)}
-                onArrowUpAtFirstLine={() => arrowUpAtFirstLine(i)}
-                onArrowDownAtLastLine={() => arrowDownAtLastLine(i)}
+                onBackspaceAtStart={() => backspaceAtStart(indexOf(s.key))}
+                onDeleteAtEnd={() => deleteAtEnd(indexOf(s.key))}
+                onArrowUpAtFirstLine={() => arrowUpAtFirstLine(indexOf(s.key))}
+                onArrowDownAtLastLine={() =>
+                  arrowDownAtLastLine(indexOf(s.key))
+                }
                 onEscape={() => exitEditing(s.key)}
                 readOnly={readOnly}
                 ref={(editor) => {

@@ -2,6 +2,9 @@
 
 > 書いたことを忘れてくれるメモ帳。書いてから 30 日で全部消えます。
 
+[![CI](https://github.com/naosuke884/poi/actions/workflows/ci.yml/badge.svg)](https://github.com/naosuke884/poi/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 [English README](./README.md)
 
 **poi** (ぽい) は「しばらくの間だけ必要なもの」のための 1 枚のメモ帳です。Google アカウントでログインすると
@@ -10,12 +13,21 @@
 
 このリポジトリがアプリの全体です。Cloudflare Worker 1 つと D1 だけで動くので、無料枠で自分用にセルフホストできます。
 
-![板の画面: セクションが区切り線で分かれ、それぞれの期限が区切り線に表示される](./public/landing-board.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./public/landing-board-dark.png">
+  <img src="./public/landing-board.png" alt="板の画面: セクションが区切り線で分かれ、それぞれの期限が区切り線に表示される">
+</picture>
 
-1 画面に要点だけ: セクションは空行 2 つ (かボタン) で分かれてそれぞれ期限切れになり、毎時の Cron が物理削除する。
-編集中も Markdown ソースのまま見出し・箇条書き・URL がその場で装飾され (iA Writer 風)、それ以外の記法は
-文字のまま表示されるので `*` や `>` でメモが崩れない。セクションはコピー / PNG 化 / 区切り線への折り畳みができ、
-PWA としてインストールすればオフラインでも前回の板を読める。
+## 特徴
+
+- **セクションごとに勝手に消える** — 空行 2 つ (かボタン) でセクションが分かれ、それぞれ書いてから
+  30 日で期限切れになる。毎時の Cron が物理削除する
+- **iA Writer 風の編集** — 編集中も Markdown ソースのまま、見出し・箇条書き・URL だけがその場で装飾され、
+  フォーカスを外すとレンダリングされる
+- **メモサイズの Markdown サブセット** — メモに必要な記法だけを有効にしているので、うっかり書いた
+  `*` や `>` でメモが崩れない
+- **コピー / PNG 化 / 折り畳み** — セクションはテキストとしてコピー、PNG として書き出し、区切り線への折り畳みができる
+- **PWA としてインストール可** — オフラインでも前回の板を読める
 
 ## 技術スタック
 

@@ -2,6 +2,9 @@
 
 > A memo pad that forgets. Everything you write disappears 30 days after you wrote it.
 
+[![CI](https://github.com/naosuke884/poi/actions/workflows/ci.yml/badge.svg)](https://github.com/naosuke884/poi/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 [日本語版 README](./README.ja.md)
 
 **poi** (ぽい, Japanese for "toss it away") is a single-page scratchpad for the things you only need for a
@@ -11,13 +14,21 @@ each section expires 30 days after it was first written. **Try it at [poinote.ap
 
 This repository is the whole app: one Cloudflare Worker with a D1 database, so you can self-host it for free.
 
-![The board: sections separated by dividers that show when each one expires](./public/landing-board.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./public/landing-board-dark.png">
+  <img src="./public/landing-board.png" alt="The board: sections separated by dividers that show when each one expires">
+</picture>
 
-In one screen: sections split on two blank lines (or a button) and expire independently (an hourly cron
-deletes them); editing keeps the Markdown source visible with headings / list markers / URLs styled in place
-(iA Writer style), everything else renders on blur. Only the memo-sized Markdown subset is enabled — stray
-`*` or `>` never mangles a note. Sections can be copied, exported as PNG, or collapsed into their divider,
-and the installable PWA keeps the last board readable offline.
+## Features
+
+- **Sections that expire on their own** — split a section with two blank lines (or a button); each one
+  expires 30 days after it was first written, and an hourly cron deletes it for good
+- **iA Writer-style editing** — the Markdown source stays visible while you type, with headings, list
+  markers and URLs styled in place; everything else renders when the section loses focus
+- **A memo-sized Markdown subset** — only the notation a memo needs is enabled, so a stray `*` or `>`
+  never mangles a note
+- **Copy, export, collapse** — copy a section as text, export it as a PNG, or fold it away into its divider
+- **Installable PWA** — the last board stays readable offline
 
 ## Tech stack
 
