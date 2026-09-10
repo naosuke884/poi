@@ -1,6 +1,5 @@
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
-import { clearCollapsed } from "@/lib/collapsed-sections";
 import { isNetworkError } from "@/lib/offline";
 import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } from "@/lib/session-cache";
 
@@ -34,7 +33,6 @@ export async function optionalLogin(): Promise<LoginContext> {
       clearCachedUser();
       if (stale) {
         clearBoardCache(stale.id);
-        clearCollapsed(stale.id);
       }
     }
     return { session: null };

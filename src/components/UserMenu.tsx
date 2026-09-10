@@ -17,7 +17,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { affixInset } from "@/lib/affix";
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
-import { clearCollapsed } from "@/lib/collapsed-sections";
 import { CONTACT_URL } from "@/components/LegalPage";
 import { InstallGuideModal, useInstallApp } from "@/components/InstallAppMenuItem";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
@@ -79,7 +78,6 @@ export function UserMenu() {
     // この端末に残るオフライン閲覧用のキャッシュも消す
     clearCachedUser();
     clearBoardCache(user.id);
-    clearCollapsed(user.id);
     await router.invalidate();
     await router.navigate({ to: "/" });
     setLoggingOut(false);
@@ -107,7 +105,6 @@ export function UserMenu() {
     // この端末に残るオフライン閲覧用のキャッシュも消す
     clearCachedUser();
     clearBoardCache(user.id);
-    clearCollapsed(user.id);
     await router.invalidate();
     await router.navigate({ to: "/" });
     setDeleting(false);

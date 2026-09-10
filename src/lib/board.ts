@@ -6,20 +6,22 @@ import { api } from "@/lib/api";
 export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sections"][number];
 
 // PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける
-export type DraftSection = { id: string | null; content: string };
+export type DraftSection = { id: string | null; content: string; collapsed: boolean };
 
 /**
  * 画面上の 1 セクション (編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示)。
  * key は React の key とエディタの参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
  * 分割 / 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
  * (key はフォーカスのある部分に、id は先頭の部分に付く)。
- * id / expiresAt はサーバに保存済みのときだけ入る
+ * id / expiresAt はサーバに保存済みのときだけ入る。
+ * collapsed (折り畳み) はセクションの一部として保存され、デバイス間で同期される
  */
 export type EditableSection = {
   key: string;
   id: string | null;
   content: string;
   expiresAt: string | null;
+  collapsed: boolean;
 };
 
 let seq = 0;
@@ -27,12 +29,18 @@ export function newKey(): string {
   return `s${++seq}`;
 }
 export function newSection(content = ""): EditableSection {
-  return { key: newKey(), id: null, content, expiresAt: null };
+  return { key: newKey(), id: null, content, expiresAt: null, collapsed: false };
 }
 
 /** サーバから取得したセクションを画面用にする */
 export function toEditable(sections: BoardSection[]): EditableSection[] {
-  return sections.map((s) => ({ ...newSection(s.content), id: s.id, expiresAt: s.expiresAt }));
+  return sections.map((s) => ({
+    ...newSection(s.content),
+    id: s.id,
+    expiresAt: s.expiresAt,
+    // 機能追加前のオフラインキャッシュには collapsed が無い
+    collapsed: s.collapsed === true,
+  }));
 }
 
 /**
@@ -43,12 +51,17 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
 export function toDraft(sections: EditableSection[]): (DraftSection & { key: string })[] {
   return sections
     .filter((s) => s.content !== "")
-    .map(({ key, id, content }) => ({ key, id, content }));
+    .map(({ key, id, content, collapsed }) => ({ key, id, content, collapsed }));
 }
 
-/** 保存対象が前回保存したものと同じか (id と内容と並び順) */
+/** 保存対象が前回保存したものと同じか (id と内容と折り畳みと並び順) */
 export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
-  return a.length === b.length && a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content);
+  return (
+    a.length === b.length &&
+    a.every(
+      (s, i) => s.id === b[i]!.id && s.content === b[i]!.content && s.collapsed === b[i]!.collapsed,
+    )
+  );
 }
 
 /**

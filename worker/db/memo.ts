@@ -21,6 +21,8 @@ export const memo = sqliteTable(
     content: text("content").notNull(),
     // 板の中での並び順 (0 始まり)。PUT /api/board のたびに振り直す
     position: integer("position").notNull().default(0),
+    // 折り畳んで表示するか。端末ごとではなくサーバで持ち、どのデバイスでも同じ開閉状態になる
+    collapsed: integer("collapsed", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),

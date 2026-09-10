@@ -5,7 +5,6 @@ import { Board } from "@/components/Board";
 import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/board";
 import { clearBoardCache, readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
-import { clearCollapsed } from "@/lib/collapsed-sections";
 import { clearCachedUser } from "@/lib/session-cache";
 import { OfflineError, fetchOrOffline } from "@/lib/offline";
 import { Landing } from "@/components/Landing";
@@ -39,7 +38,6 @@ export const Route = createFileRoute("/")({
       // する後始末と同じく、この端末に残るキャッシュを消してランディングを見せる
       clearCachedUser();
       clearBoardCache(userId);
-      clearCollapsed(userId);
       return { landing: true as const };
     }
     if (!res.ok) throw new Error("板の取得に失敗しました");

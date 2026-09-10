@@ -8,7 +8,12 @@ import { RouteErrorFallback } from "@/components/RouteErrorFallback";
 // ホーム画面への追加 (beforeinstallprompt) は React のマウントより先に飛んでくることがあるので、
 // 受け取り口をここで先に用意しておく (副作用だけの import)
 import "@/lib/install-prompt";
+import { removeByPrefix } from "@/lib/local-storage";
 import { routeTree } from "./routeTree.gen";
+
+// 折り畳み状態は 2026-09 からサーバで持つ (memo.collapsed)。端末ごとに localStorage へ
+// 記録していた頃の残りを消す (しばらく経ったらこの行ごと消してよい)
+removeByPrefix("poi:collapsed:v1:");
 
 const router = createRouter({
   routeTree,
