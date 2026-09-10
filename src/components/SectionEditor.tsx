@@ -10,7 +10,12 @@ import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } fr
 import { type Ref, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
 import { insertNewlineContinueList } from "@/lib/list-continue";
-import { deleteListMarkerBackward, deleteListMarkerForward, forceListMarkers } from "@/lib/list-force";
+import {
+  deleteListMarkerBackward,
+  deleteListMarkerForward,
+  forceListMarkers,
+  hashStartsHeading,
+} from "@/lib/list-force";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "@/lib/list-indent";
 import { sectionMarkdown } from "@/lib/section-markdown";
 import classes from "./SectionEditor.module.css";
@@ -156,6 +161,8 @@ export function SectionEditor({
           spaceIndentsListItem,
           // 本文は常に箇条書き: 編集で触れた行に `- ` を自動で足す (src/lib/list-force.ts)
           forceListMarkers,
+          // 空の項目で `#` を打ったら記号を消して見出しにする (箇条書きの途中に見出しを書く入り口)
+          hashStartsHeading,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
           // 下にカーソルが隠れないようにする。余白は Board が Box の scroll-margin-top に入れているものをそのまま

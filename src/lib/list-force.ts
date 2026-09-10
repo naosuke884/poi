@@ -62,6 +62,32 @@ export const forceListMarkers: Extension = [
 // 見出しと見なす形。`#` の直後がタブでも micromark は見出しにする)
 const HEADING_RE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
 
+/**
+ * 空の項目で `#` を打ったら、記号 (とインデント) を消して見出しの書き出しにする。
+ * 本文は常に箇条書きで、空の項目の Enter はセクション区切りになるため、これが箇条書きの
+ * 途中に見出しを書く唯一の入り口 (Enter で空の項目を作って `#`)。
+ * インデントも消すのは、見出しは階層に属さない (深さ 4 以上はそもそも見出しにならない) ため。
+ * スペースのインデント (spaceIndentsListItem) と同じく、仮想キーボード対応で inputHandler にする。
+ * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる (見出しの行は forceListMarkers が触らない)
+ */
+export const hashStartsHeading = EditorView.inputHandler.of((view, from, to, text) => {
+  if (text !== "#" || from !== to || view.composing) return false;
+  const { state } = view;
+  const sel = state.selection.main;
+  if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
+  const line = state.doc.lineAt(from);
+  const m = LIST_ITEM_RE.exec(line.text);
+  // 記号だけの空の項目で、カーソルが本文の先頭 (= 行末) にあるときだけ
+  if (!m || m[0].length !== line.length || from !== line.to) return false;
+  view.dispatch({
+    changes: { from: line.from, to: line.to, insert: "#" },
+    selection: EditorSelection.cursor(line.from + 1),
+    scrollIntoView: true,
+    userEvent: "input.type",
+  });
+  return true;
+});
+
 /** 行が項目の形でなければ、インデントの直後に `- ` を挿す変更 (空行・見出し・項目の行は null) */
 function markerFor(text: string, from: number): { from: number; insert: string } | null {
   if (/^[ \t]*$/.test(text) || HEADING_RE.test(text) || LIST_ITEM_RE.test(text)) return null;
