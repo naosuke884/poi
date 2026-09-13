@@ -29,34 +29,6 @@ https://github.com/user-attachments/assets/aa770060-e391-4936-a1c9-59fb785dfbf3
 | Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
 | Build     | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
 
-## Development
-
-| Command                     | What it does                                                        |
-| --------------------------- | ------------------------------------------------------------------- |
-| `npm run dev`               | Dev server (Vite + Worker + local D1 on workerd)                    |
-| `npm run typecheck`         | Generate `Env` types with `wrangler types`, then `tsc --build`      |
-| `npm run build`             | Build `dist/client` (assets) and `dist/poi` (Worker)                |
-| `npm run preview`           | Build, then preview in a production-like environment                |
-| `npm run deploy`            | Build and `wrangler deploy`                                         |
-| `npm run db:generate`       | Generate a migration from schema changes (`drizzle/`)               |
-| `npm run db:migrate:local`  | Apply migrations to the local D1                                    |
-| `npm run db:migrate:remote` | Apply migrations to the production D1                               |
-| `npm run auth:schema`       | Regenerate `worker/db/schema.ts` from the Better Auth config        |
-
-CI (`.github/workflows/ci.yml`) runs `npm run typecheck && npm run build` on every pull request.
-
-```
-src/        React SPA (TanStack Router routes, Board component, offline/PWA helpers)
-worker/     Hono API, Better Auth, Drizzle schema, cron sweep of expired sections
-drizzle/    SQL migrations
-public/     PWA icons
-```
-
-How things work — the board editor, the `/api/board` contract, the expiry cron, PWA caching and offline
-handling — is explained in comments at the top of the relevant files (`src/components/Board.tsx`,
-`src/components/SectionEditor.tsx`, `src/lib/section-markdown.ts`,
-`worker/memo/routes.ts`, `worker/memo/sweep.ts`, `vite.config.ts`, `src/routes/index.tsx`).
-
 ## Contributing
 
 Bug reports, feature ideas and pull requests are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).
