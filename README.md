@@ -3,8 +3,6 @@
 [![CI](https://github.com/naosuke884/poi/actions/workflows/ci.yml/badge.svg)](https://github.com/naosuke884/poi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-[日本語版 README](./README.ja.md)
-
 **poi** is a single-page scratchpad for the things you only need for a little while.
 Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
@@ -31,8 +29,7 @@ https://github.com/user-attachments/assets/aa770060-e391-4936-a1c9-59fb785dfbf3
 
 ## Contributing
 
-Bug reports, feature ideas and pull requests are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).
-Please report security issues privately as described in [SECURITY.md](./SECURITY.md).
+Bug reports, feature ideas and pull requests are welcome.
 
 ## License
 
