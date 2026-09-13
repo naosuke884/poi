@@ -1,33 +1,21 @@
 # poi
 
-> 書いたことを忘れてくれるメモ帳。書いてから 30 日で全部消えます。
-
 [![CI](https://github.com/naosuke884/poi/actions/workflows/ci.yml/badge.svg)](https://github.com/naosuke884/poi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 [English README](./README.md)
 
-**poi** (ぽい) は「しばらくの間だけ必要なもの」のための 1 枚のメモ帳です。Google アカウントでログインすると
-自分の板が 1 枚あり、書いたそばから自動保存され、セクションごとに書いてから 30 日で消えます。
-**[poinote.app](https://poinote.app/) で使えます** (アプリの紹介もランディングページへ)。
+**poi** は「しばらくの間だけ必要なもの」のための 1 枚のメモ帳です。[poinote.app](https://poinote.app/) から、Google アカウントでログインして、すぐに始められます。
 
-このリポジトリがアプリの全体です。Cloudflare Worker 1 つと D1 だけで動くので、無料枠で自分用にセルフホストできます。
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./public/landing-board-dark.png">
-  <img src="./public/landing-board.png" alt="板の画面: セクションが区切り線で分かれ、それぞれの期限が区切り線に表示される">
-</picture>
+https://github.com/user-attachments/assets/aa770060-e391-4936-a1c9-59fb785dfbf3
 
 ## 特徴
 
-- **セクションごとに勝手に消える** — 空行 2 つ (かボタン) でセクションが分かれ、それぞれ書いてから
-  30 日で期限切れになる。毎時の Cron が物理削除する
-- **iA Writer 風の編集** — 編集中も Markdown ソースのまま、見出し・箇条書き・URL だけがその場で装飾され、
-  フォーカスを外すとレンダリングされる
-- **メモサイズの Markdown サブセット** — メモに必要な記法だけを有効にしているので、うっかり書いた
-  `*` や `>` でメモが崩れない
-- **コピー / PNG 化 / 折り畳み** — セクションはテキストとしてコピー、PNG として書き出し、区切り線への折り畳みができる
-- **PWA としてインストール可** — オフラインでも前回の板を読める
+- **セクションごとに30日で強制削除される** — 30日経ったメモ書きは必要性を失っている、また必要に感じたときに書けばいいよ
+- **Markdownで構造化できる** — メモ書きといえど見やすく構造化したい人は少なくないだろう
+- **セクションごとのコピーとスクショ機能** — メモを共有をワンクリックでできたら便利でしょ？
+- **セクションごとの折りたたみ・ワンクリック削除** — 興味がなくなったメモはすぐに視界からけしたり、世界から消したりできるよマスター
+- **PWA** — Webアプリをネイティブアプリのように開ける機能を知らないわけじゃないでしょ？
 
 ## 技術スタック
 
@@ -39,96 +27,6 @@
 | DB             | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit マイグレーション    |
 | フロントエンド | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (エディタ) |
 | ビルド         | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
-
-## セルフホスト
-
-### 前提
-
-- Node.js 24 (`.node-version` 参照)
-- [Cloudflare](https://dash.cloudflare.com/) アカウント (無料枠で可)
-- Google OAuth 2.0 クライアント: [Google Cloud Console](https://console.cloud.google.com/apis/credentials) で
-  **OAuth クライアント ID → ウェブ アプリケーション** を作成し、クライアント ID / シークレットを控える。
-  リダイレクト URI は後の手順で追加する
-
-### ローカルで動かす
-
-```sh
-git clone https://github.com/naosuke884/poi.git
-cd poi
-npm install
-cp .dev.vars.example .dev.vars   # BETTER_AUTH_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET を設定
-npm run db:migrate:local         # ローカル D1 にマイグレーション適用
-npm run dev                      # http://localhost:5173
-```
-
-OAuth クライアントの **承認済みのリダイレクト URI** に `http://localhost:5173/api/auth/callback/google` を追加する。
-
-開発サーバーは workerd 上で Worker とローカル D1 も動かすので、認証 / API / Cron ハンドラまでローカルで動く。
-Service Worker は dev では登録されないので、PWA の挙動はビルドしてプレビューで確認する。
-
-### Cloudflare にデプロイ
-
-初回は 1〜7 をすべて、2 回目以降は 7 だけでよい。
-
-1. Cloudflare にログイン
-   ```sh
-   npx wrangler login
-   ```
-2. D1 を作成し、出力された `database_id` を `wrangler.jsonc` の `d1_databases[0].database_id` に貼る。
-   リポジトリに入っている値はメンテナのアカウントのものなので、そのままでは使えない
-   ```sh
-   npx wrangler d1 create poi
-   ```
-3. 本番 D1 にマイグレーションを適用
-   ```sh
-   npm run db:migrate:remote
-   ```
-4. Secrets を登録 (`.dev.vars` と同じ名前。値はリポジトリに入れない)
-   ```sh
-   openssl rand -base64 32 | npx wrangler secret put BETTER_AUTH_SECRET
-   npx wrangler secret put GOOGLE_CLIENT_ID
-   npx wrangler secret put GOOGLE_CLIENT_SECRET
-   ```
-5. Google の OAuth クライアントに本番のリダイレクト URI `https://<本番ドメイン>/api/auth/callback/google` を追加する。
-   カスタムドメインを設定しなければ `poi.<account>.workers.dev`
-6. ドメイン: `wrangler.jsonc` にはメンテナのカスタムドメイン (`routes`) と `workers_dev: false` が入っている。
-   自分のドメインに書き換える (ゾーンが同じ Cloudflare アカウントにあること) か、`routes` を消して
-   `workers_dev: true` にして `poi.<account>.workers.dev` で公開する。
-7. ビルドしてデプロイ
-   ```sh
-   npm run deploy
-   ```
-
-デプロイ後、`https://<本番ドメイン>/` を開くとランディングページが表示され、Google でログインできる。
-未ログインで `GET /api/board` は `401`。Workers のログに毎時 `[memo sweep] deleted N ...` が出る。
-
-<details>
-<summary>補足</summary>
-
-- `BETTER_AUTH_URL` は省略可。未設定ならリクエストの origin が使われるので、`workers.dev` とカスタムドメインの両方で
-  ログインできる。1 つの origin に固定したいときだけ `wrangler secret put BETTER_AUTH_URL` で設定する
-- `/terms` と `/privacy` (`src/routes/terms.tsx`, `src/routes/privacy.tsx`) はメンテナ自身の利用規約・プライバシーポリシーで、
-  問い合わせ先もこのリポジトリの Issue になっている。他の人に使わせるなら自分のものに書き換える
-  (Google OAuth の同意画面にも `/privacy` を登録する)。
-- `wrangler.jsonc` は `wrangler deploy` 時にも読まれるので、`database_id` は必ず本物にする
-  (ダミーのままだと `binding DB ... database_id not found` で失敗する)
-</details>
-
-### GitHub Actions からデプロイする
-
-`.github/workflows/deploy.yml` が `main` への push ごとにデプロイする (typecheck → build → D1 マイグレーション → `wrangler deploy`)。
-job はリポジトリ変数でガードされているので **既定では何もしない**。fork しただけでは動かない。
-
-上記 1〜6 を済ませたうえで、**Settings → Secrets and variables → Actions** に次を登録すると有効になる。
-
-| 種類     | 名前                    | 値                                                                                         |
-| -------- | ----------------------- | ------------------------------------------------------------------------------------------ |
-| Variable | `ENABLE_DEPLOY`         | `true`                                                                                     |
-| Secret   | `CLOUDFLARE_API_TOKEN`  | Cloudflare → My Profile → API Tokens。テンプレート「Edit Cloudflare Workers」に **D1: Edit** を足す |
-| Secret   | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → Workers & Pages の右側に表示される Account ID                                  |
-
-Worker の Secrets (手順 4) はそのまま使われるので、GitHub 側に登録するのは上の 3 つだけ。
-無効に戻すときは `ENABLE_DEPLOY` を削除するか `true` 以外にする。
 
 ## 開発
 

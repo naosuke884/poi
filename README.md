@@ -1,34 +1,22 @@
 # poi
 
-> A memo pad that forgets. Everything you write disappears 30 days after you wrote it.
-
 [![CI](https://github.com/naosuke884/poi/actions/workflows/ci.yml/badge.svg)](https://github.com/naosuke884/poi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 [日本語版 README](./README.ja.md)
 
-**poi** (ぽい, Japanese for "toss it away") is a single-page scratchpad for the things you only need for a
-little while. You sign in with Google, you get one board, and whatever you type is autosaved as you go —
-each section expires 30 days after it was first written. **Try it at [poinote.app](https://poinote.app/)**
-(the UI is Japanese only).
+**poi** is a single-page scratchpad for the things you only need for a little while.
+Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
-This repository is the whole app: one Cloudflare Worker with a D1 database, so you can self-host it for free.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./public/landing-board-dark.png">
-  <img src="./public/landing-board.png" alt="The board: sections separated by dividers that show when each one expires">
-</picture>
+https://github.com/user-attachments/assets/aa770060-e391-4936-a1c9-59fb785dfbf3
 
 ## Features
 
-- **Sections that expire on their own** — split a section with two blank lines (or a button); each one
-  expires 30 days after it was first written, and an hourly cron deletes it for good
-- **iA Writer-style editing** — the Markdown source stays visible while you type, with headings, list
-  markers and URLs styled in place; everything else renders when the section loses focus
-- **A memo-sized Markdown subset** — only the notation a memo needs is enabled, so a stray `*` or `>`
-  never mangles a note
-- **Copy, export, collapse** — copy a section as text, export it as a PNG, or fold it away into its divider
-- **Installable PWA** — the last board stays readable offline
+- **Every section is force-deleted after 30 days** — a memo that's 30 days old has outlived its purpose; if you need it again, just write it again
+- **Structure with Markdown** — even a quick memo is nicer to read with a little structure, right?
+- **Per-section copy and screenshot** — sharing a memo in one click is handy, isn't it?
+- **Per-section collapse and one-click delete** — a memo you've lost interest in can vanish from your view (or from the world) right away, master
+- **PWA** — surely you know the trick that lets a web app open like a native one?
 
 ## Tech stack
 
@@ -40,97 +28,6 @@ This repository is the whole app: one Cloudflare Worker with a D1 database, so y
 | DB        | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit migrations           |
 | Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
 | Build     | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
-
-## Self-hosting
-
-### Prerequisites
-
-- Node.js 24 (see `.node-version`)
-- A [Cloudflare](https://dash.cloudflare.com/) account (free tier is enough)
-- A Google OAuth 2.0 client: in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-  create **OAuth client ID → Web application** and note the client ID / secret.
-  You will add redirect URIs to it below.
-
-### Run locally
-
-```sh
-git clone https://github.com/naosuke884/poi.git
-cd poi
-npm install
-cp .dev.vars.example .dev.vars   # fill in BETTER_AUTH_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
-npm run db:migrate:local         # apply migrations to the local D1
-npm run dev                      # http://localhost:5173
-```
-
-Add `http://localhost:5173/api/auth/callback/google` to the OAuth client's **Authorized redirect URIs**.
-
-The dev server runs the Worker and a local D1 inside workerd, so the full stack (auth, API, cron handler)
-works locally. The service worker is not registered in dev; build and preview to test PWA behaviour.
-
-### Deploy to Cloudflare
-
-First-time setup (steps 1–6), then deploy (step 7). Later deploys only need step 7.
-
-1. Log in:
-   ```sh
-   npx wrangler login
-   ```
-2. Create the database and paste the printed `database_id` into `wrangler.jsonc` (`d1_databases[0].database_id`).
-   The value checked into this repository belongs to the maintainer's account and will not work for you.
-   ```sh
-   npx wrangler d1 create poi
-   ```
-3. Apply migrations to the production database:
-   ```sh
-   npm run db:migrate:remote
-   ```
-4. Set secrets (same names as in `.dev.vars`; never commit the values):
-   ```sh
-   openssl rand -base64 32 | npx wrangler secret put BETTER_AUTH_SECRET
-   npx wrangler secret put GOOGLE_CLIENT_ID
-   npx wrangler secret put GOOGLE_CLIENT_SECRET
-   ```
-5. Add the production redirect URI `https://<your-domain>/api/auth/callback/google` to the Google OAuth client.
-   `<your-domain>` is `poi.<account>.workers.dev` unless you set a custom domain.
-6. Domain: `wrangler.jsonc` ships with the maintainer's custom domain (`routes`) and `workers_dev: false`.
-   Either replace the domain with your own (the zone must be in the same Cloudflare account), or delete `routes`
-   and set `workers_dev: true` to use `poi.<account>.workers.dev`.
-7. Build and deploy:
-   ```sh
-   npm run deploy
-   ```
-
-After deploying, open `https://<your-domain>/` — you should see the landing page and be able to sign in
-with Google. `GET /api/board` without a session returns `401`. The Workers dashboard logs should show
-`[memo sweep] deleted N ...` once an hour.
-
-<details>
-<summary>Notes</summary>
-
-- `BETTER_AUTH_URL` is optional. When unset, the request origin is used, so both `workers.dev` and a custom
-  domain work at once. Set it (`wrangler secret put BETTER_AUTH_URL`) only if you want to pin auth to a single origin.
-- `/terms` and `/privacy` (`src/routes/terms.tsx`, `src/routes/privacy.tsx`) are the maintainer's own terms of
-  service and privacy policy, and name this repository's issue tracker as the contact. If you open your instance
-  to other people, rewrite them for yourself (and register `/privacy` on the Google OAuth consent screen).
-- `wrangler.jsonc` is read by `wrangler deploy`, so the `database_id` must be real — a placeholder fails with
-  `binding DB ... database_id not found`.
-</details>
-
-### Deploy from GitHub Actions
-
-`.github/workflows/deploy.yml` deploys on every push to `main` (typecheck → build → D1 migrations → `wrangler deploy`).
-It is **off by default** — the job is guarded by a repository variable, so forking the repo does nothing until you opt in.
-
-After completing steps 1–6 above, add the following under **Settings → Secrets and variables → Actions**:
-
-| Kind     | Name                    | Value                                                                                          |
-| -------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
-| Variable | `ENABLE_DEPLOY`         | `true`                                                                                         |
-| Secret   | `CLOUDFLARE_API_TOKEN`  | Cloudflare → My Profile → API Tokens. Start from the "Edit Cloudflare Workers" template and add **D1: Edit** |
-| Secret   | `CLOUDFLARE_ACCOUNT_ID` | Shown on the right of Cloudflare → Workers & Pages                                              |
-
-Worker secrets from step 4 are used as-is; nothing else needs to go into GitHub.
-To turn it off again, delete `ENABLE_DEPLOY` or set it to anything other than `true`.
 
 ## Development
 
