@@ -12,11 +12,11 @@ https://github.com/user-attachments/assets/aa770060-e391-4936-a1c9-59fb785dfbf3
 
 ## Features
 
-- **Every section is force-deleted after 30 days** — a memo that's 30 days old has outlived its purpose; if you need it again, just write it again
-- **Structure with Markdown** — even a quick memo is nicer to read with a little structure, right?
-- **Per-section copy and screenshot** — sharing a memo in one click is handy, isn't it?
-- **Per-section collapse and one-click delete** — a memo you've lost interest in can vanish from your view (or from the world) right away, master
-- **PWA** — surely you know the trick that lets a web app open like a native one?
+- **Every section is force-deleted after 30 days** — a memo that's 30 days old has served its purpose; if you ever need it again, just write it again
+- **Structure with Markdown** — even a quick memo is easier to read with a little structure
+- **Per-section copy and screenshot** — sharing a memo takes one click
+- **Per-section collapse and one-click delete** — hide a memo you no longer care about from view instantly, or delete it for good in one click
+- **PWA** — install it like a native app; the last board stays readable offline
 
 ## Tech stack
 
