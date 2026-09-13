@@ -114,12 +114,15 @@ export function UserMenu() {
     <Group gap="xs" wrap="nowrap">
       <Menu shadow="md" width={200}>
         <Menu.Target>
-          {/* button にしてキーボード (Tab → Enter / Space) でも開けるようにする */}
-          <UnstyledButton>
+          {/* button にしてキーボード (Tab → Enter / Space) でも開けるようにする。
+              名前の読み上げは aria-label で (狭い画面では名前の文字を隠すため。下記) */}
+          <UnstyledButton aria-label={user.name}>
             <Group gap="xs" wrap="nowrap">
-              {/* 名前は隣に文字で出すので画像の代替テキストは空 (二重に読み上げない) */}
+              {/* 名前はボタンの aria-label で読み上げるので画像の代替テキストは空 (二重に読み上げない)。
+                  狭い画面 (xs 未満) では名前を出す幅が無い (ヘッダーが折り返して 56px からはみ出す) ので
+                  アイコンだけにする (誰でログインしているかはメニューのメールで分かる) */}
               <Avatar src={user.image} alt="" radius="xl" size="sm" />
-              <Text size="sm" truncate maw={160}>
+              <Text size="sm" truncate maw={160} visibleFrom="xs">
                 {user.name}
               </Text>
             </Group>

@@ -6,17 +6,18 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 const FEEDBACK_MS = 1500;
 
 /**
- * セクションの区切り線に並べる「コピー」「スクショ」ボタン。
+ * セクション (やまとめ表示のグループ) の区切り線に並べる「コピー」「スクショ」ボタン。
  * 押した結果は Tooltip とアイコン (チェック / ×) で短く知らせる (通知ライブラリは使わない)。
  * 読み上げ用には同じ文言を隠しテキストのライブリージョンに出す。
  * どちらも mousedown を止めて、編集中のエディタを blur させない (削除ボタンと同じ)
  */
 export function SectionActions({
-  index,
+  subject,
   onCopy,
   onScreenshot,
 }: {
-  index: number;
+  /** 読み上げ用の対象の名前 (「セクション 3」「「買い物」のまとめ」など) */
+  subject: string;
   /** テキストをクリップボードへ */
   onCopy: () => Promise<void>;
   /** 画像化して届ける。戻り値は届け先 */
@@ -26,7 +27,7 @@ export function SectionActions({
     <>
       <ActionButton
         tooltip="コピー"
-        label={`セクション ${index + 1} をコピー`}
+        label={`${subject} をコピー`}
         run={async () => {
           await onCopy();
           return "コピーしました";
@@ -36,7 +37,7 @@ export function SectionActions({
       </ActionButton>
       <ActionButton
         tooltip="スクショ"
-        label={`セクション ${index + 1} を画像にする`}
+        label={`${subject} を画像にする`}
         run={async () => {
           const to = await onScreenshot();
           return to === "clipboard" ? "画像をコピーしました" : "画像を保存しました";

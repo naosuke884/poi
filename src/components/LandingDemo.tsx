@@ -224,7 +224,7 @@ export function LandingDemo() {
                     />
                     {!collapsed.has(s.key) && (
                       <SectionActions
-                        index={i}
+                        subject={`セクション ${i + 1}`}
                         onCopy={() => copySectionText(s.content)}
                         onScreenshot={() => screenshot(s.key)}
                       />

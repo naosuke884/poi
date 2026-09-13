@@ -3,6 +3,7 @@ import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AddSectionButton } from "@/components/AddSectionButton";
 import { SaveStatusIcon } from "@/components/SaveStatusIcon";
+import { ViewToggle } from "@/components/ViewToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdateBanner } from "@/components/PwaUpdateBanner";
@@ -49,7 +50,9 @@ function RootLayout() {
                 poi
               </Group>
             </Anchor>
-            <Group gap="md">
+            {/* 折り返し禁止: 折り返すと 2 行目が 56px のヘッダーからはみ出して本文に重なる */}
+            <Group gap="md" wrap="nowrap">
+              <ViewToggle />
               <AddSectionButton />
               <SaveStatusIcon />
               <UserMenu />

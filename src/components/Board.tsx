@@ -46,7 +46,9 @@ import {
   toEditable,
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
+import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { MarkdownView } from "@/components/MarkdownView";
+import { OrganizedView } from "@/components/OrganizedView";
 import {
   SectionActions,
   SectionCollapseToggle,
@@ -186,6 +188,25 @@ export function Board({
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
   const [editingKey, setEditingKey] = useState<string | null>(null);
+
+  // 表示モード (#37): タイムライン (通常の板) / 見出しごとのまとめ (OrganizedView。閲覧のみ)。
+  // 切替はヘッダーの ViewToggle が行い、モードはストア (view-mode) が持つ (Board が作り直されても保つ)
+  const { mode } = useViewMode();
+  const organized = mode === "organized";
+  // まとめ表示に切り替えたら編集をやめる (タイムラインに戻ったとき編集中のエディタが残らないように)。
+  // peek もやめる (まとめ表示に折り畳みは無い)。
+  // タイムラインのスクロール位置 (最後のセクションが上端など) を引き継ぐと先頭のグループが
+  // 見えないので、まとめの先頭へスクロールする
+  useEffect(() => {
+    if (!organized) return;
+    setEditingKey(null);
+    setPeekKey(null);
+    // 予約済みのフォーカス移動も破棄する (タイムラインに戻ったとき、いつかの操作の
+    // フォーカスが不意に発火しないように)
+    pendingFocusRef.current = null;
+    pendingViewFocusRef.current = null;
+    window.scrollTo({ top: 0 });
+  }, [organized]);
   // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
   const focusLater = (key: string, pos: number) => {
     expandFor(key);
@@ -443,7 +464,9 @@ export function Board({
         ? []
         : cur;
     const i = Math.min(deleted.index, base.length);
-    focusLater(deleted.section.key, deleted.section.content.length);
+    // まとめ表示中はエディタが無いのでフォーカスは予約しない (内容が戻ればよい。
+    // 予約するとタイムラインへ戻った拍子に不意にエディタが開いてしまう)
+    if (!organized) focusLater(deleted.section.key, deleted.section.content.length);
     update([...base.slice(0, i), deleted.section, ...base.slice(i)]);
   };
 
@@ -584,6 +607,8 @@ export function Board({
   // 末尾が既に空 (完全に空文字。空白だけのセクションは保存されて期限を持っているので使い回さない)
   // なら、それを使う (空のセクションは保存されないので、増やしても意味がない)
   const addSection = () => {
+    // まとめ表示中ならタイムラインへ戻ってから (エディタはタイムラインにしか無い)
+    setViewMode("timeline");
     const cur = latestRef.current;
     const last = cur.at(-1);
     if (last && last.content === "") {
@@ -604,6 +629,13 @@ export function Board({
     return () => publishBoardActions(null);
     // readOnly はマウント後に変わらない (変わるときは key で作り直される)
   }, [readOnly]);
+
+  // ヘッダーの表示切替 (ViewToggle) を出す (板を表示している間だけ)。
+  // まとめは閲覧にも役立つので、閲覧のみ (readOnly) でも出す
+  useEffect(() => {
+    publishViewToggle(true);
+    return () => publishViewToggle(false);
+  }, []);
 
   // 最後のセクションより下の空き領域 (やセクションの外枠の余白) をクリックしたら末尾にカーソルを置く
   // (画面全体が書ける場所に見えるように)。
@@ -645,6 +677,18 @@ export function Board({
 
   return (
     <Stack gap="xs" style={{ flex: 1 }}>
+      {organized ? (
+        /* まとめ表示 (#37): 見出しごとに連結した閲覧用ビュー。クリックでその場所の編集へ
+           (タイムラインに切り替えてカーソルを置く) */
+        <OrganizedView
+          sections={sections}
+          readOnly={readOnly}
+          onJump={(key, pos) => {
+            setViewMode("timeline");
+            focus(key, pos);
+          }}
+        />
+      ) : (
       <Box
         style={{ flex: 1, cursor: readOnly ? undefined : "text" }}
         onClick={focusEnd}
@@ -723,7 +767,7 @@ export function Board({
               />
               {s.content.trim() !== "" && !isCollapsedView(s.key) && (
                 <SectionActions
-                  index={i}
+                  subject={`セクション ${i + 1}`}
                   onCopy={() => copySectionText(s.content)}
                   onScreenshot={() => screenshot(s.key)}
                 />
@@ -806,14 +850,17 @@ export function Board({
           </Box>
         ))}
       </Box>
+      )}
 
       {/* 右下固定の追加ボタンの下に本文が隠れないよう、スクロールの終端に余白を足しておく */}
       <Box h={64} />
 
       {/* セクションを追加 (右下固定。狭い画面のみ: PC 幅 (sm 以上) ではヘッダーの AddSectionButton)。
           区切りの入力 (空行 2 つ) を知らなくても増やせるように。
-          固定表示なので、板が長くてもスクロールせずに押せる */}
-      {!readOnly && (
+          固定表示なので、板が長くてもスクロールせずに押せる。
+          まとめ表示 (閲覧用) では出さない (スクロール中の誤タップで急にタイムライン + キーボードに
+          切り替わらないように。追加したいときはヘッダーで切り替えるか、PC 幅ならヘッダーのボタンで) */}
+      {!readOnly && !organized && (
         <Affix
           hiddenFrom="sm"
           position={{
