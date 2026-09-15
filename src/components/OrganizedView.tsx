@@ -1,6 +1,6 @@
 import { Box, Divider, Group, Text } from "@mantine/core";
 import { useMemo, useRef } from "react";
-import { type EditableSection, daysUntil } from "@/lib/board";
+import type { EditableSection } from "@/lib/board";
 import { locateInSection, organizeSections } from "@/lib/organized";
 import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
 import { MarkdownView } from "@/components/MarkdownView";
@@ -11,8 +11,8 @@ import classes from "./OrganizedView.module.css";
  * 見出しごとにまとめた表示 (#37)。タイムライン (通常の板) と切り替えて使う閲覧用のビュー。
  * - 同じ見出しのチャンクを 1 つの Markdown に連結して表示する (まとめ方は src/lib/organized.ts)。
  *   同じ見出しの箇条書きは 1 つのリストに見えるよう、連結でできた項目間の余白は詰める (CSS)
- * - 区切り線はタイムラインと同じ見た目: 右にコピー / スクショと期限。
- *   期限はグループ内で最も早いもの (2 か所以上をまとめたときは「最短」を付ける)
+ * - 区切り線はタイムラインと同じ見た目で、右にコピー / スクショ。
+ *   期限は出さない (チャンクごとに違うのでまとめでは意味が薄い。タイムラインで見られる)
  * - このビュー自体は編集できないが、クリックした場所に対応する元セクションの位置を onJump に渡す
  *   (Board がタイムラインへ切り替えてそこで編集を開く)。readOnly ならそれもしない
  */
@@ -65,11 +65,6 @@ export function OrganizedView({
                 onCopy={() => copySectionText(g.content)}
                 onScreenshot={() => screenshot(g.key)}
               />
-              {g.minExpiresAt !== null && (
-                <Text span size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                  {g.chunkCount >= 2 ? "最短 " : ""}あと {daysUntil(g.minExpiresAt)} 日
-                </Text>
-              )}
             </Group>
             <Box className={classes.group}>
               <MarkdownView

@@ -36,8 +36,6 @@ export type OrganizedGroup = {
   content: string;
   /** 連結したチャンク (見出しの下の本文のかたまり) の数 (「N か所」ラベル用) */
   chunkCount: number;
-  /** グループ内で最も早い期限。未保存のセクションだけなら null */
-  minExpiresAt: string | null;
   /** content の各部分 → 元セクションの位置。start 昇順 */
   ranges: OrganizedRange[];
 };
@@ -63,7 +61,6 @@ export function parseHeading(line: string): { level: number; text: string } | nu
 /** セクション content を見出し行で区切った 1 つ分 */
 type Chunk = {
   sectionKey: string;
-  expiresAt: string | null;
   /** null は見出しより前の部分。path は祖先の見出しテキストの並び + 自分 (ツリー上の位置) */
   heading: { path: string[]; line: string; start: number } | null;
   /** 本文 (見出し行の次から次の見出し行の前まで)。前後の空行は落とし済み。空のことがある */
@@ -128,11 +125,10 @@ function chunkSection(section: EditableSection): Chunk[] {
   const push = (bodyEnd: number) => {
     const [s, e] = trimBodyRange(content, bodyStart, bodyEnd);
     // 見出しより前の部分は中身があるときだけ。見出し付きは本文が空でも
-    // グループの存在 (と期限) を伝えるので残す
+    // グループの存在を伝えるので残す
     if (heading !== null || s < e)
       chunks.push({
         sectionKey: section.key,
-        expiresAt: section.expiresAt,
         heading,
         body: content.slice(s, e),
         bodyStart: s,
@@ -231,16 +227,11 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
       texts.push(p.text);
       offset += p.text.length + JOINER.length;
     }
-    const expiries = chunks.map((c) => c.expiresAt).filter((e) => e !== null);
     return {
       key,
       heading,
       content: texts.join(JOINER),
       chunkCount: chunks.length,
-      minExpiresAt:
-        expiries.length > 0
-          ? expiries.reduce((a, b) => (new Date(a).getTime() <= new Date(b).getTime() ? a : b))
-          : null,
       ranges,
     };
   };
