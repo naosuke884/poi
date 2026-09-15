@@ -15,6 +15,7 @@ import classes from "./OrganizedView.module.css";
  *   期限は出さない (チャンクごとに違うのでまとめでは意味が薄い。タイムラインで見られる)
  * - このビュー自体は編集できないが、クリックした場所に対応する元セクションの位置を onJump に渡す
  *   (Board がタイムラインへ切り替えてそこで編集を開く)。readOnly ならそれもしない
+ * - 折り畳んだセクションは含めない (タイムラインで隠したものはここでも隠す)
  */
 export function OrganizedView({
   sections,
@@ -36,9 +37,13 @@ export function OrganizedView({
   };
 
   if (groups.length === 0) {
+    // 折り畳んだセクションはまとめに含めないので、全部折り畳まれていて空のこともある
+    const allCollapsed = sections.some((s) => s.collapsed && s.content.trim() !== "");
     return (
       <Text c="dimmed" mt="md">
-        まだメモがありません。タイムラインで書いたメモが、ここに見出しごとにまとまります。
+        {allCollapsed
+          ? "表示できるメモがありません (折り畳んだセクションはまとめに含まれません)。"
+          : "まだメモがありません。タイムラインで書いたメモが、ここに見出しごとにまとまります。"}
       </Text>
     );
   }
