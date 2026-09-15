@@ -2,11 +2,15 @@ import type { EditableSection } from "@/lib/board";
 
 /**
  * まとめ表示 (OrganizedView) 用に、板のセクションを見出しごとにまとめ直す (#37)。
- * - 各セクションの content を ATX 見出し行 (# 〜 ######) で区切り、
- *   同じ見出しテキストの部分 (チャンク) を 1 つのグループに連結する。
- *   レベルが違っても同じテキストなら同じグループ (表示する見出し行は初出のもの)。
+ * - 各セクションの content を ATX 見出し行 (# 〜 ######) で区切り、見出しの階層
+ *   (レベルの上下で決まる入れ子: # の下に続く ## はその子) を保ったツリーにまとめる。
+ * - まとめる単位は見出しのパス (祖先の見出しテキストの並び + 自分)。
+ *   パスが同じ見出し同士だけを 1 つにまとめる (そのときレベルの違いは同一視し、
+ *   表示は初出の見出し行)。テキストが同じでも親が違えば別のまとめとして重複して表示する。
+ * - 最上位の見出し 1 つが表示上の 1 グループ。子孫の見出しと本文はグループの中に
+ *   「見出し行 → その直下の本文 (板の並び順) → 子見出し…」の順で連結する。
  * - 見出しより前の内容と見出しの無いセクションは「見出しなし」グループ (最後に置く)。
- * - グループは板の並びでの初出順、グループの中も板の並び順。データの並びは変えない (表示だけ)。
+ * - グループと子見出しは板の並びでの初出順。データの並びは変えない (表示だけ)。
  * - 折り畳み (collapsed) は無視して全部含める (別の見方なので)。空のセクションは含めない。
  * 見出し行の判定は表示 (MarkdownView = micromark) の ATX 見出しに合わせた行単位の近似。
  * リスト項目の中の見出しなど、文脈で解釈が変わる稀な行はズレることがある (メモ用途では許容)。
@@ -26,11 +30,11 @@ export type OrganizedRange = {
 export type OrganizedGroup = {
   /** React の key 用の識別子 */
   key: string;
-  /** 見出しテキスト (トリム済み)。見出しなしグループは null */
+  /** 最上位の見出しテキスト (トリム済み)。見出しなしグループは null */
   heading: string | null;
-  /** 表示する Markdown (初出の見出し行 + 各チャンクの本文を空行 1 つで連結) */
+  /** 表示する Markdown (見出し行と本文をツリーの順に空行 1 つで連結) */
   content: string;
-  /** 連結したチャンクの数 (「N か所」ラベル用) */
+  /** 連結したチャンク (見出しの下の本文のかたまり) の数 (「N か所」ラベル用) */
   chunkCount: number;
   /** グループ内で最も早い期限。未保存のセクションだけなら null */
   minExpiresAt: string | null;
@@ -42,23 +46,26 @@ export type OrganizedGroup = {
 const JOINER = "\n\n";
 
 /**
- * ATX 見出し行なら見出しテキスト (トリム済み) を返す。
+ * ATX 見出し行ならレベルと見出しテキスト (トリム済み) を返す。
  * # は 1〜6 個で直後は空白か行末、末尾の閉じ # 列 (空白の後) は落とす (CommonMark と同じ)。
  * 行頭のインデントは無制限に許す: この板は codeIndented を無効にしているので、
  * micromark は 4 スペースやタブの後の # も見出しとして描画する (CommonMark の 3 スペース制限とは違う)
  */
-export function parseHeading(line: string): string | null {
-  const m = /^[ \t]*#{1,6}(?:[ \t]+(.*))?$/.exec(line);
+export function parseHeading(line: string): { level: number; text: string } | null {
+  const m = /^[ \t]*(#{1,6})(?:[ \t]+(.*))?$/.exec(line);
   if (!m) return null;
-  return (m[1] ?? "").replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim();
+  return {
+    level: m[1]!.length,
+    text: (m[2] ?? "").replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim(),
+  };
 }
 
 /** セクション content を見出し行で区切った 1 つ分 */
 type Chunk = {
   sectionKey: string;
   expiresAt: string | null;
-  /** null は見出しより前の部分 */
-  heading: { text: string; line: string; start: number } | null;
+  /** null は見出しより前の部分。path は祖先の見出しテキストの並び + 自分 (ツリー上の位置) */
+  heading: { path: string[]; line: string; start: number } | null;
   /** 本文 (見出し行の次から次の見出し行の前まで)。前後の空行は落とし済み。空のことがある */
   body: string;
   /** body の元セクション content 内での開始位置 */
@@ -74,6 +81,13 @@ function trimBodyRange(content: string, start: number, end: number): [number, nu
   return [start + lead, end - trail];
 }
 
+/** 連結する 1 つのテキストと、その中の位置 → 元セクションの位置の対応 */
+type Part = {
+  text: string;
+  sectionKey: string;
+  ranges: { start: number; end: number; sectionStart: number }[];
+};
+
 /**
  * チャンク本文を連結用のパートにする。
  * 先頭行がインデントされていると、空行を挟んでも直前のパートのリスト項目の続きとして
@@ -81,11 +95,7 @@ function trimBodyRange(content: string, start: number, end: number): [number, nu
  * 先頭行のインデント分だけ全行を dedent する (行ごとの相対的な入れ子は保つ)。
  * dedent すると行ごとに元の位置とのずれが変わるので、対応 (ranges) は行単位で持つ
  */
-function bodyPart(c: Chunk): {
-  text: string;
-  sectionKey: string;
-  ranges: { start: number; end: number; sectionStart: number }[];
-} {
+function bodyPart(c: Chunk): Part {
   const indent = /^[ \t]*/.exec(c.body)![0].length;
   if (indent === 0)
     return {
@@ -111,6 +121,8 @@ function bodyPart(c: Chunk): {
 function chunkSection(section: EditableSection): Chunk[] {
   const { content } = section;
   const chunks: Chunk[] = [];
+  // 開いている見出しの積み重ね (階層)。新しい見出しは、自分よりレベルの浅い見出しの子になる
+  const stack: { level: number; text: string }[] = [];
   let heading: Chunk["heading"] = null;
   let bodyStart = 0;
   const push = (bodyEnd: number) => {
@@ -131,10 +143,12 @@ function chunkSection(section: EditableSection): Chunk[] {
     const nl = content.indexOf("\n", lineStart);
     const lineEnd = nl === -1 ? content.length : nl;
     const line = content.slice(lineStart, lineEnd);
-    const text = parseHeading(line);
-    if (text !== null) {
+    const h = parseHeading(line);
+    if (h !== null) {
       push(lineStart);
-      heading = { text, line, start: lineStart };
+      while (stack.length > 0 && stack.at(-1)!.level >= h.level) stack.pop();
+      stack.push(h);
+      heading = { path: stack.map((s) => s.text), line, start: lineStart };
       bodyStart = Math.min(lineEnd + 1, content.length);
     }
     if (nl === -1) break;
@@ -144,42 +158,65 @@ function chunkSection(section: EditableSection): Chunk[] {
   return chunks;
 }
 
+/** 見出しツリーの 1 ノード。children は初出順 (Map が保つ) */
+type Node = {
+  text: string;
+  /** 表示する見出し行 (初出のもの) と、その元の位置 */
+  headingLine: { line: string; sectionKey: string; start: number };
+  chunks: Chunk[];
+  children: Map<string, Node>;
+};
+
 export function organizeSections(sections: EditableSection[]): OrganizedGroup[] {
-  // 見出しテキスト → グループのチャンク列。挿入順 = 初出順 (Map が保つ)
-  const byHeading = new Map<string, Chunk[]>();
+  const roots = new Map<string, Node>(); // 最上位の見出し。初出順
   const noHeading: Chunk[] = [];
   for (const section of sections) {
     if (section.content.trim() === "") continue;
     for (const chunk of chunkSection(section)) {
       if (chunk.heading === null) {
         noHeading.push(chunk);
-      } else {
-        const list = byHeading.get(chunk.heading.text);
-        if (list) list.push(chunk);
-        else byHeading.set(chunk.heading.text, [chunk]);
+        continue;
       }
+      // パスに沿ってノードを辿る。祖先は必ず先に作られている (見出しチャンクは本文が
+      // 空でも push されるので、親の見出し行が同じセクション内で先に処理される)
+      let map = roots;
+      let node: Node | undefined;
+      for (const text of chunk.heading.path) {
+        node = map.get(text);
+        if (!node) {
+          node = {
+            text,
+            headingLine: {
+              line: chunk.heading.line,
+              sectionKey: chunk.sectionKey,
+              start: chunk.heading.start,
+            },
+            chunks: [],
+            children: new Map(),
+          };
+          map.set(text, node);
+        }
+        map = node.children;
+      }
+      node!.chunks.push(chunk);
     }
   }
 
-  const build = (key: string, heading: string | null, chunks: Chunk[]): OrganizedGroup => {
-    // 1 パート = 連結する 1 つのテキストと、その中の位置 → 元セクションの位置の対応
-    type Part = {
-      text: string;
-      sectionKey: string;
-      ranges: { start: number; end: number; sectionStart: number }[];
-    };
-    const parts: Part[] = [];
-    // 見出し行は初出のものをそのまま使う (レベルもそのまま)
-    const first = chunks[0]!;
-    if (first.heading !== null)
-      parts.push({
-        text: first.heading.line,
-        sectionKey: first.sectionKey,
-        ranges: [{ start: 0, end: first.heading.line.length, sectionStart: first.heading.start }],
-      });
-    for (const c of chunks) {
+  // ツリーをパートの列に平らにする: 見出し行 → 直下の本文 → 子見出し… の順
+  const collect = (node: Node, parts: Part[], all: Chunk[]) => {
+    parts.push({
+      text: node.headingLine.line,
+      sectionKey: node.headingLine.sectionKey,
+      ranges: [{ start: 0, end: node.headingLine.line.length, sectionStart: node.headingLine.start }],
+    });
+    for (const c of node.chunks) {
+      all.push(c);
       if (c.body !== "") parts.push(bodyPart(c));
     }
+    for (const child of node.children.values()) collect(child, parts, all);
+  };
+
+  const assemble = (key: string, heading: string | null, parts: Part[], chunks: Chunk[]): OrganizedGroup => {
     const ranges: OrganizedRange[] = [];
     let offset = 0;
     const texts: string[] = [];
@@ -208,8 +245,21 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
     };
   };
 
-  const groups = [...byHeading.entries()].map(([text, chunks]) => build(`h:${text}`, text, chunks));
-  if (noHeading.length > 0) groups.push(build("none", null, noHeading));
+  const groups = [...roots.values()].map((node) => {
+    const parts: Part[] = [];
+    const all: Chunk[] = [];
+    collect(node, parts, all);
+    return assemble(`h:${node.text}`, node.text, parts, all);
+  });
+  if (noHeading.length > 0)
+    groups.push(
+      assemble(
+        "none",
+        null,
+        noHeading.filter((c) => c.body !== "").map(bodyPart),
+        noHeading,
+      ),
+    );
   return groups;
 }
 
