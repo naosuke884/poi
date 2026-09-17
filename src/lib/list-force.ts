@@ -52,9 +52,11 @@ export const forceListMarkers: Extension = [
       setTimeout(() => {
         if (view.composing) return;
         const line = view.state.doc.lineAt(view.state.selection.main.head);
-        // 全角 ＃ の確定は見出しの書き出しに正規化する (#46)。userEvent 付きの dispatch なので、
-        // 半角にした結果が見出しの形でなければ上の transactionFilter が `- ` を足す (半角入力と同じ扱い)
-        const hashFix = fullWidthHashFix(line.text, line.from);
+        // IME 経由の # / ＃ の確定は見出しの書き出しに正規化する (#46)。スマホの IME は半角 # も
+        // composition を通る (inputHandler の hashStartsHeading に届かない) ので、全角だけでなく
+        // 半角も対象。userEvent 付きの dispatch なので、結果が見出しの形でなければ上の
+        // transactionFilter が `- ` を足す (物理キーボードの半角入力と同じ扱い)
+        const hashFix = hashHeadingFix(line.text, line.from);
         if (hashFix) {
           view.dispatch({ ...hashFix, scrollIntoView: true, userEvent: "input" });
           return;
@@ -66,22 +68,22 @@ export const forceListMarkers: Extension = [
   }),
 ];
 
-// 記号だけの空の項目に全角 ＃ だけが続く形 (IME で ＃ を確定した直後)
-const EMPTY_ITEM_FULLWIDTH_HASH_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+(＃+)$/;
+// 記号だけの空の項目に # / ＃ だけが続く形 (IME で # を確定した直後)
+const EMPTY_ITEM_HASH_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+([#＃]+)$/;
 // 行が # / ＃ の並びだけの形 (見出しの ＃ を書き足している途中)
 const HASH_RUN_RE = /^( {0,3})([#＃]+)$/;
 
 /**
- * IME で確定した全角 ＃ を半角 `#` に正規化する変更 (#46)。対象は 2 つ:
- * - 空の項目に ＃ だけ → hashStartsHeading と同じく記号とインデントを消して見出しの書き出しにする
- * - 行が # / ＃ の並びだけ (h2..h6 へ書き足す途中) → ＃ を半角に揃える
- * それ以外 (＃ の後ろに本文があるなど) は触らない (普通の文中の ＃ まで変えないため)
+ * IME で確定した # / ＃ を見出しの書き出しに直す変更 (#46)。対象は 2 つ:
+ * - 空の項目に # / ＃ だけ → hashStartsHeading と同じく記号とインデントを消して見出しの書き出しにする
+ * - 行が # / ＃ の並びだけで全角を含む (h2..h6 へ書き足す途中) → ＃ を半角に揃える
+ * それ以外 (# の後ろに本文があるなど) は触らない (普通の文中の # まで変えないため)
  */
-function fullWidthHashFix(
+function hashHeadingFix(
   text: string,
   from: number,
 ): { changes: { from: number; to: number; insert: string }; selection: SelectionRange } | null {
-  const item = EMPTY_ITEM_FULLWIDTH_HASH_RE.exec(text);
+  const item = EMPTY_ITEM_HASH_RE.exec(text);
   if (item) {
     const hashes = "#".repeat(item[1]!.length);
     return {
