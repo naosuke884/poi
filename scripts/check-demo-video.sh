@@ -27,11 +27,11 @@ if [[ "$local_hash" != "$remote_hash" ]]; then
     echo "public/demo.mp4       sha256: $local_hash"
     echo "README の埋め込み動画 sha256: $remote_hash"
     echo ""
-    echo "直し方:"
-    echo "  1. GitHub の Web UI で README.md を編集し、新しい public/demo.mp4 を"
-    echo "     エディタにドラッグ&ドロップしてアップロードする"
-    echo "     (issue コメント欄に一時的にドロップして URL だけ取得してもよい)"
-    echo "  2. 生成された https://github.com/user-attachments/assets/... の URL で"
+    echo "直し方 (gh 2.99+ の --attach を使う。dev container では ~/.local/bin/gh):"
+    echo "  1. 適当な issue へのコメントとして新しい動画をアップロードする"
+    echo "       gh issue comment <issue番号> --attach public/demo.mp4 --body 'demo.mp4 re-upload'"
+    echo "     (アップロードが目的なので、URL を取ったらコメントは消してよい)"
+    echo "  2. 投稿されたコメント中の https://github.com/user-attachments/assets/... の URL で"
     echo "     README.md の既存 URL を差し替えてコミットする"
   } >&2
   exit 1
