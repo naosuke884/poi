@@ -55,6 +55,7 @@ import {
   SectionCollapseToggle,
 } from "@/components/SectionActions";
 import {
+  type CursorPlace,
   type EditAnchor,
   SectionEditor,
   type SectionEditorHandle,
@@ -187,8 +188,8 @@ export function Board({
   const pendingFocusRef = useRef<{
     key: string;
     pos: number;
-    /** 切り替える前に、その位置が Markdown 表示のどの高さに描かれていたか (合わせる先が無ければ null) */
-    anchorTop: number | null;
+    /** カーソルを画面のどこに置くか (SectionEditor の CursorPlace) */
+    place: CursorPlace;
   } | null>(null);
   // Esc で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (Tab はそこから先へ進み、
   // ↑↓ で隣のセクションの表示へ、Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
@@ -229,22 +230,23 @@ export function Board({
     if (!view || content === undefined) return null;
     return clientTopAtSourceOffset(view, content, pos);
   };
-  // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
-  const focusLater = (key: string, pos: number) => {
+  // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)。
+  // place を渡さないときは、切り替える前に同じ場所が描かれていた高さ (= 見ていた位置) を保つ
+  const focusLater = (key: string, pos: number, place?: CursorPlace) => {
     // 高さは expandFor より先に測る (折り畳みを開くとレイアウトが変わる)
-    const anchorTop = viewTopAt(key, pos);
+    const where = place ?? viewTopAt(key, pos);
     expandFor(key);
-    pendingFocusRef.current = { key, pos, anchorTop };
+    pendingFocusRef.current = { key, pos, place: where };
     setEditingKey(key);
   };
-  const focus = (key: string, pos: number) => {
+  const focus = (key: string, pos: number, place?: CursorPlace) => {
     const editor = elementsRef.current.get(key);
     if (!editor) {
-      focusLater(key, pos);
+      focusLater(key, pos, place);
       return;
     }
     setEditingKey(key);
-    editor.focus(pos);
+    editor.focus(pos, place);
   };
   // SectionEditor は自分の layout effect (親より先に走る) で value を doc に反映済みなので、ここで置く
   // カーソル位置は新しい内容に対するもの
@@ -254,7 +256,7 @@ export function Board({
     const editor = elementsRef.current.get(pending.key);
     if (!editor) return; // 次の描画でエディタが現れるまで待つ
     pendingFocusRef.current = null;
-    editor.focus(pending.pos, pending.anchorTop);
+    editor.focus(pending.pos, pending.place);
   });
   // セクションの Markdown 表示にフォーカスを移す。カーソルへの自動スクロールの代わりに、
   // 区切り線 (期限ラベル) ごと見えるよう外枠を最小限だけスクロールする
@@ -774,7 +776,9 @@ export function Board({
           readOnly={readOnly}
           onJump={(key, pos) => {
             setViewMode("timeline");
-            focus(key, pos);
+            // まとめとタイムラインでは並びも高さも別物なので、見ていた高さを保っても意味が無い。
+            // 「そこへ飛ぶ」操作として、その場所を画面の上のほうに出す
+            focus(key, pos, "top");
           }}
           onDelete={removeGroup}
         />

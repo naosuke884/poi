@@ -24,11 +24,18 @@ import classes from "./SectionEditor.module.css";
 export type SectionEditorHandle = {
   /**
    * フォーカスしてカーソルを pos に置く (doc の長さで clamp)。カーソルが見えるように同期的にスクロールする。
-   * anchorTop があれば、そこ (切り替える前にカーソル位置が描かれていた画面上の高さ) に合わせてから
-   * 見えるところまで出し直す
+   * place でカーソルを画面のどこに置くか指定する
    */
-  focus(pos: number, anchorTop?: number | null): void;
+  focus(pos: number, place?: CursorPlace): void;
 };
+
+/**
+ * カーソルを画面のどこに置くか。
+ * 数値 = 画面上のその高さ (client 座標。切り替える前の高さを渡すと、見ていた場所がその場に留まる)、
+ * "top" = 画面の上のほう (まとめ表示から飛んでくるときなど、切り替え前の高さに意味が無いとき)、
+ * null / 省略 = CodeMirror の最小スクロールに任せる
+ */
+export type CursorPlace = number | "top" | null;
 
 /** 編集をやめる直前のカーソル: 元テキストの位置と、それが描かれていた画面上の高さ (client 座標の上端) */
 export type EditAnchor = { pos: number; top: number };
@@ -65,8 +72,12 @@ const externalSync = Annotation.define<boolean>();
 // 表示上の同じ行かどうかの判定で許す top の誤差 (px)。同じ行の文字は同じ top になるが、サブピクセルの丸めを見込む
 const SAME_ROW_TOLERANCE = 1;
 
+// カーソルの下に残しておく余白 (行の高さの何行ぶんか)。画面やソフトキーボードの下端にカーソルが張り付くと
+// 次に書く行が見えないので、そのぶん上に置く
+const CURSOR_ROOM_LINES = 3;
+
 /** フォーカスしてカーソルを pos (doc の長さで clamp) に置き、見えるようにスクロールする */
-function applyFocus(view: EditorView, pos: number, anchorTop?: number | null) {
+function applyFocus(view: EditorView, pos: number, place?: CursorPlace) {
   const at = Math.max(0, Math.min(pos, view.state.doc.length));
   view.focus();
   view.dispatch({ selection: EditorSelection.cursor(at), scrollIntoView: true });
@@ -75,33 +86,34 @@ function applyFocus(view: EditorView, pos: number, anchorTop?: number | null) {
   // 上書きする前提 (Textarea の focus() は同期的にスクロールしていた)。coordsAtPos などレイアウトを読む API は
   // 保留中の計測 (スクロールを含む) をその場で実行する (view.measure() は公開 API ではない)
   view.coordsAtPos(at);
-  if (anchorTop === undefined || anchorTop === null) return;
+  if (place === undefined || place === null) return;
   // Markdown 表示からエディタに切り替わると、同じ内容でも高さが変わって触った場所が画面の中で大きく動く。
-  // 切り替える前の高さに戻す (#45)
-  keepAt(view, at, anchorTop);
+  // 指定の高さに置き直す (#45)
+  keepAt(view, at, place);
   // CodeMirror は行の高さをまず見積もりで置き、次のフレームの計測で本当の高さに直す。そのとき自分の
   // スクロールアンカーに合わせてスクロール位置も動かすので、そこまで待ってからもう一度合わせる。
   // 同じフレームの中 (CodeMirror の計測より後、描画より前) に走るので画面はちらつかない
   requestAnimationFrame(() => {
-    if (view.dom.isConnected) keepAt(view, at, anchorTop);
+    if (view.dom.isConnected) keepAt(view, at, place);
   });
 }
 
 /**
- * doc の位置 at が画面上の anchorTop の高さに来るようにスクロールし、
- * それで固定ヘッダーやソフトキーボードの裏に入ってしまうなら最小限だけ出す。
+ * doc の位置 at が画面上の place の高さに来るようにスクロールし、それで固定ヘッダーの裏や
+ * ソフトキーボードのすぐ上に来てしまうなら最小限だけ動かす。
  * CodeMirror の scrollIntoView は使わない (見積もりの高さで動いてしまうため、ここは実測で動かす)
  */
-function keepAt(view: EditorView, at: number, anchorTop: number) {
+function keepAt(view: EditorView, at: number, place: number | "top") {
   const coords = view.coordsAtPos(at);
   if (!coords) return;
-  window.scrollBy(0, coords.top - anchorTop);
-  // スクロールした後のカーソル行の位置 (スクロールした分だけ client 座標が動く)
-  const top = anchorTop;
-  const bottom = anchorTop + (coords.bottom - coords.top);
   const band = visibleBand(view);
+  // "top" は見えている範囲の上から 1/4 (上に少し前後の文脈を残しつつ、書く場所を広く取る)
+  const wanted = place === "top" ? band.top + (band.bottom - band.top) / 4 : place;
+  window.scrollBy(0, coords.top - wanted);
+  // スクロールした後のカーソル行の位置 (スクロールした分だけ client 座標が動く)
+  const bottom = wanted + (coords.bottom - coords.top) + view.defaultLineHeight * CURSOR_ROOM_LINES;
   const over = bottom - band.bottom;
-  const under = band.top - top;
+  const under = band.top - wanted;
   if (over > 0) window.scrollBy(0, over);
   else if (under > 0) window.scrollBy(0, -under);
 }
@@ -217,10 +229,12 @@ export function SectionEditor({
           hashStartsHeading,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
-          // 下にカーソルが隠れないようにする。
-          // 下端 (ソフトキーボードの上) は CodeMirror 自身が visualViewport を見て避けるので足さない
-          // (足すと二重になって行き過ぎる)
-          EditorView.scrollMargins.of((view) => ({ top: visibleBand(view).top })),
+          // 下にカーソルが隠れず、下は次に書く行ぶんの余白が残るようにする。
+          // キーボードの高さ自体は足さない: CodeMirror 自身が visualViewport の下端で止まるので二重になる
+          EditorView.scrollMargins.of((view) => ({
+            top: visibleBand(view).top,
+            bottom: view.defaultLineHeight * CURSOR_ROOM_LINES,
+          })),
           // 文字数上限 (Textarea の maxLength 相当)。減る (または同じ長さの) 変更は常に通す: IME や結合で上限を
           // 超えた後に 1 文字ずつ消して戻れるように (textarea の maxLength も削除は弾かない)。
           // 増える変更でも IME の変換中は通す (弾くと変換が壊れる。超過分は保存時の検証と赤い文字数表示で分かる)
