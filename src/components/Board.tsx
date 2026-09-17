@@ -231,7 +231,8 @@ export function Board({
     return clientTopAtSourceOffset(view, content, pos);
   };
   // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)。
-  // place を渡さないときは、切り替える前に同じ場所が描かれていた高さ (= 見ていた位置) を保つ
+  // place を渡さないときは、切り替える前に同じ場所が描かれていた高さ (= 見ていた位置) を保つ。
+  // エディタの中の ↑↓ で隣のセクションへ移るときがこれ (移動先は隣なので、動かさないほうが続けて書きやすい)
   const focusLater = (key: string, pos: number, place?: CursorPlace) => {
     // 高さは expandFor より先に測る (折り畳みを開くとレイアウトが変わる)
     const where = place ?? viewTopAt(key, pos);
@@ -734,7 +735,8 @@ export function Board({
     if (readOnly || !isBlank(e)) return;
     // 末尾が折り畳まれていたら、その上の開いているセクションへ
     const last = latestRef.current.findLast((s) => !s.collapsed);
-    if (last) focus(last.key, last.content.length);
+    // 末尾へ飛ぶ操作なので、セクションをタップして編集に移るときと同じ置き方にする
+    if (last) focus(last.key, last.content.length, "top");
   };
   const keepFocus = (e: MouseEvent<HTMLDivElement>) => {
     if (isBlank(e)) e.preventDefault();
@@ -893,7 +895,9 @@ export function Board({
               <MarkdownView
                 content={s.content}
                 aria-label={`セクション ${i + 1}`}
-                onEdit={readOnly ? undefined : (pos) => focus(s.key, pos)}
+                /* 編集に移るときは、その場所を画面の上のほうに出す (下のほうをタップしたとき、
+                   キーボードの上に書く場所が残らないため。まとめ表示からの移動と同じ扱い) */
+                onEdit={readOnly ? undefined : (pos) => focus(s.key, pos, "top")}
                 onNavigate={
                   readOnly ? undefined : (dir) => focusViewFrom(s.key, dir)
                 }
