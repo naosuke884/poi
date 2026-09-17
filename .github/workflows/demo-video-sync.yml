@@ -1,0 +1,29 @@
+# README.md に埋め込んだデモ動画 (GitHub user-attachments) と public/demo.mp4 の内容が
+# 一致していることを検証する。user-attachments は API でアップロードできないため
+# 自動同期はできず、ズレたらこの CI が落ちて手動での再アップロードを促す。
+# 詳細な手順はエラーメッセージ (scripts/check-demo-video.sh) に出る。
+name: Demo video sync
+
+on:
+  pull_request:
+    paths:
+      - public/demo.mp4
+      - README.md
+  push:
+    branches: [main]
+    paths:
+      - public/demo.mp4
+      - README.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: demo video sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - run: ./scripts/check-demo-video.sh
