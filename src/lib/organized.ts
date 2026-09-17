@@ -39,6 +39,12 @@ export type OrganizedGroup = {
   chunkCount: number;
   /** content の各部分 → 元セクションの位置。start 昇順 */
   ranges: OrganizedRange[];
+  /**
+   * このまとめに含めた、元セクション content 内の範囲 (まとめごと削除する用)。
+   * 各チャンクの見出し行の先頭から次の見出し行の直前 (または末尾) までで、
+   * 間の空行 (トリムして表示しなかった分) も含む
+   */
+  sources: { sectionKey: string; start: number; end: number }[];
 };
 
 /** チャンク同士のつなぎ (空行 1 つ)。段落やリストのブロック境界を保つ */
@@ -68,6 +74,9 @@ type Chunk = {
   body: string;
   /** body の元セクション content 内での開始位置 */
   bodyStart: number;
+  /** チャンクの占める範囲 (見出し行の先頭〜次の見出し行の直前 / 末尾。トリム前)。削除用 */
+  start: number;
+  end: number;
 };
 
 /** 本文範囲の前後から空行 (空白のみの行) を落とす */
@@ -133,6 +142,9 @@ function chunkSection(section: EditableSection): Chunk[] {
         heading,
         body: content.slice(s, e),
         bodyStart: s,
+        // 見出しなし (先頭) のチャンクはセクションの頭から
+        start: heading !== null ? heading.start : 0,
+        end: bodyEnd,
       });
   };
   let lineStart = 0;
@@ -234,6 +246,7 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
       content: texts.join(JOINER),
       chunkCount: chunks.length,
       ranges,
+      sources: chunks.map((c) => ({ sectionKey: c.sectionKey, start: c.start, end: c.end })),
     };
   };
 
@@ -259,6 +272,24 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
  * まとめた Markdown 内の位置を、元セクションの位置に対応づける (クリックで編集へ飛ぶ用)。
  * つなぎ (JOINER) の上なら直前の部分の末尾に寄せる
  */
+/**
+ * まとめの削除 (OrganizedView の削除ボタン) 用に、元セクションの content から
+ * まとめに含めた範囲 (sources のうちそのセクションの分) を取り除いた残りを返す。
+ * 範囲は見出し行の頭から次の見出し行の直前までなので、残った部分はそのままつながる。
+ * 末尾に掛かる削除では、消した部分との区切りだった終端の空白も落とす
+ */
+export function cutRanges(content: string, ranges: { start: number; end: number }[]): string {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  let out = "";
+  let pos = 0;
+  for (const r of sorted) {
+    out += content.slice(pos, Math.max(pos, r.start));
+    pos = Math.max(pos, r.end);
+  }
+  out += content.slice(pos);
+  return pos >= content.length ? out.replace(/\s+$/, "") : out;
+}
+
 export function locateInSection(
   ranges: OrganizedRange[],
   offset: number,

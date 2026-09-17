@@ -46,6 +46,7 @@ import {
   toEditable,
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
+import { type OrganizedGroup, cutRanges } from "@/lib/organized";
 import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { MarkdownView } from "@/components/MarkdownView";
 import { OrganizedView } from "@/components/OrganizedView";
@@ -426,10 +427,11 @@ export function Board({
 
   // 削除は即時に反映し (1 秒後に自動保存される)、しばらく「元に戻す」を出す (確認ダイアログの代わり)。
   // 戻すときは元の位置に差し込む。保存が済んだ後なら id は無効になっているが、サーバは未知の id を
-  // 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)
+  // 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)。
+  // まとめの削除 (removeGroup) は複数セクションに跨がるので、戻す対象はリストで持つ
   const [deleted, setDeleted] = useState<{
-    section: EditableSection;
-    index: number;
+    title: string;
+    sections: { section: EditableSection; index: number }[];
   } | null>(null);
   // 右下固定の追加ボタンがソフトキーボードの裏に隠れないよう、キーボード分だけ持ち上げる
   const keyboardInset = useKeyboardInset();
@@ -440,6 +442,17 @@ export function Board({
     setDeleted(null);
   };
   useEffect(() => () => clearTimeout(undoTimerRef.current ?? undefined), []);
+  const showUndo = (
+    title: string,
+    sections: { section: EditableSection; index: number }[],
+  ) => {
+    if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
+    setDeleted({ title, sections });
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      setDeleted(null);
+    }, UNDO_DELETE_MS);
+  };
   const removeSection = (key: string) => {
     const cur = latestRef.current;
     const index = indexOf(key);
@@ -447,12 +460,36 @@ export function Board({
     if (!section) return;
     const next = cur.filter((s) => s.key !== key);
     update(next.length > 0 ? next : [newSection()]);
-    if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
-    setDeleted({ section, index });
-    undoTimerRef.current = setTimeout(() => {
-      undoTimerRef.current = null;
-      setDeleted(null);
-    }, UNDO_DELETE_MS);
+    showUndo("セクションを削除しました", [{ section, index }]);
+  };
+  // まとめ表示 (#37) の削除: グループに連結した範囲を元の各セクションから取り除く。
+  // 取り除いて空になったセクションは丸ごと消す (空のままタイムラインに残っても意味がない)。
+  // 折り畳んだセクションはまとめに含まれないので、同じ見出しがあっても触らない
+  const removeGroup = (group: OrganizedGroup) => {
+    const bySection = new Map<string, { start: number; end: number }[]>();
+    for (const { sectionKey, start, end } of group.sources) {
+      const list = bySection.get(sectionKey) ?? [];
+      list.push({ start, end });
+      bySection.set(sectionKey, list);
+    }
+    const cur = latestRef.current;
+    const affected: { section: EditableSection; index: number }[] = [];
+    const next: EditableSection[] = [];
+    cur.forEach((section, index) => {
+      const ranges = bySection.get(section.key);
+      if (!ranges) {
+        next.push(section);
+        return;
+      }
+      affected.push({ section, index });
+      const content = cutRanges(section.content, ranges);
+      if (content.trim() !== "") next.push({ ...section, content });
+    });
+    if (affected.length === 0) return;
+    update(next.length > 0 ? next : [newSection()]);
+    const subject =
+      group.heading !== null ? `「${group.heading}」のまとめ` : "見出しなしのまとめ";
+    showUndo(`${subject}を削除しました`, affected);
   };
   const undoDelete = () => {
     if (!deleted) return;
@@ -463,11 +500,22 @@ export function Board({
       cur.length === 1 && cur[0]!.id === null && cur[0]!.content === ""
         ? []
         : cur;
-    const i = Math.min(deleted.index, base.length);
+    // まとめの削除で一部だけ取り除いたセクションはまだ残っているので差し替え、
+    // 丸ごと消えたものは元の位置に差し込む (位置関係を保つよう index 昇順に)
+    const next = [...base];
+    for (const d of [...deleted.sections].sort((a, b) => a.index - b.index)) {
+      const i = next.findIndex((s) => s.key === d.section.key);
+      if (i >= 0) next[i] = d.section;
+      else next.splice(Math.min(d.index, next.length), 0, d.section);
+    }
     // まとめ表示中はエディタが無いのでフォーカスは予約しない (内容が戻ればよい。
-    // 予約するとタイムラインへ戻った拍子に不意にエディタが開いてしまう)
-    if (!organized) focusLater(deleted.section.key, deleted.section.content.length);
-    update([...base.slice(0, i), deleted.section, ...base.slice(i)]);
+    // 予約するとタイムラインへ戻った拍子に不意にエディタが開いてしまう)。
+    // 複数セクションに跨がる削除の取り消しも同様 (どこか 1 つに置いても意味が薄い)
+    if (!organized && deleted.sections.length === 1) {
+      const { section } = deleted.sections[0]!;
+      focusLater(section.key, section.content.length);
+    }
+    update(next);
   };
 
   // 隣のセクションとの結合 / 移動。境界にいるかの判定 (選択なし・IME 変換中でない・先頭 / 末尾 / 表示上の
@@ -687,6 +735,7 @@ export function Board({
             setViewMode("timeline");
             focus(key, pos);
           }}
+          onDelete={removeGroup}
         />
       ) : (
       <Box
@@ -906,7 +955,7 @@ export function Board({
           }}
         >
           <Notification
-            title="セクションを削除しました"
+            title={deleted.title}
             withBorder
             onClose={cancelUndo}
             closeButtonProps={{ "aria-label": "閉じる" }}
