@@ -7,3 +7,4 @@ data
 *.local
 .DS_Store
 worker-configuration.d.ts
+.claude/worktrees
