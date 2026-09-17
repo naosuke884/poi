@@ -5,6 +5,7 @@ import {
   EditorSelection,
   EditorState,
   type Extension,
+  type SelectionRange,
   type Text,
   Transaction,
 } from "@codemirror/state";
@@ -51,12 +52,54 @@ export const forceListMarkers: Extension = [
       setTimeout(() => {
         if (view.composing) return;
         const line = view.state.doc.lineAt(view.state.selection.main.head);
+        // 全角 ＃ の確定は見出しの書き出しに正規化する (#46)。userEvent 付きの dispatch なので、
+        // 半角にした結果が見出しの形でなければ上の transactionFilter が `- ` を足す (半角入力と同じ扱い)
+        const hashFix = fullWidthHashFix(line.text, line.from);
+        if (hashFix) {
+          view.dispatch({ ...hashFix, scrollIntoView: true, userEvent: "input" });
+          return;
+        }
         const fix = markerFor(line.text, line.from);
         if (fix) view.dispatch({ changes: fix, userEvent: "input" });
       });
     },
   }),
 ];
+
+// 記号だけの空の項目に全角 ＃ だけが続く形 (IME で ＃ を確定した直後)
+const EMPTY_ITEM_FULLWIDTH_HASH_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+(＃+)$/;
+// 行が # / ＃ の並びだけの形 (見出しの ＃ を書き足している途中)
+const HASH_RUN_RE = /^( {0,3})([#＃]+)$/;
+
+/**
+ * IME で確定した全角 ＃ を半角 `#` に正規化する変更 (#46)。対象は 2 つ:
+ * - 空の項目に ＃ だけ → hashStartsHeading と同じく記号とインデントを消して見出しの書き出しにする
+ * - 行が # / ＃ の並びだけ (h2..h6 へ書き足す途中) → ＃ を半角に揃える
+ * それ以外 (＃ の後ろに本文があるなど) は触らない (普通の文中の ＃ まで変えないため)
+ */
+function fullWidthHashFix(
+  text: string,
+  from: number,
+): { changes: { from: number; to: number; insert: string }; selection: SelectionRange } | null {
+  const item = EMPTY_ITEM_FULLWIDTH_HASH_RE.exec(text);
+  if (item) {
+    const hashes = "#".repeat(item[1]!.length);
+    return {
+      changes: { from, to: from + text.length, insert: hashes },
+      selection: EditorSelection.cursor(from + hashes.length),
+    };
+  }
+  const run = HASH_RUN_RE.exec(text);
+  if (run && run[2]!.includes("＃")) {
+    const indent = run[1]!.length;
+    const hashes = "#".repeat(run[2]!.length);
+    return {
+      changes: { from: from + indent, to: from + text.length, insert: hashes },
+      selection: EditorSelection.cursor(from + indent + hashes.length),
+    };
+  }
+  return null;
+}
 
 // ATX 見出しの行頭: スペース 0〜3 + `#` 1〜6 + 空白か行末 (CommonMark。MarkdownView (micromark) が
 // 見出しと見なす形。`#` の直後がタブでも micromark は見出しにする)
@@ -68,10 +111,12 @@ const HEADING_RE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
  * 途中に見出しを書く唯一の入り口 (Enter で空の項目を作って `#`)。
  * インデントも消すのは、見出しは階層に属さない (深さ 4 以上はそもそも見出しにならない) ため。
  * スペースのインデント (spaceIndentsListItem) と同じく、仮想キーボード対応で inputHandler にする。
- * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる (見出しの行は forceListMarkers が触らない)
+ * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる (見出しの行は forceListMarkers が触らない)。
+ * 全角 ＃ も同じ扱いで半角にする (#46)。IME の変換 (composition) を経る ＃ はここに届かないので、
+ * そちらは forceListMarkers の compositionend (fullWidthHashFix) が拾う
  */
 export const hashStartsHeading = EditorView.inputHandler.of((view, from, to, text) => {
-  if (text !== "#" || from !== to || view.composing) return false;
+  if ((text !== "#" && text !== "＃") || from !== to || view.composing) return false;
   const { state } = view;
   const sel = state.selection.main;
   if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
