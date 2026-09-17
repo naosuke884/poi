@@ -88,3 +88,69 @@ export function sourceOffsetAtPoint(root: HTMLElement, x: number, y: number, sou
   if (!node || !root.contains(node)) return null;
   return sourceOffsetAt(node, offset, source);
 }
+
+/** data-pos を持つ要素とその範囲 */
+type Owner = { el: HTMLElement; start: number; end: number };
+
+/**
+ * 元テキストの位置 pos を範囲に含む要素のうち、いちばん内側 (範囲がいちばん狭い) のもの。
+ * どれにも入らない (ブロックの間の空行など) ときは、範囲がいちばん近い要素で代用する
+ */
+function ownerAtSourceOffset(root: HTMLElement, pos: number): Owner | null {
+  let best: Owner | null = null;
+  let fallback: Owner | null = null;
+  const distance = (o: Owner) => Math.max(o.start - pos, pos - o.end, 0);
+  for (const el of root.querySelectorAll<HTMLElement>("[data-pos]")) {
+    const [start, end] = el.getAttribute("data-pos")!.split("-").map(Number);
+    if (start === undefined || end === undefined || Number.isNaN(start) || Number.isNaN(end)) continue;
+    const owner = { el, start, end };
+    if (pos < start || pos > end) {
+      if (!fallback || distance(owner) < distance(fallback)) fallback = owner;
+      continue;
+    }
+    if (!best || end - start < best.end - best.start) best = owner;
+  }
+  return best ?? fallback;
+}
+
+/**
+ * 元テキストの位置 pos が Markdown 表示のどの高さに描かれているか (client 座標の上端)。
+ * sourceOffsetAt の逆向き: pos を含む要素を選び、その中のテキストノードを文書順に元テキストと
+ * 突き合わせて該当する文字を探す (同じ手順なので、同じ文字列が繰り返されていても同じところに当たる)。
+ * 文字まで辿れなければ要素の上端、表示が空 (data-pos がひとつも無い) なら null。
+ * 同じ内容でもソースのまま (エディタ) とレンダリング後 (表示) では高さが違うので、
+ * 編集の切り替えで見ていた場所を同じ高さに保つのに使う
+ */
+export function clientTopAtSourceOffset(root: HTMLElement, source: string, pos: number): number | null {
+  const owner = ownerAtSourceOffset(root, pos);
+  if (!owner) return null;
+  const region = source.slice(owner.start, owner.end);
+  let cursor = 0;
+  // pos に届かないまま終わったら、最後に見たテキストノードの末尾で代用する (範囲の末尾の位置など)
+  let found: { node: Text; offset: number } | null = null;
+  const walker = owner.el.ownerDocument.createTreeWalker(owner.el, NodeFilter.SHOW_TEXT);
+  for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
+    if (isFormatting(t)) continue;
+    const i = region.indexOf(t.data, cursor);
+    if (i < 0) break;
+    const from = owner.start + i;
+    if (pos <= from + t.data.length) {
+      found = { node: t, offset: Math.max(0, pos - from) };
+      break;
+    }
+    found = { node: t, offset: t.data.length };
+    cursor = i + t.data.length;
+  }
+  return (found && charTop(found.node, found.offset)) ?? owner.el.getBoundingClientRect().top;
+}
+
+/** テキストノードの offset 文字目が描かれている行の上端 (矩形が取れなければ null) */
+function charTop(node: Text, offset: number): number | null {
+  // 潰れた範囲は矩形が取れないことがあるので 1 文字ぶんの幅を持たせる (末尾なら手前の 1 文字)
+  const at = Math.min(offset, Math.max(0, node.data.length - 1));
+  const range = node.ownerDocument.createRange();
+  range.setStart(node, at);
+  range.setEnd(node, Math.min(at + 1, node.data.length));
+  const rect = range.getBoundingClientRect();
+  return rect.height > 0 ? rect.top : null;
+}

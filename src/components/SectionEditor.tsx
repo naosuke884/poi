@@ -7,7 +7,7 @@ import {
 } from "@codemirror/commands";
 import { Annotation, Compartment, EditorSelection, EditorState, Prec, Transaction } from "@codemirror/state";
 import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } from "@codemirror/view";
-import { type Ref, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
 import { insertNewlineContinueList } from "@/lib/list-continue";
 import {
@@ -18,19 +18,29 @@ import {
 } from "@/lib/list-force";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "@/lib/list-indent";
 import { sectionMarkdown } from "@/lib/section-markdown";
+import { viewportInsets } from "@/lib/use-keyboard-inset";
 import classes from "./SectionEditor.module.css";
 
 export type SectionEditorHandle = {
-  /** フォーカスしてカーソルを pos に置く (doc の長さで clamp)。カーソルが見えるように同期的にスクロールする */
-  focus(pos: number): void;
+  /**
+   * フォーカスしてカーソルを pos に置く (doc の長さで clamp)。カーソルが見えるように同期的にスクロールする。
+   * anchorTop があれば、そこ (切り替える前にカーソル位置が描かれていた画面上の高さ) に合わせてから
+   * 見えるところまで出し直す
+   */
+  focus(pos: number, anchorTop?: number | null): void;
 };
+
+/** 編集をやめる直前のカーソル: 元テキストの位置と、それが描かれていた画面上の高さ (client 座標の上端) */
+export type EditAnchor = { pos: number; top: number };
 
 type Props = {
   value: string;
   /** 入力。cursor は selection.main.head (Board が分割位置の判定に使う) */
   onChange(value: string, cursor: number): void;
   onFocus(): void;
-  onBlur(): void;
+  /** フォーカスが外れた。anchor はそのときのカーソルの位置と画面上の高さ (座標が取れなければ null)。
+   * Board は Markdown 表示に戻したあと、同じ場所が同じ高さに来るようスクロールを合わせる */
+  onBlur(anchor: EditAnchor | null): void;
   /** 先頭で Backspace (選択なし)。Board が前のセクションと結合する */
   onBackspaceAtStart(): void;
   /** 末尾で Delete (選択なし)。Board が次のセクションと結合する */
@@ -56,7 +66,7 @@ const externalSync = Annotation.define<boolean>();
 const SAME_ROW_TOLERANCE = 1;
 
 /** フォーカスしてカーソルを pos (doc の長さで clamp) に置き、見えるようにスクロールする */
-function applyFocus(view: EditorView, pos: number) {
+function applyFocus(view: EditorView, pos: number, anchorTop?: number | null) {
   const at = Math.max(0, Math.min(pos, view.state.doc.length));
   view.focus();
   view.dispatch({ selection: EditorSelection.cursor(at), scrollIntoView: true });
@@ -65,6 +75,48 @@ function applyFocus(view: EditorView, pos: number) {
   // 上書きする前提 (Textarea の focus() は同期的にスクロールしていた)。coordsAtPos などレイアウトを読む API は
   // 保留中の計測 (スクロールを含む) をその場で実行する (view.measure() は公開 API ではない)
   view.coordsAtPos(at);
+  if (anchorTop === undefined || anchorTop === null) return;
+  // Markdown 表示からエディタに切り替わると、同じ内容でも高さが変わって触った場所が画面の中で大きく動く。
+  // 切り替える前の高さに戻す (#45)
+  keepAt(view, at, anchorTop);
+  // CodeMirror は行の高さをまず見積もりで置き、次のフレームの計測で本当の高さに直す。そのとき自分の
+  // スクロールアンカーに合わせてスクロール位置も動かすので、そこまで待ってからもう一度合わせる。
+  // 同じフレームの中 (CodeMirror の計測より後、描画より前) に走るので画面はちらつかない
+  requestAnimationFrame(() => {
+    if (view.dom.isConnected) keepAt(view, at, anchorTop);
+  });
+}
+
+/**
+ * doc の位置 at が画面上の anchorTop の高さに来るようにスクロールし、
+ * それで固定ヘッダーやソフトキーボードの裏に入ってしまうなら最小限だけ出す。
+ * CodeMirror の scrollIntoView は使わない (見積もりの高さで動いてしまうため、ここは実測で動かす)
+ */
+function keepAt(view: EditorView, at: number, anchorTop: number) {
+  const coords = view.coordsAtPos(at);
+  if (!coords) return;
+  window.scrollBy(0, coords.top - anchorTop);
+  // スクロールした後のカーソル行の位置 (スクロールした分だけ client 座標が動く)
+  const top = anchorTop;
+  const bottom = anchorTop + (coords.bottom - coords.top);
+  const band = visibleBand(view);
+  const over = bottom - band.bottom;
+  const under = band.top - top;
+  if (over > 0) window.scrollBy(0, over);
+  else if (under > 0) window.scrollBy(0, -under);
+}
+
+/**
+ * カーソルを出しておきたい範囲 (client 座標の上端と下端)。
+ * 上は固定ヘッダーの下 (Board が Box の scroll-margin-top に入れている「ヘッダーの高さ + 本文の余白」を
+ * そのまま読む。CSS 変数の calc をここで解くより、計算済みの値を読むほうが確実) と、
+ * 画面 (visual viewport) の外に出ている上の帯の、下にあるほう。下はソフトキーボードの上端 (#45)
+ */
+function visibleBand(view: EditorView): { top: number; bottom: number } {
+  const box = view.dom.closest("[data-section]");
+  const header = box ? Number.parseFloat(getComputedStyle(box).scrollMarginTop) || 0 : 0;
+  const { top, bottom } = viewportInsets();
+  return { top: Math.max(header, top), bottom: window.innerHeight - bottom };
 }
 
 /**
@@ -137,9 +189,9 @@ export function SectionEditor({
   useImperativeHandle(
     ref,
     () => ({
-      focus(pos) {
+      focus(pos, anchorTop) {
         wantFocusRef.current = pos;
-        if (viewRef.current) applyFocus(viewRef.current, pos);
+        if (viewRef.current) applyFocus(viewRef.current, pos, anchorTop);
       },
     }),
     [],
@@ -165,13 +217,10 @@ export function SectionEditor({
           hashStartsHeading,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
-          // 下にカーソルが隠れないようにする。余白は Board が Box の scroll-margin-top に入れているものをそのまま
-          // 使う (ヘッダーの高さ + 本文の余白。CSS 変数の calc をここで解くより、計算済みの値を読むほうが確実)
-          EditorView.scrollMargins.of((view) => {
-            const box = view.dom.closest("[data-section]");
-            if (!box) return null;
-            return { top: Number.parseFloat(getComputedStyle(box).scrollMarginTop) || 0 };
-          }),
+          // 下にカーソルが隠れないようにする。
+          // 下端 (ソフトキーボードの上) は CodeMirror 自身が visualViewport を見て避けるので足さない
+          // (足すと二重になって行き過ぎる)
+          EditorView.scrollMargins.of((view) => ({ top: visibleBand(view).top })),
           // 文字数上限 (Textarea の maxLength 相当)。減る (または同じ長さの) 変更は常に通す: IME や結合で上限を
           // 超えた後に 1 文字ずつ消して戻れるように (textarea の maxLength も削除は弾かない)。
           // 増える変更でも IME の変換中は通す (弾くと変換が壊れる。超過分は保存時の検証と赤い文字数表示で分かる)
@@ -194,7 +243,7 @@ export function SectionEditor({
               if (update.view.hasFocus) cb.onFocus();
               else {
                 wantFocusRef.current = null;
-                cb.onBlur();
+                cb.onBlur(cursorAnchor(update.view));
               }
             }
           }),
@@ -210,6 +259,23 @@ export function SectionEditor({
       viewRef.current = null;
     };
     // マウント時に一度だけ作る。props の変化は下の effect と Compartment で反映する
+  }, []);
+
+  // ソフトキーボードは focus より後に開くので、focus 時のスクロール (applyFocus) ではその裏に隠れることがある。
+  // 画面 (visual viewport) が縮んだら、フォーカスがある間だけカーソルを見えるところへ出し直す (#45)。
+  // 広がるとき (キーボードが閉じるとき) は動かさない: 読んでいる場所を勝手にずらさないため
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let hidden = viewportInsets().bottom;
+    const onResize = () => {
+      const { bottom } = viewportInsets();
+      const grew = bottom > hidden + 1;
+      hidden = bottom;
+      if (grew && viewRef.current?.hasFocus) viewRef.current.dispatch({ scrollIntoView: true });
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
   }, []);
 
   // value の同期。Board からの分割 / 結合 / 取り消しでしか起きない (自分の入力は onChange で Board に渡した
@@ -242,6 +308,13 @@ export function SectionEditor({
   }, [placeholder, readOnly, ariaLabel]);
 
   return <div ref={hostRef} className={classes.root} />;
+}
+
+/** 今のカーソルの位置と、それが描かれている画面上の高さ (座標が取れなければ null) */
+function cursorAnchor(view: EditorView): EditAnchor | null {
+  const pos = view.state.selection.main.head;
+  const coords = view.coordsAtPos(pos);
+  return coords ? { pos, top: coords.top } : null;
 }
 
 type Callbacks = Pick<

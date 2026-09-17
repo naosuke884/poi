@@ -55,9 +55,11 @@ import {
   SectionCollapseToggle,
 } from "@/components/SectionActions";
 import {
+  type EditAnchor,
   SectionEditor,
   type SectionEditorHandle,
 } from "@/components/SectionEditor";
+import { clientTopAtSourceOffset } from "@/lib/markdown-source-offset";
 import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
 import {
@@ -182,13 +184,22 @@ export function Board({
   // key → セクションの外枠 (区切り線を含む。スクロール位置を合わせる対象)
   const boxesRef = useRef(new Map<string, HTMLDivElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
-  const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
+  const pendingFocusRef = useRef<{
+    key: string;
+    pos: number;
+    /** 切り替える前に、その位置が Markdown 表示のどの高さに描かれていたか (合わせる先が無ければ null) */
+    anchorTop: number | null;
+  } | null>(null);
   // Esc で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (Tab はそこから先へ進み、
   // ↑↓ で隣のセクションの表示へ、Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
   const pendingViewFocusRef = useRef<string | null>(null);
+  // 編集をやめたセクションと、そのときのカーソル (位置と画面上の高さ)。描画後に同じ高さへ合わせ直す
+  const pendingAnchorRef = useRef<{ key: string; anchor: EditAnchor } | null>(null);
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const editingKeyRef = useRef(editingKey);
+  editingKeyRef.current = editingKey;
 
   // 表示モード (#37): タイムライン (通常の板) / 見出しごとのまとめ (OrganizedView。閲覧のみ)。
   // 切替はヘッダーの ViewToggle が行い、モードはストア (view-mode) が持つ (Board が作り直されても保つ)
@@ -206,12 +217,24 @@ export function Board({
     // フォーカスが不意に発火しないように)
     pendingFocusRef.current = null;
     pendingViewFocusRef.current = null;
+    pendingAnchorRef.current = null;
     window.scrollTo({ top: 0 });
   }, [organized]);
+  // 編集に入る前に、そのカーソル位置が Markdown 表示のどの高さに描かれているか (client 座標の上端)。
+  // 表示とエディタでは同じ内容でも高さが変わるので、切り替えた後にこの高さへ戻す (#45)。
+  // 表示が無い (空 / 折り畳み中 / これから作るセクション) なら合わせる先が無いので null
+  const viewTopAt = (key: string, pos: number) => {
+    const view = viewsRef.current.get(key);
+    const content = latestRef.current.find((s) => s.key === key)?.content;
+    if (!view || content === undefined) return null;
+    return clientTopAtSourceOffset(view, content, pos);
+  };
   // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
   const focusLater = (key: string, pos: number) => {
+    // 高さは expandFor より先に測る (折り畳みを開くとレイアウトが変わる)
+    const anchorTop = viewTopAt(key, pos);
     expandFor(key);
-    pendingFocusRef.current = { key, pos };
+    pendingFocusRef.current = { key, pos, anchorTop };
     setEditingKey(key);
   };
   const focus = (key: string, pos: number) => {
@@ -231,7 +254,7 @@ export function Board({
     const editor = elementsRef.current.get(pending.key);
     if (!editor) return; // 次の描画でエディタが現れるまで待つ
     pendingFocusRef.current = null;
-    editor.focus(pending.pos);
+    editor.focus(pending.pos, pending.anchorTop);
   });
   // セクションの Markdown 表示にフォーカスを移す。カーソルへの自動スクロールの代わりに、
   // 区切り線 (期限ラベル) ごと見えるよう外枠を最小限だけスクロールする
@@ -244,6 +267,20 @@ export function Board({
     if (key === null) return;
     pendingViewFocusRef.current = null;
     focusView(key);
+  });
+  // 編集をやめて Markdown 表示に戻ったら、カーソルのあった場所が画面上の同じ高さに残るようにスクロールする。
+  // 同じ内容でもソースのまま (エディタ) とレンダリング後 (表示) では高さが違うので、何もしないと
+  // 見ていた場所が上下にずれる (文字の大きいスマホでは特に大きくずれる。#45)。
+  // Esc で抜けるときは使わない (focusView が区切り線ごと見えるように合わせる。onBlur 側で予約しない)
+  useLayoutEffect(() => {
+    const pending = pendingAnchorRef.current;
+    if (!pending) return;
+    pendingAnchorRef.current = null;
+    const view = viewsRef.current.get(pending.key);
+    const content = sections.find((s) => s.key === pending.key)?.content;
+    if (!view || content === undefined) return; // 空になった / 折り畳んだ: 合わせる先が無い
+    const top = clientTopAtSourceOffset(view, content, pending.anchor.pos);
+    if (top !== null) window.scrollBy(0, top - pending.anchor.top);
   });
 
   // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
@@ -713,8 +750,12 @@ export function Board({
   // フォーカスが外れたら Markdown 表示に戻す。ただしウィンドウ自体がフォーカスを失った場合
   // (タブ切り替えなど) は編集中のまま (戻ってきたときにカーソル位置を保つ)。
   // 別のセクションへ移るときは、移った先が先に editingKey になっているので何もしない
-  const onBlur = (key: string) => {
+  const onBlur = (key: string, anchor: EditAnchor | null) => {
     if (!document.hasFocus()) return;
+    // ここで本当に編集をやめる (別のセクションへ移ったのでも、Esc で既にやめたのでもない) ときだけ、
+    // 描画後にスクロールを合わせるためのカーソル位置を控える (#45)
+    if (editingKeyRef.current === key && anchor)
+      pendingAnchorRef.current = { key, anchor };
     setEditingKey((k) => (k === key ? null : k));
   };
 
@@ -881,7 +922,7 @@ export function Board({
                   changeSection(s.key, value, cursor)
                 }
                 onFocus={() => setEditingKey(s.key)}
-                onBlur={() => onBlur(s.key)}
+                onBlur={(anchor) => onBlur(s.key, anchor)}
                 onBackspaceAtStart={() => backspaceAtStart(indexOf(s.key))}
                 onDeleteAtEnd={() => deleteAtEnd(indexOf(s.key))}
                 onArrowUpAtFirstLine={() => arrowUpAtFirstLine(indexOf(s.key))}
