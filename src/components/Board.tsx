@@ -299,7 +299,18 @@ export function Board({
   };
   useLayoutEffect(() => {
     if (!reveal) return;
-    boxesRef.current.get(reveal.key)?.scrollIntoView({ block: "start" });
+    const box = boxesRef.current.get(reveal.key);
+    if (!box) return;
+    box.scrollIntoView({ block: "start" });
+    // 末尾に足したセクションのエディタ (CodeMirror) がマウントされていると、ここで合わせたスクロールが
+    // 次のフレームの終わりにページ先頭まで巻き戻されてしまう (#47。スクロール API を介さないので上書きではなく
+    // 巻き戻し。マウント直後の CodeMirror がある状態での最初のプログラムスクロールだけ起きる)。
+    // その後のフレームでもう一度合わせる (1 回の rAF では巻き戻しより先に走ってしまい効かない)
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (box.isConnected) box.scrollIntoView({ block: "start" });
+      }),
+    );
   }, [reveal]);
 
   const cancelTimer = () => {
