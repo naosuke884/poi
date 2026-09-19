@@ -1,8 +1,8 @@
-import { Anchor, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Box, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { useReducedMotion } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
-import { LandingDemo } from "@/components/LandingDemo";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 import classes from "./Landing.module.css";
 
@@ -32,6 +32,8 @@ export function Landing() {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+  // OS で「動きを減らす」を選んでいる人にはデモ動画を自動再生しない (controls で再生してもらう)
+  const reduceMotion = useReducedMotion();
   // Google へのリダイレクトが始まるまでの間、二度押しで OAuth を 2 回始めないようにする
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,12 +85,24 @@ export function Landing() {
         </Text>
       </Stack>
 
-      <Stack gap="sm" maw={860} w="100%">
-        <Title order={2} size="h4" ta="center">
-          試し書き
-        </Title>
-        <LandingDemo />
-      </Stack>
+      {/* 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする */}
+      <Box maw={860} w="100%">
+        <video
+          src="/demo.mp4"
+          aria-label="poi を操作するデモ動画"
+          autoPlay={!reduceMotion}
+          controls={reduceMotion}
+          muted
+          loop
+          playsInline
+          style={{
+            width: "100%",
+            display: "block",
+            borderRadius: "var(--mantine-radius-md)",
+            border: "1px solid var(--mantine-color-default-border)",
+          }}
+        />
+      </Box>
 
       <Stack gap="sm" maw={860} w="100%">
         <Title order={2} size="h4" ta="center">
