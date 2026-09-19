@@ -23,6 +23,13 @@ import { TtlSettingModal } from "@/components/TtlSettingModal";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
 import { useOnline } from "@/lib/use-online";
 
+// listDeviceSessions の戻り (この端末でログイン中のアカウント一覧) のうち使う部分。
+// クライアントの推論が any になるので、表示と setActive に必要な形だけ自前で書く
+type DeviceSessions = {
+  session: { token: string };
+  user: { id: string; name: string; email: string; image?: string | null };
+}[];
+
 export function UserMenu() {
   const { data, isPending, error, refetch } = authClient.useSession();
   const router = useRouter();
@@ -35,6 +42,10 @@ export function UserMenu() {
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [settingTtl, setSettingTtl] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
+  // この端末でログイン中の他アカウント (multiSession)。メニューを開くたびに取り直す
+  const [deviceSessions, setDeviceSessions] = useState<DeviceSessions>([]);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
@@ -66,9 +77,64 @@ export function UserMenu() {
   // キャッシュから表示している間、またはオフラインの間はログアウトできない (サーバに届かない)。
   // 通信エラー時もセッションの data は前回の値が残るため、navigator.onLine も見る
   const offline = !data || !online;
+  // メニューを開いたときに他アカウントの一覧を取り直す (切り替え直後・別タブでの追加を拾う)。
+  // 失敗したら空のまま (切り替えの項目が出ないだけ)
+  const loadDeviceSessions = async () => {
+    if (offline) return;
+    try {
+      const { data: sessions } = await authClient.multiSession.listDeviceSessions();
+      setDeviceSessions(sessions ?? []);
+    } catch {
+      // オフライン等。既存の表示を消すほどではないので何もしない
+    }
+  };
+  // 今表示しているアカウント以外 (一覧には自分も含まれる)
+  const otherSessions = deviceSessions.filter((d) => d.user.id !== user.id);
+  const switchAccount = async (sessionToken: string) => {
+    setSwitchError(null);
+    setSwitching(true);
+    try {
+      const { error: switchApiError } = await authClient.multiSession.setActive({ sessionToken });
+      if (switchApiError) {
+        // 主な失敗は相手側セッションの期限切れ。もう一度ログインしてもらう
+        setSwitchError("切り替えられませんでした。もう一度そのアカウントでログインしてください");
+        setSwitching(false);
+        return;
+      }
+    } catch {
+      setSwitchError("オフラインのためアカウントを切り替えられません");
+      setSwitching(false);
+      return;
+    }
+    // useSession は setActive が再取得を発火する。板 (loader) はここで取り直す
+    await router.invalidate();
+    setSwitching(false);
+  };
+  // もう 1 つの Google アカウントでログインする (今のセッションは cookie に残り、切り替えで戻れる)
+  const addAccount = async () => {
+    setSwitchError(null);
+    setSwitching(true);
+    try {
+      const { error: signInError } = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      if (signInError) throw signInError;
+      // 成功すると Google へ遷移するので switching は戻さない
+    } catch {
+      setSwitchError("ログインを開始できませんでした。接続を確認してもう一度お試しください");
+      setSwitching(false);
+    }
+  };
   const logout = async () => {
     setLogoutError(null);
     setLoggingOut(true);
+    // multiSession の signOut はこの端末の全アカウントを一括で外すので、消すべき
+    // 板キャッシュのユーザー一覧を先に取っておく (取れなければ今のアカウントの分だけ)
+    let cachedUserIds = [user.id];
+    try {
+      const { data: sessions } = await authClient.multiSession.listDeviceSessions();
+      if (sessions) cachedUserIds = [...new Set([user.id, ...sessions.map((d) => d.user.id)])];
+    } catch {
+      // ここで失敗するなら signOut も失敗する (下でエラー表示になる)
+    }
     try {
       await authClient.signOut();
     } catch {
@@ -79,7 +145,7 @@ export function UserMenu() {
     }
     // この端末に残るオフライン閲覧用のキャッシュも消す
     clearCachedUser();
-    clearBoardCache(user.id);
+    for (const id of cachedUserIds) clearBoardCache(id);
     await router.invalidate();
     await router.navigate({ to: "/" });
     setLoggingOut(false);
@@ -111,10 +177,10 @@ export function UserMenu() {
     await router.navigate({ to: "/" });
     setDeleting(false);
   };
-  const busy = loggingOut || deleting;
+  const busy = loggingOut || deleting || switching;
   return (
     <Group gap="xs" wrap="nowrap">
-      <Menu shadow="md" width={200}>
+      <Menu shadow="md" width={200} onOpen={() => void loadDeviceSessions()}>
         <Menu.Target>
           {/* button にしてキーボード (Tab → Enter / Space) でも開けるようにする。
               名前の読み上げは aria-label で (狭い画面では名前の文字を隠すため。下記) */}
@@ -132,6 +198,27 @@ export function UserMenu() {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{user.email}</Menu.Label>
+          {/* この端末でログイン中の他アカウント (multiSession)。押すとそのまま切り替わる */}
+          {otherSessions.map((d) => (
+            <Menu.Item
+              key={d.user.id}
+              disabled={offline || busy}
+              leftSection={<Avatar src={d.user.image} alt="" size="sm" radius="xl" />}
+              onClick={() => void switchAccount(d.session.token)}
+            >
+              <Text size="sm" truncate>
+                {d.user.name}
+              </Text>
+              {/* 同名アカウント (仕事用 / 個人用など) を見分けられるようメールも出す */}
+              <Text size="xs" c="dimmed" truncate>
+                {d.user.email}
+              </Text>
+            </Menu.Item>
+          ))}
+          <Menu.Item disabled={offline || busy} onClick={() => void addAccount()}>
+            アカウントを追加
+          </Menu.Item>
+          <Menu.Divider />
           {/* スマホでホーム画面にまだ追加していない人だけに出す (InstallAppMenuItem を参照) */}
           {install.available && (
             <>
@@ -199,8 +286,9 @@ export function UserMenu() {
       </Modal>
       {loggingOut && <Loader size="xs" aria-label="ログアウト中…" />}
       {deleting && <Loader size="xs" aria-label="アカウント削除中…" />}
+      {switching && <Loader size="xs" aria-label="アカウント切り替え中…" />}
       {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
-      {(logoutError ?? deleteError) && (
+      {(logoutError ?? deleteError ?? switchError) && (
         <Affix
           position={{
             bottom: "calc(16px + env(safe-area-inset-bottom))",
@@ -214,10 +302,11 @@ export function UserMenu() {
             onClose={() => {
               setLogoutError(null);
               setDeleteError(null);
+              setSwitchError(null);
             }}
             closeButtonProps={{ "aria-label": "閉じる" }}
           >
-            {logoutError ?? deleteError}
+            {logoutError ?? deleteError ?? switchError}
           </Notification>
         </Affix>
       )}

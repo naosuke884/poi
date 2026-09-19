@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { multiSession } from "better-auth/plugins/multi-session";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { createDb, schema } from "./db";
 
@@ -18,8 +19,14 @@ export function createAuth(env: Env, requestOrigin: string) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
+        // メニューの「アカウントを追加」から 2 つ目の Google アカウントでログインするとき、
+        // Google が今のアカウントを黙って再利用しないよう毎回アカウント選択画面を出す
+        prompt: "select_account",
       },
     },
+    // アカウント切り替え。ログイン中に別アカウントでログインしても前のセッションが cookie に残り、
+    // メニューから即座に切り替えられる。ログアウトはこの端末の全アカウントを一括で外す (プラグインの仕様)
+    plugins: [multiSession()],
   });
 }
 
