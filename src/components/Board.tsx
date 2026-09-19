@@ -35,7 +35,6 @@ import {
   type BoardSection,
   type DraftSection,
   type EditableSection,
-  daysUntil,
   firstLine,
   newKey,
   newSection,
@@ -76,7 +75,7 @@ const UNDO_DELETE_MS = 8000;
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
- * 見た目は 1 枚の文書: 枠なしで画面いっぱいに広げ、セクションの境界は期限ラベル付きの区切り線で示す。
+ * 見た目は 1 枚の文書: 枠なしで画面いっぱいに広げ、セクションの境界は区切り線で示す。
  * 編集中 (フォーカスのある) セクションだけエディタ (SectionEditor = CodeMirror。Markdown ソースのまま、
  * 見出し・記号・URL を装飾して表示する) で、それ以外は Markdown をレンダリングして表示する (MarkdownView。
  * クリックするとその場所にカーソルを置いてエディタに戻る)。内容はそのまま Markdown テキストとして保存する
@@ -260,7 +259,7 @@ export function Board({
     editor.focus(pending.pos, pending.place);
   });
   // セクションの Markdown 表示にフォーカスを移す。カーソルへの自動スクロールの代わりに、
-  // 区切り線 (期限ラベル) ごと見えるよう外枠を最小限だけスクロールする
+  // 区切り線ごと見えるよう外枠を最小限だけスクロールする
   const focusView = (key: string) => {
     viewsRef.current.get(key)?.focus({ preventScroll: true });
     boxesRef.current.get(key)?.scrollIntoView({ block: "nearest" });
@@ -826,7 +825,7 @@ export function Board({
                   : undefined,
             }}
           >
-            {/* 区切り: 折り畳みトグルだけ線の中 (左)、コピー / スクショ / 期限ラベル / 削除は線の外の右端 */}
+            {/* 区切り: 折り畳みトグルだけ線の中 (左)、コピー / スクショ / 削除は線の外の右端 */}
             <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
                 labelPosition="left"
@@ -834,7 +833,7 @@ export function Board({
                 // 縮まず右へはみ出す。ラベル → Group → Text まで同じ理由で縮小を許す
                 style={{ flex: 1, minWidth: 0 }}
                 styles={{ label: { maxWidth: "100%", minWidth: 0 } }}
-                // 本文が空で期限だけあるとラベルが空になり線の左に余白が出るので、ラベル自体を消す
+                // 本文が空の保存済みセクションはラベルが空になり線の左に余白が出るので、ラベル自体を消す
                 label={
                   s.content.trim() === "" &&
                   s.expiresAt !== null ? undefined : (
@@ -878,12 +877,6 @@ export function Board({
                   onCopy={() => copySectionText(s.content)}
                   onScreenshot={() => screenshot(s.key)}
                 />
-              )}
-              {s.expiresAt !== null && (
-                /* 区切り線のラベルと同じ見た目 (xs / dimmed) に揃える */
-                <Text span size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                  あと {daysUntil(s.expiresAt)} 日
-                </Text>
               )}
               {!readOnly && (
                 <Tooltip label="削除" withArrow>

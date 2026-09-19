@@ -105,15 +105,6 @@ export function firstLine(content: string): string {
   return content.split("\n").find((line) => line.trim() !== "")?.trim() ?? "";
 }
 
-/**
- * 期限までの残り日数 (切り上げ)。書いた直後は TTL と同じ日数、最終日は 1。期限切れなら 0
- * (期限切れのセクションはサーバが返さないので、通常 0 にはならない)
- */
-export function daysUntil(value: string | number | Date, now: number = Date.now()): number {
-  const ms = new Date(value).getTime() - now;
-  return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
-}
-
 /** 取得日時などの表示用フォーマット (端末のタイムゾーン) */
 export function formatDateTime(value: string | number | Date): string {
   return new Date(value).toLocaleString("ja-JP", {

@@ -1,7 +1,6 @@
 import { Box, CloseButton, Divider, Group, Paper, Text, Tooltip } from "@mantine/core";
 import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 import { firstLine, newKey, splitAtSeparator } from "@/lib/board";
 import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
 import { MarkdownView } from "@/components/MarkdownView";
@@ -11,36 +10,33 @@ import {
   type SectionEditorHandle,
 } from "@/components/SectionEditor";
 
-// 板の代わりにローカル state だけで持つデモ用セクション。期限は日数の数字をそのまま持つ
-type DemoSection = { key: string; content: string; daysLeft: number };
+// 板の代わりにローカル state だけで持つデモ用セクション
+type DemoSection = { key: string; content: string };
 
-// 期限のばらつきを見せる 2 セクション (残り日数が違うと「セクションごとに消える」が伝わる)。
-// 上ほど古い = 残り日数が少ない (本物の板は下に書き足していくため)
+// セクションで区切って使う様子を見せる 2 セクション (本物の板は下に書き足していく)
 const initialSections = (): DemoSection[] => [
   {
     key: newKey(),
     content: [
       "# ここで試し書き",
       "",
-      "書いたそばから残り日数が付きます。自由に書き換えてみてください。",
+      "自由に書き換えてみてください。",
       "",
       "- 「消える」からこそ気軽に書ける",
       "- 空行 2 つで新しいセクション",
       "    - Tab で 1 段下げる",
     ].join("\n"),
-    daysLeft: 7,
   },
   {
     key: newKey(),
     content: ["今日のやること", "", "- 返信を 2 件", "- 会議室の予約"].join("\n"),
-    daysLeft: MEMO_TTL_DAYS,
   },
 ];
 
 /**
  * ランディングのヒーロー直下に置く、ログイン不要で書き味を試せるミニデモ。
  * Board の縮小版で、見た目と操作は本物に合わせる: 非編集時は Markdown 表示 (クリックで編集)、
- * 区切り線に折り畳み・コピー・スクショ・期限ラベル・削除。空行 2 つでの分割・境界での結合・
+ * 区切り線に折り畳み・コピー・スクショ・削除。空行 2 つでの分割・境界での結合・
  * ↑↓ でのセクション間移動も同じ。保存はどこにもしない (リロードで消えるのは仕様)。
  * 本物との差分: 保存 / 「元に戻す」/ 折り畳みへの peek は無し
  */
@@ -97,17 +93,15 @@ export function LandingDemo() {
       setSections(cur.map((s) => (s.key === key ? { ...s, content: value } : s)));
       return;
     }
-    // 分割で生まれたセクションは即「あと 30 日」: 「書いたら 30 日で消える」をその場で見せる
     const parts = split.parts.map((content, j): DemoSection => ({
       key: j === split.focus.index ? orig.key : newKey(),
-      daysLeft: j === 0 ? orig.daysLeft : MEMO_TTL_DAYS,
       content,
     }));
     focusLater(orig.key, split.focus.offset);
     setSections([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
   };
 
-  // i 番目と i+1 番目をつなげる。前のセクションが期限を保ち、フォーカスのある方 (focused) が key を保つ。
+  // i 番目と i+1 番目をつなげる。フォーカスのある方 (focused) が key を保つ。
   // 折り畳んだ隣とは結合しない (Board と同じ)
   const mergeSections = (i: number, focused: string) => {
     const cur = latestRef.current;
@@ -119,7 +113,7 @@ export function LandingDemo() {
     focusLater(focused, a.content.length);
     setSections([
       ...cur.slice(0, i),
-      { key: focused, daysLeft: a.daysLeft, content: a.content + b.content },
+      { key: focused, content: a.content + b.content },
       ...cur.slice(i + 2),
     ]);
   };
@@ -174,11 +168,7 @@ export function LandingDemo() {
   const removeSection = (key: string) => {
     const cur = latestRef.current;
     const next = cur.filter((s) => s.key !== key);
-    setSections(
-      next.length > 0
-        ? next
-        : [{ key: newKey(), content: "", daysLeft: MEMO_TTL_DAYS }],
-    );
+    setSections(next.length > 0 ? next : [{ key: newKey(), content: "" }]);
   };
 
   // 画像化は Markdown 表示の要素から (編集中ならまず表示に戻す。Board と同じ)
@@ -208,7 +198,7 @@ export function LandingDemo() {
               "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
           }}
         >
-          {/* 区切り: Board と同じ並び (折り畳み・コピー・スクショは線の中、期限と削除は線の外の右端) */}
+          {/* 区切り: Board と同じ並び (折り畳み・コピー・スクショは線の中、削除は線の外の右端) */}
           <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
             <Divider
               labelPosition="left"
@@ -251,9 +241,6 @@ export function LandingDemo() {
                 )
               }
             />
-            <Text span size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-              あと {s.daysLeft} 日
-            </Text>
             <Tooltip label="削除" withArrow>
               <CloseButton
                 size="xs"
