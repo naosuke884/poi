@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/d19a67f9-96e2-4edf-b05e-2d701b20894a
 
 ## Features
 
-- **Every section is force-deleted after 30 days** — a memo that's 30 days old has served its purpose; if you ever need it again, just write it again
+- **Every section is force-deleted after 30 days (the period is configurable)** — a memo that's 30 days old has served its purpose; if you ever need it again, just write it again
 - **Structure with Markdown** — even a quick memo is easier to read with a little structure
 - **Per-section copy and screenshot** — sharing a memo takes one click
 - **One-click delete** — a memo you no longer care about is gone for good in one click

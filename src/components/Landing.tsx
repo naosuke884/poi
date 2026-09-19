@@ -10,7 +10,7 @@ import classes from "./Landing.module.css";
 const FEATURES: { title: string; body: string }[] = [
   {
     title: `${MEMO_TTL_DAYS} 日たつと、勝手に消える`,
-    body: "セクションごとに期限が付く。",
+    body: "セクションごとに期限が付く。日数は設定で変えられる。",
   },
   {
     title: "メモをシェアできる",

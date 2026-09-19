@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createDb } from "./db";
-import { boardRoutes } from "./memo/routes";
+import { boardRoutes, settingsRoutes } from "./memo/routes";
 import { deleteExpiredMemos } from "./memo/sweep";
 import { authMiddleware, type AppEnv } from "./middleware";
 
@@ -12,7 +12,9 @@ app.use("/api/*", authMiddleware);
 app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
 
 // RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
-const api = new Hono<AppEnv>().route("/board", boardRoutes);
+const api = new Hono<AppEnv>()
+  .route("/board", boardRoutes)
+  .route("/settings", settingsRoutes);
 
 app.route("/api", api);
 

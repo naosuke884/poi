@@ -19,6 +19,7 @@ import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
 import { CONTACT_URL } from "@/components/LegalPage";
 import { InstallGuideModal, useInstallApp } from "@/components/InstallAppMenuItem";
+import { TtlSettingModal } from "@/components/TtlSettingModal";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
 import { useOnline } from "@/lib/use-online";
 
@@ -33,6 +34,7 @@ export function UserMenu() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [settingTtl, setSettingTtl] = useState(false);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
@@ -137,6 +139,11 @@ export function UserMenu() {
               <Menu.Divider />
             </>
           )}
+          {/* 保存期間 (セクションの削除までの日数)。サーバへの取得 / 保存があるのでオフラインでは開かせない */}
+          <Menu.Item disabled={offline} onClick={() => setSettingTtl(true)}>
+            保存期間の設定
+          </Menu.Item>
+          <Menu.Divider />
           <Menu.Item component={Link} to="/terms">
             利用規約
           </Menu.Item>
@@ -158,6 +165,12 @@ export function UserMenu() {
       </Menu>
       {/* Menu.Dropdown の中だと閉じたときに一緒に消えるので、Modal は Menu の外に置く */}
       <InstallGuideModal {...install.guide} />
+      {/* 保存で全セクションの期限が変わるので、板 (loader) を取り直す */}
+      <TtlSettingModal
+        opened={settingTtl}
+        onClose={() => setSettingTtl(false)}
+        onSaved={() => void router.invalidate()}
+      />
       {/* 見出しは付けない (本文だけで足りる)。閉じるのはキャンセル / Esc / 外側クリック */}
       <Modal opened={confirmingDelete} onClose={() => setConfirmingDelete(false)} withCloseButton={false} centered>
         <Stack gap="md">

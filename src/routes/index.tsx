@@ -31,7 +31,13 @@ export const Route = createFileRoute("/")({
           "オフラインのため、板を取得できません (まだ一度も取得していないためキャッシュもありません)。",
         );
       }
-      return { sections: cached.sections, offline: true as const, cachedAt: cached.cachedAt };
+      // 保存期間 (ttlDays) はキャッシュしていないので不明 (Board は既定値の表示にする)
+      return {
+        sections: cached.sections,
+        ttlDays: undefined,
+        offline: true as const,
+        cachedAt: cached.cachedAt,
+      };
     }
     if (res.status === 401) {
       // beforeLoad 後にセッションが切れた場合。optionalLogin がサーバの「未ログイン」に
@@ -41,10 +47,10 @@ export const Route = createFileRoute("/")({
       return { landing: true as const };
     }
     if (!res.ok) throw new Error("板の取得に失敗しました");
-    const { sections } = await res.json();
+    const { sections, ttlDays } = await res.json();
     // オフライン閲覧用に最新の内容で上書きする
     writeCachedBoard(userId, sections);
-    return { sections, offline: false as const, cachedAt: null };
+    return { sections, ttlDays, offline: false as const, cachedAt: null };
   },
   component: BoardPage,
 });
@@ -57,7 +63,7 @@ function BoardPage() {
 }
 
 function BoardView({
-  data: { sections, offline, cachedAt },
+  data: { sections, ttlDays, offline, cachedAt },
   userId,
 }: {
   data: Exclude<ReturnType<typeof Route.useLoaderData>, { landing: true }>;
@@ -86,6 +92,7 @@ function BoardView({
         sections={sections}
         userId={userId}
         readOnly={readOnly}
+        ttlDays={ttlDays}
       />
     </Stack>
   );

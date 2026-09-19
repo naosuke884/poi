@@ -1,14 +1,17 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type ValidationTargets } from "hono";
 import { z } from "zod";
 import { createDb, type Db } from "../db";
-import { memo } from "../db/memo";
+import { memo, userSetting } from "../db/memo";
 import { requireAuth, type AppEnv } from "../middleware";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
+  DAY_MS,
+  MEMO_TTL_CHOICES,
+  MEMO_TTL_DAYS,
   SECTION_SEPARATOR,
   boardLength,
   memoExpiresAt,
@@ -61,12 +64,23 @@ function selectBoard(db: Db, userId: string, now: Date) {
     .orderBy(asc(memo.position), asc(memo.createdAt));
 }
 
+/** そのユーザーのセクション保持日数 (設定していなければ既定値) */
+async function selectTtlDays(db: Db, userId: string): Promise<number> {
+  const rows = await db
+    .select({ memoTtlDays: userSetting.memoTtlDays })
+    .from(userSetting)
+    .where(eq(userSetting.userId, userId));
+  return rows[0]?.memoTtlDays ?? MEMO_TTL_DAYS;
+}
+
 export const boardRoutes = new Hono<AppEnv>()
   .use(requireAuth)
-  // 板を取得
+  // 板を取得。ttlDays は「セクションごとに N 日で消えます」の表示用
   .get("/", async (c) => {
-    const sections = await selectBoard(createDb(c.env.DB), c.get("user")!.id, new Date());
-    return c.json({ sections });
+    const db = createDb(c.env.DB);
+    const userId = c.get("user")!.id;
+    const sections = await selectBoard(db, userId, new Date());
+    return c.json({ sections, ttlDays: await selectTtlDays(db, userId) });
   })
   // 板を丸ごと置き換える。
   // 送られたセクションのうち id が既存のものと一致すれば内容と並び順だけ更新し (createdAt / expiresAt は維持)、
@@ -77,6 +91,7 @@ export const boardRoutes = new Hono<AppEnv>()
     const now = new Date();
     const { sections } = c.req.valid("json");
 
+    const ttlDays = await selectTtlDays(db, userId);
     const existing = await selectBoard(db, userId, now);
     const byId = new Map(existing.map((row) => [row.id, row]));
 
@@ -102,7 +117,7 @@ export const boardRoutes = new Hono<AppEnv>()
             position,
             createdAt: now,
             updatedAt: now,
-            expiresAt: memoExpiresAt(now),
+            expiresAt: memoExpiresAt(now, ttlDays),
           }),
         );
       }
@@ -121,3 +136,45 @@ export const boardRoutes = new Hono<AppEnv>()
   });
 
 export type BoardRoutes = typeof boardRoutes;
+
+// ユーザー設定 (今はセクションの保持日数のみ)。
+// 保持日数を変えたら、いま保存されている全セクションの期限も createdAt + 新しい日数で引き直す
+// (短くしたときは、新しい期限を過ぎたセクションが即座に見えなくなり、次の Cron で物理削除される)
+const putSettingsSchema = z.object({
+  memoTtlDays: z
+    .number()
+    .int()
+    .refine((d) => (MEMO_TTL_CHOICES as readonly number[]).includes(d), {
+      message: `保持日数は ${MEMO_TTL_CHOICES.join(", ")} 日から選んでください`,
+    }),
+});
+
+export const settingsRoutes = new Hono<AppEnv>()
+  .use(requireAuth)
+  .get("/", async (c) => {
+    const memoTtlDays = await selectTtlDays(createDb(c.env.DB), c.get("user")!.id);
+    return c.json({ memoTtlDays });
+  })
+  .put("/", validate("json", putSettingsSchema), async (c) => {
+    const db = createDb(c.env.DB);
+    const userId = c.get("user")!.id;
+    const now = new Date();
+    const { memoTtlDays } = c.req.valid("json");
+    // 設定の upsert と期限の引き直しを 1 トランザクションで
+    await db.batch([
+      db
+        .insert(userSetting)
+        .values({ userId, memoTtlDays, createdAt: now, updatedAt: now })
+        .onConflictDoUpdate({
+          target: userSetting.userId,
+          set: { memoTtlDays, updatedAt: now },
+        }),
+      db
+        .update(memo)
+        .set({ expiresAt: sql`${memo.createdAt} + ${memoTtlDays * DAY_MS}` })
+        .where(eq(memo.userId, userId)),
+    ]);
+    return c.json({ memoTtlDays });
+  });
+
+export type SettingsRoutes = typeof settingsRoutes;

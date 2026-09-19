@@ -87,15 +87,19 @@ const UNDO_DELETE_MS = 8000;
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
+ * ttlDays はそのユーザーの保存期間 (プレースホルダの「N 日で消えます」用。
+ * オフラインのキャッシュ表示では取れないので既定値のまま)
  */
 export function Board({
   sections: initial,
   userId,
   readOnly = false,
+  ttlDays = MEMO_TTL_DAYS,
 }: {
   sections: BoardSection[];
   userId: string;
   readOnly?: boolean;
+  ttlDays?: number;
 }) {
   // 画面上のセクション。state は描画用で、ハンドラや保存処理は常に latestRef (同じ内容) を読む
   const [sections, setSections] = useState<EditableSection[]>(() => {
@@ -783,7 +787,7 @@ export function Board({
                   sections.length === 1
                     ? [
                         "ここに書く…",
-                        `セクションごとに ${MEMO_TTL_DAYS} 日で消えます`,
+                        `セクションごとに ${ttlDays} 日で消えます`,
                         "空行 2 つで次のセクションへ",
                         "Markdown が使えます (# 見出し、- 箇条書き)",
                         "Tab でインデント、Esc で編集をやめる",
