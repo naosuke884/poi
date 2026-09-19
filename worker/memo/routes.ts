@@ -25,8 +25,6 @@ const sectionSchema = z.object({
     .string()
     .refine((s) => !s.includes("\r"), "セクションに CR は含められません")
     .refine((s) => !s.includes(SECTION_SEPARATOR), "セクションに空行 2 つ (区切り) は含められません"),
-  // 折り畳んで表示するか。省略 (古いクライアント) なら既存の値を保つ
-  collapsed: z.boolean().optional(),
 });
 
 const putBoardSchema = z
@@ -88,18 +86,12 @@ export const boardRoutes = new Hono<AppEnv>()
       const row = section.id !== null && !kept.has(section.id) ? byId.get(section.id) : undefined;
       if (row) {
         kept.add(row.id);
-        const collapsed = section.collapsed ?? row.collapsed;
         // 変わっていないセクションは触らない (updatedAt も進めない)
-        if (
-          row.content === section.content &&
-          row.position === position &&
-          row.collapsed === collapsed
-        )
-          return;
+        if (row.content === section.content && row.position === position) return;
         ops.push(
           db
             .update(memo)
-            .set({ content: section.content, position, collapsed })
+            .set({ content: section.content, position })
             .where(and(eq(memo.id, row.id), eq(memo.userId, userId))),
         );
       } else {
@@ -108,7 +100,6 @@ export const boardRoutes = new Hono<AppEnv>()
             userId,
             content: section.content,
             position,
-            collapsed: section.collapsed ?? false,
             createdAt: now,
             updatedAt: now,
             expiresAt: memoExpiresAt(now),

@@ -11,7 +11,7 @@ import "@/lib/install-prompt";
 import { removeByPrefix } from "@/lib/local-storage";
 import { routeTree } from "./routeTree.gen";
 
-// 折り畳み状態は 2026-09 からサーバで持つ (memo.collapsed)。端末ごとに localStorage へ
+// セクションの折り畳み機能は 2026-09 に廃止した (#51)。端末ごとに localStorage へ
 // 記録していた頃の残りを消す (しばらく経ったらこの行ごと消してよい)
 removeByPrefix("poi:collapsed:v1:");
 

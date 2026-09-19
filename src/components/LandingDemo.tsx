@@ -1,10 +1,10 @@
-import { Box, CloseButton, Divider, Group, Paper, Text, Tooltip } from "@mantine/core";
+import { Box, CloseButton, Divider, Group, Paper, Tooltip } from "@mantine/core";
 import { useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { firstLine, newKey, splitAtSeparator } from "@/lib/board";
+import { newKey, splitAtSeparator } from "@/lib/board";
 import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
 import { MarkdownView } from "@/components/MarkdownView";
-import { SectionActions, SectionCollapseToggle } from "@/components/SectionActions";
+import { SectionActions } from "@/components/SectionActions";
 import {
   SectionEditor,
   type SectionEditorHandle,
@@ -36,31 +36,22 @@ const initialSections = (): DemoSection[] => [
 /**
  * ランディングのヒーロー直下に置く、ログイン不要で書き味を試せるミニデモ。
  * Board の縮小版で、見た目と操作は本物に合わせる: 非編集時は Markdown 表示 (クリックで編集)、
- * 区切り線に折り畳み・コピー・スクショ・削除。空行 2 つでの分割・境界での結合・
+ * 区切り線にコピー・スクショ・削除。空行 2 つでの分割・境界での結合・
  * ↑↓ でのセクション間移動も同じ。保存はどこにもしない (リロードで消えるのは仕様)。
- * 本物との差分: 保存 / 「元に戻す」/ 折り畳みへの peek は無し
+ * 本物との差分: 保存 / 「元に戻す」は無し
  */
 export function LandingDemo() {
   const [sections, setSections] = useState<DemoSection[]>(initialSections);
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示 (Board と同じ)
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   // コールバック (エディタの keymap から呼ばれる) は最新の並びを見る
   const latestRef = useRef(sections);
   latestRef.current = sections;
-  const collapsedRef = useRef(collapsed);
-  collapsedRef.current = collapsed;
   const elementsRef = useRef(new Map<string, SectionEditorHandle>());
   const viewsRef = useRef(new Map<string, HTMLDivElement>());
   // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)
   const pendingFocusRef = useRef<{ key: string; pos: number } | null>(null);
   const focusLater = (key: string, pos: number) => {
-    setCollapsed((c) => {
-      if (!c.has(key)) return c;
-      const next = new Set(c);
-      next.delete(key);
-      return next;
-    });
     pendingFocusRef.current = { key, pos };
     setEditingKey(key);
   };
@@ -101,15 +92,12 @@ export function LandingDemo() {
     setSections([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
   };
 
-  // i 番目と i+1 番目をつなげる。フォーカスのある方 (focused) が key を保つ。
-  // 折り畳んだ隣とは結合しない (Board と同じ)
+  // i 番目と i+1 番目をつなげる。フォーカスのある方 (focused) が key を保つ
   const mergeSections = (i: number, focused: string) => {
     const cur = latestRef.current;
     const a = cur[i];
     const b = cur[i + 1];
     if (!a || !b) return;
-    const other = a.key === focused ? b : a;
-    if (collapsedRef.current.has(other.key)) return;
     focusLater(focused, a.content.length);
     setSections([
       ...cur.slice(0, i),
@@ -118,30 +106,26 @@ export function LandingDemo() {
     ]);
   };
 
-  // ↑↓ は折り畳んだセクションを飛ばして次の開いているセクションへ (Board と同じ)
+  // ↑↓ で隣のセクションへ (Board と同じ)
   const arrowUpAtFirstLine = (i: number) => {
-    const prev = latestRef.current
-      .slice(0, i)
-      .findLast((s) => !collapsedRef.current.has(s.key));
+    const prev = latestRef.current[i - 1];
     if (!prev) return false;
     focus(prev.key, prev.content.length);
     return true;
   };
   const arrowDownAtLastLine = (i: number) => {
-    const next = latestRef.current
-      .slice(i + 1)
-      .find((s) => !collapsedRef.current.has(s.key));
+    const next = latestRef.current[i + 1];
     if (!next) return false;
     focus(next.key, 0);
     return true;
   };
 
-  // フォーカスしたセクション表示 (MarkdownView) からの ↑↓: 隣の表示へ移る (空と折り畳みは飛ばす)
+  // フォーカスしたセクション表示 (MarkdownView) からの ↑↓: 隣の表示へ移る (空は飛ばす)
   const focusViewFrom = (i: number, dir: -1 | 1) => {
     const cur = latestRef.current;
     for (let j = i + dir; j >= 0 && j < cur.length; j += dir) {
       const s = cur[j]!;
-      if (s.content.trim() === "" || collapsedRef.current.has(s.key)) continue;
+      if (s.content.trim() === "") continue;
       viewsRef.current.get(s.key)?.focus({ preventScroll: true });
       return true;
     }
@@ -151,16 +135,6 @@ export function LandingDemo() {
   // フォーカスが外れたら Markdown 表示に戻す (Board と同じ。ウィンドウ自体の喪失では戻さない)
   const onEditorBlur = (key: string) => {
     if (!document.hasFocus()) return;
-    setEditingKey((k) => (k === key ? null : k));
-  };
-
-  const toggleCollapsed = (key: string) => {
-    setCollapsed((c) => {
-      const next = new Set(c);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
     setEditingKey((k) => (k === key ? null : k));
   };
 
@@ -198,45 +172,19 @@ export function LandingDemo() {
               "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
           }}
         >
-          {/* 区切り: Board と同じ並び (折り畳み・コピー・スクショは線の中、削除は線の外の右端) */}
+          {/* 区切り: Board と同じ並び (コピー・スクショは線の中、削除は線の外の右端) */}
           <Group gap="sm" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
             <Divider
               labelPosition="left"
-              style={{ flex: 1, minWidth: 0 }}
-              styles={{ label: { maxWidth: "100%", minWidth: 0 } }}
+              style={{ flex: 1 }}
               label={
                 s.content.trim() === "" ? undefined : (
-                  <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                    <SectionCollapseToggle
-                      index={i}
-                      collapsed={collapsed.has(s.key)}
-                      onToggle={() => toggleCollapsed(s.key)}
+                  <Group gap="sm" wrap="nowrap">
+                    <SectionActions
+                      subject={`セクション ${i + 1}`}
+                      onCopy={() => copySectionText(s.content)}
+                      onScreenshot={() => screenshot(s.key)}
                     />
-                    {!collapsed.has(s.key) && (
-                      <SectionActions
-                        subject={`セクション ${i + 1}`}
-                        onCopy={() => copySectionText(s.content)}
-                        onScreenshot={() => screenshot(s.key)}
-                      />
-                    )}
-                    {collapsed.has(s.key) && (
-                      /* 折り畳み中: 最初の行を区切り線の中に出す。クリックで開く (Board と同じ) */
-                      <Text
-                        span
-                        inherit
-                        c="dimmed"
-                        style={{
-                          minWidth: 0,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => toggleCollapsed(s.key)}
-                      >
-                        {firstLine(s.content)}
-                      </Text>
-                    )}
                   </Group>
                 )
               }
@@ -251,8 +199,7 @@ export function LandingDemo() {
               />
             </Tooltip>
           </Group>
-          {collapsed.has(s.key) ? null : s.key !== editingKey &&
-            s.content.trim() !== "" ? (
+          {s.key !== editingKey && s.content.trim() !== "" ? (
             <MarkdownView
               content={s.content}
               aria-label={`お試しセクション ${i + 1}`}

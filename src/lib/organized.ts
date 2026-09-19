@@ -11,8 +11,7 @@ import type { EditableSection } from "@/lib/board";
  *   「見出し行 → その直下の本文 (板の並び順) → 子見出し…」の順で連結する。
  * - 見出しより前の内容と見出しの無いセクションは「見出しなし」グループ (最後に置く)。
  * - グループと子見出しは板の並びでの初出順。データの並びは変えない (表示だけ)。
- * - 折り畳んだ (collapsed) セクションは含めない (タイムラインで隠したものはまとめでも隠す)。
- *   空のセクションも含めない。
+ * - 空のセクションは含めない。
  * 見出し行の判定は表示 (MarkdownView = micromark) の ATX 見出しに合わせた行単位の近似。
  * リスト項目の中の見出しなど、文脈で解釈が変わる稀な行はズレることがある (メモ用途では許容)。
  * 連結したリスト同士は 1 つのリストとしてつながって見える (それがこのビューの狙い)。
@@ -180,7 +179,7 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
   const roots = new Map<string, Node>(); // 最上位の見出し。初出順
   const noHeading: Chunk[] = [];
   for (const section of sections) {
-    if (section.collapsed || section.content.trim() === "") continue;
+    if (section.content.trim() === "") continue;
     for (const chunk of chunkSection(section)) {
       if (chunk.heading === null) {
         noHeading.push(chunk);

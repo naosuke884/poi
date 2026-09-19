@@ -6,22 +6,20 @@ import { api } from "@/lib/api";
 export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sections"][number];
 
 // PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける
-export type DraftSection = { id: string | null; content: string; collapsed: boolean };
+export type DraftSection = { id: string | null; content: string };
 
 /**
  * 画面上の 1 セクション (編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示)。
  * key は React の key とエディタの参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
  * 分割 / 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
  * (key はフォーカスのある部分に、id は先頭の部分に付く)。
- * id / expiresAt はサーバに保存済みのときだけ入る。
- * collapsed (折り畳み) はセクションの一部として保存され、デバイス間で同期される
+ * id / expiresAt はサーバに保存済みのときだけ入る
  */
 export type EditableSection = {
   key: string;
   id: string | null;
   content: string;
   expiresAt: string | null;
-  collapsed: boolean;
 };
 
 let seq = 0;
@@ -29,7 +27,7 @@ export function newKey(): string {
   return `s${++seq}`;
 }
 export function newSection(content = ""): EditableSection {
-  return { key: newKey(), id: null, content, expiresAt: null, collapsed: false };
+  return { key: newKey(), id: null, content, expiresAt: null };
 }
 
 /** サーバから取得したセクションを画面用にする */
@@ -38,21 +36,7 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
     ...newSection(s.content),
     id: s.id,
     expiresAt: s.expiresAt,
-    // 機能追加前のオフラインキャッシュには collapsed が無い
-    collapsed: s.collapsed === true,
   }));
-}
-
-/**
- * 表示順: 閉じたセクションが上、開いたセクションが下にまとまる (それぞれの中の順序は保つ)。
- * データの並び (保存される position) は並べ替えず、Board が描画のときにだけ通す。
- * 折り畳むと表示上は閉じた群の末尾へ移り、開くと元の位置に戻る
- */
-export function partitionCollapsed(sections: EditableSection[]): EditableSection[] {
-  const collapsed = sections.filter((s) => s.collapsed);
-  return collapsed.length === 0
-    ? sections
-    : [...collapsed, ...sections.filter((s) => !s.collapsed)];
 }
 
 /**
@@ -63,16 +47,14 @@ export function partitionCollapsed(sections: EditableSection[]): EditableSection
 export function toDraft(sections: EditableSection[]): (DraftSection & { key: string })[] {
   return sections
     .filter((s) => s.content !== "")
-    .map(({ key, id, content, collapsed }) => ({ key, id, content, collapsed }));
+    .map(({ key, id, content }) => ({ key, id, content }));
 }
 
-/** 保存対象が前回保存したものと同じか (id と内容と折り畳みと並び順) */
+/** 保存対象が前回保存したものと同じか (id と内容と並び順) */
 export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
   return (
     a.length === b.length &&
-    a.every(
-      (s, i) => s.id === b[i]!.id && s.content === b[i]!.content && s.collapsed === b[i]!.collapsed,
-    )
+    a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content)
   );
 }
 
@@ -98,11 +80,6 @@ export function splitAtSeparator(
   }
   const last = parts.length - 1;
   return { parts, focus: { index: last, offset: parts[last]!.length } };
-}
-
-/** 折り畳み表示用のプレビュー (最初の空でない行。無ければ空文字) */
-export function firstLine(content: string): string {
-  return content.split("\n").find((line) => line.trim() !== "")?.trim() ?? "";
 }
 
 /** 取得日時などの表示用フォーマット (端末のタイムゾーン) */

@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mantine/core";
-import type { FocusEvent, KeyboardEvent, MouseEvent, Ref } from "react";
+import type { KeyboardEvent, MouseEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -29,7 +29,6 @@ export function MarkdownView({
   content,
   onEdit,
   onNavigate,
-  onBlur,
   "aria-label": ariaLabel,
   ref,
 }: {
@@ -38,9 +37,6 @@ export function MarkdownView({
   onEdit?: (pos: number) => void;
   /** ↑ (-1) / ↓ (1) で隣のセクションへフォーカスを移す。移れたら true */
   onNavigate?: (dir: -1 | 1) => boolean;
-  /** フォーカスがこのセクションの外へ出た (中のリンクへの移動では呼ばない)。
-   * relatedTarget は移った先の要素 (ウィンドウ自体のフォーカス喪失などでは null) */
-  onBlur?: (relatedTarget: Element | null) => void;
   "aria-label"?: string;
   ref?: Ref<HTMLDivElement>;
 }) {
@@ -84,15 +80,6 @@ export function MarkdownView({
         editable
           ? (e) => {
               if (document.activeElement?.closest(".cm-content")) e.preventDefault();
-            }
-          : undefined
-      }
-      onBlur={
-        onBlur
-          ? (e: FocusEvent<HTMLDivElement>) => {
-              // 中のリンクへの移動 (Tab) では外へ出ていない
-              if (!e.currentTarget.contains(e.relatedTarget as Node | null))
-                onBlur(e.relatedTarget as Element | null);
             }
           : undefined
       }

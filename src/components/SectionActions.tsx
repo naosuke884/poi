@@ -1,5 +1,4 @@
 import { ActionIcon, Tooltip, VisuallyHidden } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 // 結果の表示 (チェック / ×) を出しておく時間
@@ -46,42 +45,6 @@ export function SectionActions({
         <CameraIcon />
       </ActionButton>
     </>
-  );
-}
-
-/**
- * 区切り線に置く折り畳みトグル (▾ / ▸)。折り畳み状態は Board が持つ。
- * mousedown を止めるのは他のボタンと同じ (編集中のエディタを blur させない)
- */
-export function SectionCollapseToggle({
-  index,
-  collapsed,
-  onToggle,
-}: {
-  index: number;
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  // ホバーの無い端末 (スマホ) では、タップで出たツールチップが残って邪魔なだけなので出さない
-  const noHover = useMediaQuery("(hover: none)");
-  return (
-    <Tooltip label={collapsed ? "展開" : "折り畳む"} withArrow disabled={noHover}>
-      <ActionIcon
-        variant="subtle"
-        color="gray"
-        // 区切り線の期限ラベル (dimmed) と同じ色に揃える
-        c="dimmed"
-        size="xs"
-        aria-label={
-          collapsed ? `セクション ${index + 1} を展開` : `セクション ${index + 1} を折り畳む`
-        }
-        aria-expanded={!collapsed}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={onToggle}
-      >
-        {collapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}
-      </ActionIcon>
-    </Tooltip>
   );
 }
 
@@ -134,7 +97,7 @@ function ActionButton({
         <ActionIcon
           variant="subtle"
           color="gray"
-          // 普段は区切り線の期限ラベル (dimmed) と同じ色に揃える。
+          // 普段は区切り線のラベル (dimmed) と同じ色に揃える。
           // 結果表示中はチェック / × を teal / red で見せる。
           // variant の色は gray のまま (色付きにするとクリック直後のホバー背景が緑/赤に光る)
           c={feedback ? (feedback.ok ? "teal" : "red") : "dimmed"}
@@ -210,18 +173,3 @@ function XIcon() {
   );
 }
 
-function ChevronDownIcon() {
-  return (
-    <Svg>
-      <path d="M6 9l6 6l6 -6" />
-    </Svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <Svg>
-      <path d="M9 6l6 6l-6 6" />
-    </Svg>
-  );
-}

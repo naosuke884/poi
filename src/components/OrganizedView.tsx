@@ -17,7 +17,6 @@ import classes from "./OrganizedView.module.css";
  *   (Board がタイムラインへ切り替えてそこで編集を開く)。readOnly ならそれもしない
  * - 区切り線の右端の × でまとめごと削除できる (Board がグループの範囲を元セクションから取り除く)。
  *   readOnly なら出さない
- * - 折り畳んだセクションは含めない (タイムラインで隠したものはここでも隠す)
  */
 export function OrganizedView({
   sections,
@@ -42,13 +41,9 @@ export function OrganizedView({
   };
 
   if (groups.length === 0) {
-    // 折り畳んだセクションはまとめに含めないので、全部折り畳まれていて空のこともある
-    const allCollapsed = sections.some((s) => s.collapsed && s.content.trim() !== "");
     return (
       <Text c="dimmed" mt="md">
-        {allCollapsed
-          ? "表示できるメモがありません (折り畳んだセクションはまとめに含まれません)。"
-          : "まだメモがありません。タイムラインで書いたメモが、ここに見出しごとにまとまります。"}
+        まだメモがありません。タイムラインで書いたメモが、ここに見出しごとにまとまります。
       </Text>
     );
   }
