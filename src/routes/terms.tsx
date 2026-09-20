@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CONTACT_URL, LegalPage } from "@/components/LegalPage";
+import { ContactLink, LegalPage } from "@/components/LegalPage";
 
 // 利用規約 (ログイン不要)
 export const Route = createFileRoute("/terms")({
@@ -30,9 +30,7 @@ function Terms() {
         </li>
         <li>
           アカウントの削除を希望する場合は、
-          <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
-            問い合わせ先
-          </a>
+          <ContactLink>問い合わせ先</ContactLink>
           までご連絡ください。削除すると、保存されている内容はすべて消去され、復元できません。
         </li>
       </ol>
@@ -117,9 +115,7 @@ function Terms() {
         本規約に関する問い合わせは、GitHub の Issue から受け付けています。
       </p>
       <p>
-        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
-          {CONTACT_URL}
-        </a>
+        <ContactLink />
       </p>
     </LegalPage>
   );

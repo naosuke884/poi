@@ -8,6 +8,17 @@ import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } fro
 // どちらも user.id / name / email / image を持つので、loader や画面はこの形だけを見ればよい。
 export type LoginContext = { session: { user: CachedUser } | null };
 
+// サーバが「未ログイン」と答えた (セッション切れを含む) ときの後始末。
+// 他人に見えないよう、この端末に残るオフライン閲覧用キャッシュ (ユーザー情報と板) を消す。
+// userId を省略すると、キャッシュ済みユーザーの板を消す
+export function clearOfflineCaches(userId?: string): void {
+  const id = userId ?? readCachedUser()?.id;
+  clearCachedUser();
+  if (id !== undefined) {
+    clearBoardCache(id);
+  }
+}
+
 // ログイン状態を調べる beforeLoad 用のガード。未ログインでも redirect しない
 // (トップはログインしていなければランディングページを見せる。issue #24)。
 // 戻り値はルートの context にマージされる (Route.useRouteContext() で session を参照できる)。
@@ -26,14 +37,9 @@ export async function optionalLogin(): Promise<LoginContext> {
   }
   const { data, error } = result;
   if (!data) {
-    // サーバが「未ログイン」と答えた (セッション切れを含む)。
-    // 他人に見えないよう、この端末に残るオフライン閲覧用キャッシュは消しておく
+    // サーバが「未ログイン」と答えた (セッション切れを含む)
     if (!error) {
-      const stale = readCachedUser();
-      clearCachedUser();
-      if (stale) {
-        clearBoardCache(stale.id);
-      }
+      clearOfflineCaches();
     }
     return { session: null };
   }

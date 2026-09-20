@@ -135,8 +135,6 @@ export const boardRoutes = new Hono<AppEnv>()
     return c.json({ sections: saved });
   });
 
-export type BoardRoutes = typeof boardRoutes;
-
 // ユーザー設定 (今はセクションの保持日数のみ)。
 // 保持日数を変えたら、いま保存されている全セクションの期限も createdAt + 新しい日数で引き直す
 // (短くしたときは、新しい期限を過ぎたセクションが即座に見えなくなり、次の Cron で物理削除される)
@@ -176,5 +174,3 @@ export const settingsRoutes = new Hono<AppEnv>()
     ]);
     return c.json({ memoTtlDays });
   });
-
-export type SettingsRoutes = typeof settingsRoutes;

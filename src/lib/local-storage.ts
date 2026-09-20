@@ -27,7 +27,7 @@ export function removeItem(key: string): void {
 }
 
 /** prefix で始まるキーの一覧 */
-export function keysWithPrefix(prefix: string): string[] {
+function keysWithPrefix(prefix: string): string[] {
   try {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

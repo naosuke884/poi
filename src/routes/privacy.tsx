@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CONTACT_URL, LegalPage } from "@/components/LegalPage";
+import { ContactLink, LegalPage } from "@/components/LegalPage";
 
 // プライバシーポリシー (ログイン不要)。Google OAuth 同意画面に登録する URL でもある
 export const Route = createFileRoute("/privacy")({
@@ -123,9 +123,7 @@ function Privacy() {
         本ポリシーに関する問い合わせ、および個人情報の開示・削除の請求は、GitHub の Issue から受け付けています。
       </p>
       <p>
-        <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
-          {CONTACT_URL}
-        </a>
+        <ContactLink />
       </p>
       <p>
         Issue は誰でも閲覧できます。メールアドレスなど公開したくない情報は Issue 本文に書かず、

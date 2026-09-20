@@ -4,11 +4,10 @@ import { useRef } from "react";
 import { Board } from "@/components/Board";
 import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/board";
-import { clearBoardCache, readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
-import { clearCachedUser } from "@/lib/session-cache";
+import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
 import { OfflineError, fetchOrOffline } from "@/lib/offline";
 import { Landing } from "@/components/Landing";
-import { optionalLogin } from "@/lib/require-login";
+import { clearOfflineCaches, optionalLogin } from "@/lib/require-login";
 
 // メイン画面: ログイン済みなら自分の板、未ログインならランディング (何ができるか + ログイン導線)
 export const Route = createFileRoute("/")({
@@ -41,10 +40,8 @@ export const Route = createFileRoute("/")({
       };
     }
     if (res.status === 401) {
-      // beforeLoad 後にセッションが切れた場合。optionalLogin がサーバの「未ログイン」に
-      // する後始末と同じく、この端末に残るキャッシュを消してランディングを見せる
-      clearCachedUser();
-      clearBoardCache(userId);
+      // beforeLoad 後にセッションが切れた場合。この端末に残るキャッシュを消してランディングを見せる
+      clearOfflineCaches(userId);
       return { landing: true as const };
     }
     if (!res.ok) throw new Error("板の取得に失敗しました");

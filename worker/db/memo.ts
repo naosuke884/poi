@@ -41,9 +41,6 @@ export const memo = sqliteTable(
   ],
 );
 
-export type Memo = typeof memo.$inferSelect;
-export type NewMemo = typeof memo.$inferInsert;
-
 // ユーザーごとの設定 (1 行 = 1 ユーザー)。行が無いユーザーは既定値で動く
 export const userSetting = sqliteTable("user_setting", {
   userId: text("user_id")
