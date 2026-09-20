@@ -10,7 +10,8 @@ import {
   Transaction,
 } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
-import { LIST_ITEM_RE } from "@/lib/list-continue";
+import { cursorOf, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "@/lib/list-continue";
+import { dedentChange } from "@/lib/list-indent";
 
 /**
  * 本文を常に箇条書きに保つ (#40)。
@@ -69,9 +70,9 @@ export const forceListMarkers: Extension = [
 ];
 
 // 記号だけの空の項目に # / ＃ だけが続く形 (IME で # を確定した直後)
-const EMPTY_ITEM_HASH_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+([#＃]+)$/;
+const EMPTY_ITEM_HASH_RE = new RegExp(String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]+([#＃]+)$`);
 // 項目の本文が # / ＃ の並び (1〜6 個) + 空白で始まる形 (# の直後に後からスペースを入れた直後)
-const ITEM_HASH_SPACE_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+([#＃]{1,6})(?![#＃])[ \t　]/;
+const ITEM_HASH_SPACE_RE = new RegExp(String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]+([#＃]{1,6})(?![#＃])[ \t　]`);
 // 行が # / ＃ の並びだけの形 (見出しの ＃ を書き足している途中)
 const HASH_RUN_RE = /^( {0,3})([#＃]+)$/;
 
@@ -126,13 +127,12 @@ const HEADING_RE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
  * スペースのインデント (spaceIndentsListItem) と同じく、仮想キーボード対応で inputHandler にする。
  * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる (見出しの行は forceListMarkers が触らない)。
  * 全角 ＃ も同じ扱いで半角にする (#46)。IME の変換 (composition) を経る ＃ はここに届かないので、
- * そちらは forceListMarkers の compositionend (fullWidthHashFix) が拾う
+ * そちらは forceListMarkers の compositionend (hashHeadingFix) が拾う
  */
 export const hashStartsHeading = EditorView.inputHandler.of((view, from, to, text) => {
-  if ((text !== "#" && text !== "＃") || from !== to || view.composing) return false;
+  if ((text !== "#" && text !== "＃") || from !== to) return false;
   const { state } = view;
-  const sel = state.selection.main;
-  if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
+  if (cursorOf(view) !== from) return false;
   const line = state.doc.lineAt(from);
   const m = LIST_ITEM_RE.exec(line.text);
   // 記号だけの空の項目で、カーソルが本文の先頭 (= 行末) にあるときだけ
@@ -156,10 +156,9 @@ export const hashStartsHeading = EditorView.inputHandler.of((view, from, to, tex
  * 全角 ＃ と全角スペースも同じ扱いで半角にする (#46 と同じくスマホの IME 対応)
  */
 export const spaceAfterHashStartsHeading = EditorView.inputHandler.of((view, from, to, text) => {
-  if ((text !== " " && text !== "　") || from !== to || view.composing) return false;
+  if ((text !== " " && text !== "　") || from !== to) return false;
   const { state } = view;
-  const sel = state.selection.main;
-  if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
+  if (cursorOf(view) !== from) return false;
   const line = state.doc.lineAt(from);
   const m = LIST_ITEM_RE.exec(line.text);
   if (!m) return false;
@@ -207,20 +206,17 @@ function missingMarkers(doc: Text, changes: ChangeDesc): { from: number; insert:
  * 記号より右では false (通常の 1 文字削除に任せる)
  */
 export const deleteListMarkerBackward: Command = (view) => {
-  if (view.composing) return false;
+  const head = cursorOf(view);
+  if (head === null) return false;
   const { state } = view;
-  const sel = state.selection.main;
-  if (!sel.empty || state.selection.ranges.length > 1) return false;
-  const line = state.doc.lineAt(sel.head);
+  const line = state.doc.lineAt(head);
   const m = LIST_ITEM_RE.exec(line.text);
   if (!m) return false;
   const markerEnd = line.from + m[0].length;
-  if (sel.head === 0 || sel.head > markerEnd) return false;
+  if (head === 0 || head > markerEnd) return false;
   if (m[1]!.length > 0) {
-    // list-indent の indentLess と同じ 1 段分
-    const step = /^(?: {0,3}\t| {1,4})/.exec(line.text)!;
     view.dispatch({
-      changes: { from: line.from, to: line.from + step[0].length },
+      changes: dedentChange(line)!,
       scrollIntoView: true,
       userEvent: "delete.dedent",
     });
@@ -247,12 +243,11 @@ export const deleteListMarkerBackward: Command = (view) => {
  * それ以外は false (通常の削除に任せる)
  */
 export const deleteListMarkerForward: Command = (view) => {
-  if (view.composing) return false;
+  const head = cursorOf(view);
+  if (head === null) return false;
   const { state } = view;
-  const sel = state.selection.main;
-  if (!sel.empty || state.selection.ranges.length > 1) return false;
-  const line = state.doc.lineAt(sel.head);
-  if (sel.head !== line.to || line.number === state.doc.lines) return false;
+  const line = state.doc.lineAt(head);
+  if (head !== line.to || line.number === state.doc.lines) return false;
   const next = state.doc.line(line.number + 1);
   const m = LIST_ITEM_RE.exec(next.text);
   if (!m) return false;

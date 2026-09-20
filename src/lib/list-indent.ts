@@ -1,6 +1,6 @@
 import type { Line, Text } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
-import { LIST_ITEM_RE } from "@/lib/list-continue";
+import { cursorOf, LIST_ITEM_RE } from "@/lib/list-continue";
 
 /**
  * Tab / Shift+Tab のインデント操作。
@@ -120,10 +120,9 @@ export const indentMoreOrInsertTab: Command = (view) => {
  * inputHandler で文字の挿入として受ける。IME 変換中のスペース (候補選択) は触らない
  */
 export const spaceIndentsListItem = EditorView.inputHandler.of((view, from, to, text) => {
-  if (text !== " " || from !== to || view.composing) return false;
+  if (text !== " " || from !== to) return false;
   const { state } = view;
-  const sel = state.selection.main;
-  if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
+  if (cursorOf(view) !== from) return false;
   const line = state.doc.lineAt(from);
   const m = LIST_ITEM_RE.exec(line.text);
   if (!m || from !== line.from + m[0].length) return false;
@@ -147,9 +146,15 @@ export const indentLess: Command = (view) => {
   if (view.composing) return true;
   if (view.state.doc.length === 0) return false;
   const changes = coveredLines(view).flatMap((line) => {
-    const m = /^(?: {0,3}\t| {1,4})/.exec(line.text);
-    return m ? [{ from: line.from, to: line.from + m[0].length }] : [];
+    const change = dedentChange(line);
+    return change ? [change] : [];
   });
   if (changes.length > 0) view.dispatch({ changes, scrollIntoView: true, userEvent: "delete.dedent" });
   return true;
 };
+
+/** 行頭からタブ停止 1 つ分のインデントを消す変更 (1 段戻す)。インデントが無ければ null */
+export function dedentChange(line: Line): { from: number; to: number } | null {
+  const m = /^(?: {0,3}\t| {1,4})/.exec(line.text);
+  return m ? { from: line.from, to: line.from + m[0].length } : null;
+}

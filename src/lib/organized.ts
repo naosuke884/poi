@@ -55,7 +55,7 @@ const JOINER = "\n\n";
  * 行頭のインデントは無制限に許す: この板は codeIndented を無効にしているので、
  * micromark は 4 スペースやタブの後の # も見出しとして描画する (CommonMark の 3 スペース制限とは違う)
  */
-export function parseHeading(line: string): { level: number; text: string } | null {
+function parseHeading(line: string): { level: number; text: string } | null {
   const m = /^[ \t]*(#{1,6})(?:[ \t]+(.*))?$/.exec(line);
   if (!m) return null;
   return {
@@ -268,10 +268,6 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
 }
 
 /**
- * まとめた Markdown 内の位置を、元セクションの位置に対応づける (クリックで編集へ飛ぶ用)。
- * つなぎ (JOINER) の上なら直前の部分の末尾に寄せる
- */
-/**
  * まとめの削除 (OrganizedView の削除ボタン) 用に、元セクションの content から
  * まとめに含めた範囲 (sources のうちそのセクションの分) を取り除いた残りを返す。
  * 範囲は見出し行の頭から次の見出し行の直前までなので、残った部分はそのままつながる。
@@ -289,6 +285,10 @@ export function cutRanges(content: string, ranges: { start: number; end: number 
   return pos >= content.length ? out.replace(/\s+$/, "") : out;
 }
 
+/**
+ * まとめた Markdown 内の位置を、元セクションの位置に対応づける (クリックで編集へ飛ぶ用)。
+ * つなぎ (JOINER) の上なら直前の部分の末尾に寄せる
+ */
 export function locateInSection(
   ranges: OrganizedRange[],
   offset: number,

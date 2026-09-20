@@ -1,11 +1,22 @@
 import { insertNewline } from "@codemirror/commands";
 import { EditorSelection } from "@codemirror/state";
-import type { Command } from "@codemirror/view";
+import type { Command, EditorView } from "@codemirror/view";
+import { dedentChange } from "@/lib/list-indent";
 
-// 箇条書きの項目の行頭: インデント + 記号 (`-` / `+` / `*` / `1.` / `1)`) + 空白。
-// MarkdownView (micromark) が項目と見なす形と揃えている (記号の後に空白が必要。
-// 番号は CommonMark と同じ 9 桁まで: 10 桁以上の数字で始まる行はリストではなくただの文)
-export const LIST_ITEM_RE = /^([ \t]*)([-+*]|\d{1,9}[.)])([ \t]+)/;
+// 箇条書きの記号 (`-` / `+` / `*` / `1.` / `1)`) の正規表現の素。
+// 番号は CommonMark と同じ 9 桁まで: 10 桁以上の数字で始まる行はリストではなくただの文
+export const LIST_MARKER_SOURCE = String.raw`[-+*]|\d{1,9}[.)]`;
+
+// 箇条書きの項目の行頭: インデント + 記号 + 空白。
+// MarkdownView (micromark) が項目と見なす形と揃えている (記号の後に空白が必要)
+export const LIST_ITEM_RE = new RegExp(String.raw`^([ \t]*)(${LIST_MARKER_SOURCE})([ \t]+)`);
+
+/** 選択が無い (カーソルだけ) なら head。IME 変換中・選択あり・複数カーソルは null */
+export function cursorOf(view: EditorView): number | null {
+  const sel = view.state.selection.main;
+  if (view.composing || !sel.empty || view.state.selection.ranges.length > 1) return null;
+  return sel.head;
+}
 
 /**
  * Enter で箇条書きを同じ階層で続ける。
@@ -17,20 +28,19 @@ export const LIST_ITEM_RE = /^([ \t]*)([-+*]|\d{1,9}[.)])([ \t]+)/;
  */
 export const insertNewlineContinueList: Command = (view) => {
   const { state } = view;
-  const sel = state.selection.main;
-  if (view.composing || !sel.empty || state.selection.ranges.length > 1) return insertNewline(view);
-  const line = state.doc.lineAt(sel.head);
+  const head = cursorOf(view);
+  if (head === null) return insertNewline(view);
+  const line = state.doc.lineAt(head);
   const m = LIST_ITEM_RE.exec(line.text);
   if (!m) return insertNewline(view);
   const markerEnd = line.from + m[0].length;
   // インデントや記号の途中にカーソルがあるときは項目の継続にしない
-  if (sel.head < markerEnd) return insertNewline(view);
+  if (head < markerEnd) return insertNewline(view);
   if (!line.text.slice(m[0].length).trim()) {
     if (m[1]!.length > 0) {
-      // 空の項目でインデントがあれば 1 段戻す (list-indent の indentLess と同じ 1 段分)
-      const step = /^(?: {0,3}\t| {1,4})/.exec(line.text)!;
+      // 空の項目でインデントがあれば 1 段戻す
       view.dispatch({
-        changes: { from: line.from, to: line.from + step[0].length },
+        changes: dedentChange(line)!,
         userEvent: "delete.dedent",
       });
       return true;

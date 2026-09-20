@@ -33,10 +33,11 @@ export const rehypeSourcePositions: Plugin<[], Root> = () => (tree) => {
  * 文書順に前から順番に探すので正しい方に当たる
  */
 export function sourceOffsetAt(node: Node, offset: number, source: string): number | null {
-  const owner = (node instanceof Element ? node : node.parentElement)?.closest("[data-pos]");
+  const owner = (node instanceof Element ? node : node.parentElement)?.closest<HTMLElement>("[data-pos]");
   if (!owner) return null;
-  const [start, end] = owner.getAttribute("data-pos")!.split("-").map(Number);
-  if (start === undefined || end === undefined || Number.isNaN(start) || Number.isNaN(end)) return null;
+  const range = posRange(owner);
+  if (!range) return null;
+  const [start, end] = range;
   // 要素そのものに当たった (テキストの外: offset は子ノードの番号) ときは、その前にある本文テキストの終わり
   if (!(node instanceof Text)) {
     for (let i = offset - 1; i >= 0; i--) {
@@ -89,6 +90,13 @@ export function sourceOffsetAtPoint(root: HTMLElement, x: number, y: number, sou
   return sourceOffsetAt(node, offset, source);
 }
 
+/** 要素の data-pos="start-end" を読んだ元テキストの範囲 (無い・壊れているときは null) */
+function posRange(el: HTMLElement): [start: number, end: number] | null {
+  const [start, end] = (el.getAttribute("data-pos") ?? "").split("-").map(Number);
+  if (start === undefined || end === undefined || Number.isNaN(start) || Number.isNaN(end)) return null;
+  return [start, end];
+}
+
 /** data-pos を持つ要素とその範囲 */
 type Owner = { el: HTMLElement; start: number; end: number };
 
@@ -101,8 +109,9 @@ function ownerAtSourceOffset(root: HTMLElement, pos: number): Owner | null {
   let fallback: Owner | null = null;
   const distance = (o: Owner) => Math.max(o.start - pos, pos - o.end, 0);
   for (const el of root.querySelectorAll<HTMLElement>("[data-pos]")) {
-    const [start, end] = el.getAttribute("data-pos")!.split("-").map(Number);
-    if (start === undefined || end === undefined || Number.isNaN(start) || Number.isNaN(end)) continue;
+    const range = posRange(el);
+    if (!range) continue;
+    const [start, end] = range;
     const owner = { el, start, end };
     if (pos < start || pos > end) {
       if (!fallback || distance(owner) < distance(fallback)) fallback = owner;

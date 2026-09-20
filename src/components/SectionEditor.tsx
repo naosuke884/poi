@@ -9,7 +9,7 @@ import { Annotation, Compartment, EditorSelection, EditorState, Prec, Transactio
 import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
-import { insertNewlineContinueList } from "@/lib/list-continue";
+import { cursorOf, insertNewlineContinueList } from "@/lib/list-continue";
 import {
   deleteListMarkerBackward,
   deleteListMarkerForward,
@@ -163,17 +163,7 @@ export function SectionEditor({
   // 作り直した view にも同じフォーカスを引き継ぐ (blur で消す。作り直し時にしか使わない)
   const wantFocusRef = useRef<number | null>(null);
   // コールバックは最新の props を呼ぶ (拡張は一度作ったら作り直さない)
-  const callbacksRef = useRef({
-    onChange,
-    onFocus,
-    onBlur,
-    onBackspaceAtStart,
-    onDeleteAtEnd,
-    onArrowUpAtFirstLine,
-    onArrowDownAtLastLine,
-    onEscape,
-  });
-  callbacksRef.current = {
+  const callbacks = {
     onChange,
     onFocus,
     onBlur,
@@ -183,6 +173,8 @@ export function SectionEditor({
     onArrowDownAtLastLine,
     onEscape,
   };
+  const callbacksRef = useRef(callbacks);
+  callbacksRef.current = callbacks;
   // マウント後に変わりうる設定 (aria-label はセクション番号なので前が消えると変わる。placeholder は
   // セクションが 1 つのときだけ) は Compartment で差し替える
   const [configCompartment] = useState(() => new Compartment());
@@ -338,13 +330,6 @@ type Callbacks = Pick<
   Props,
   "onBackspaceAtStart" | "onDeleteAtEnd" | "onArrowUpAtFirstLine" | "onArrowDownAtLastLine" | "onEscape"
 >;
-
-/** 選択が無い (カーソルだけ) なら head。IME 変換中は境界処理をしない (null) */
-function cursorOf(view: EditorView): number | null {
-  const sel = view.state.selection.main;
-  if (view.composing || !sel.empty || view.state.selection.ranges.length > 1) return null;
-  return sel.head;
-}
 
 /**
  * カーソル a が b と表示上 (折り返しを考慮) 同じ行にあるか。文字の座標の top で比べる (同じ行の文字は同じ top)。
