@@ -5,6 +5,13 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  server: {
+    // dev container 内で動かすため、コンテナ外 (ホスト) からもアクセスできるよう全インターフェースで待ち受ける
+    host: true,
+    // ホスト側は 5173 前提でポートフォワードしている。塞がっていたら別ポートに黙って移らず失敗させる
+    port: 5173,
+    strictPort: true,
+  },
   resolve: {
     // tsconfig.app.json の "paths" ("@/*" -> "./src/*") を Vite でも解決する
     tsconfigPaths: true,
