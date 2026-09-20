@@ -6,6 +6,19 @@
   line-height: 1.25;
 }
 
+.demoVideo {
+  width: 100%;
+  display: block;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mantine-color-default-border);
+}
+
+/* 全画面では枠の飾りをやめる (黒帯の上に角丸と枠線が残らないように) */
+.demoVideo:fullscreen {
+  border-radius: 0;
+  border: 0;
+}
+
 /* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままにする */
 .videoZoomButton {
   display: block;

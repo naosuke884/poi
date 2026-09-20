@@ -1,7 +1,7 @@
-import { Anchor, Box, Button, Modal, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Box, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useReducedMotion } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 import classes from "./Landing.module.css";
@@ -37,8 +37,28 @@ export function Landing() {
   // Google へのリダイレクトが始まるまでの間、二度押しで OAuth を 2 回始めないようにする
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // デモ動画の拡大表示 (#54)
-  const [zoomed, setZoomed] = useState(false);
+  // デモ動画の拡大表示 (#54): クリックで video 要素をそのまま全画面にする。
+  // 全画面の間だけ controls を出す (インラインに置くとクリックが再生操作と取り合いになる。
+  // 「動きを減らす」の人の再生もここで行う)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoFullscreen, setVideoFullscreen] = useState(false);
+  useEffect(() => {
+    const onChange = () => setVideoFullscreen(document.fullscreenElement === videoRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const zoomVideo = () => {
+    const video = videoRef.current;
+    // 全画面中のクリック (controls の余白など) が video からここへバブルしても再入しない
+    if (!video || document.fullscreenElement) return;
+    if (video.requestFullscreen) {
+      void video.requestFullscreen();
+    } else {
+      // iPhone の Safari には requestFullscreen が無い。ネイティブの全画面プレイヤー
+      // (controls 付き) を開く webkitEnterFullscreen で代える
+      (video as { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen?.();
+    }
+  };
   // Google の同意画面からブラウザバックで戻ると、bfcache がページを busy=true のまま
   // 復元して CTA が押せなくなるので、復元されたときは戻す
   useEffect(() => {
@@ -87,49 +107,26 @@ export function Landing() {
         </Text>
       </Stack>
 
-      {/* 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする。
-          クリックでモーダル拡大 (#54)。インラインには controls を置かない (置くとクリックが
-          再生操作と取り合いになる) ので、「動きを減らす」の人も再生はモーダル側の controls で行う */}
+      {/* 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする */}
       <Box maw={860} w="100%">
         <button
           type="button"
           className={classes.videoZoomButton}
-          aria-label="デモ動画を拡大表示する"
-          onClick={() => setZoomed(true)}
+          aria-label="デモ動画を全画面で見る"
+          onClick={zoomVideo}
         >
           <video
+            ref={videoRef}
             src="/demo.mp4"
+            className={classes.demoVideo}
             autoPlay={!reduceMotion}
+            controls={videoFullscreen}
             muted
             loop
             playsInline
-            style={{
-              width: "100%",
-              display: "block",
-              borderRadius: "var(--mantine-radius-md)",
-              border: "1px solid var(--mantine-color-default-border)",
-            }}
           />
         </button>
       </Box>
-      {/* 拡大表示。閉じると unmount されるので、開くたびに頭から自動再生になる */}
-      <Modal
-        opened={zoomed}
-        onClose={() => setZoomed(false)}
-        title="poi を操作するデモ動画"
-        size="min(88rem, 94vw)"
-        centered
-      >
-        <video
-          src="/demo.mp4"
-          autoPlay={!reduceMotion}
-          controls
-          muted
-          loop
-          playsInline
-          style={{ width: "100%", display: "block", borderRadius: "var(--mantine-radius-md)" }}
-        />
-      </Modal>
 
       <Stack gap="sm" maw={860} w="100%">
         <Title order={2} size="h4" ta="center">
