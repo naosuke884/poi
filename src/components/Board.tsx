@@ -10,62 +10,34 @@ import {
   Stack,
   Tooltip,
 } from "@mantine/core";
-import { useBlocker } from "@tanstack/react-router";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import {
-  BOARD_MAX_LENGTH,
-  BOARD_MAX_SECTIONS,
-  MEMO_TTL_DAYS,
-  boardLength,
-} from "../../worker/memo/constants";
+import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 import { affixInset } from "@/lib/affix";
-import { api } from "@/lib/api";
 import { publishBoardActions } from "@/lib/board-actions";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import {
   type BoardSection,
-  type DraftSection,
   type EditableSection,
   newKey,
   newSection,
-  sameDraft,
   splitAtSeparator,
-  toDraft,
   toEditable,
 } from "@/lib/board";
-import { writeCachedBoard } from "@/lib/board-cache";
-import { type OrganizedGroup, cutRanges } from "@/lib/organized";
 import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
+import { PlusIcon } from "@/components/AddSectionButton";
 import { MarkdownView } from "@/components/MarkdownView";
 import { OrganizedView } from "@/components/OrganizedView";
 import { SectionActions } from "@/components/SectionActions";
-import {
-  type CursorPlace,
-  type EditAnchor,
-  SectionEditor,
-  type SectionEditorHandle,
-} from "@/components/SectionEditor";
-import { clientTopAtSourceOffset } from "@/lib/markdown-source-offset";
-import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
-import { publishSaveState, type SaveStatus } from "@/lib/save-status";
+import { type EditAnchor, SectionEditor } from "@/components/SectionEditor";
+import { useBoardAutosave } from "@/lib/use-board-autosave";
+import { useSectionFocus } from "@/lib/use-section-focus";
+import { useUndoableDelete } from "@/lib/use-undoable-delete";
 import {
   copySectionText,
   deliverImage,
   renderSectionImage,
 } from "@/lib/section-export";
-
-// 入力停止からこの時間だけ待ってから保存する
-const AUTOSAVE_DELAY_MS = 1000;
-// セクションを削除したあと「元に戻す」を出しておく時間
-const UNDO_DELETE_MS = 8000;
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
@@ -83,7 +55,8 @@ const UNDO_DELETE_MS = 8000;
  *   フォーカスが渡らなかったりする)
  * - 各セクションが自分の id を持つので、保存はそのまま PUT /api/board に送るだけ (id が期限を引き継ぐ)。
  *   空のセクションは送らない (画面には残る)
- * - 入力停止から 1 秒後に丸ごと保存する (自動保存)。保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
+ * - 入力停止から 1 秒後に丸ごと保存する (自動保存。useBoardAutosave)。保存状態はヘッダーのアイコン
+ *   (SaveStatusIcon) に出す
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
@@ -107,37 +80,7 @@ export function Board({
     return s.length > 0 ? s : [newSection()];
   });
   const latestRef = useRef(sections);
-  // サーバに保存済みのもの (差分の有無の判定用)
-  const savedRef = useRef<DraftSection[]>(
-    initial.map(({ id, content }) => ({ id, content })),
-  );
 
-  const [status, setStatus] = useState<SaveStatus>("saved");
-  const statusRef = useRef(status);
-  statusRef.current = status;
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const inFlightRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // key → エディタのハンドル。分割 / 結合 / ↑↓ の後にカーソルを移すのに使う
-  const elementsRef = useRef(new Map<string, SectionEditorHandle>());
-  // key → Markdown 表示の要素 (スクショの対象)
-  const viewsRef = useRef(new Map<string, HTMLDivElement>());
-  // key → セクションの外枠 (区切り線を含む。スクロール位置を合わせる対象)
-  const boxesRef = useRef(new Map<string, HTMLDivElement>());
-  // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
-  const pendingFocusRef = useRef<{
-    key: string;
-    pos: number;
-    /** カーソルを画面のどこに置くか (SectionEditor の CursorPlace) */
-    place: CursorPlace;
-  } | null>(null);
-  // Esc で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (Tab はそこから先へ進み、
-  // ↑↓ で隣のセクションの表示へ、Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
-  const pendingViewFocusRef = useRef<string | null>(null);
-  // 編集をやめたセクションと、そのときのカーソル (位置と画面上の高さ)。描画後に同じ高さへ合わせ直す
-  const pendingAnchorRef = useRef<{ key: string; anchor: EditAnchor } | null>(null);
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -148,222 +91,46 @@ export function Board({
   // 切替はヘッダーの ViewToggle が行い、モードはストア (view-mode) が持つ (Board が作り直されても保つ)
   const { mode } = useViewMode();
   const organized = mode === "organized";
-  // まとめ表示に切り替えたら編集をやめる (タイムラインに戻ったとき編集中のエディタが残らないように)。
-  // タイムラインのスクロール位置 (最後のセクションが上端など) を引き継ぐと先頭のグループが
-  // 見えないので、まとめの先頭へスクロールする
-  useEffect(() => {
-    if (!organized) return;
-    setEditingKey(null);
-    // 予約済みのフォーカス移動も破棄する (タイムラインに戻ったとき、いつかの操作の
-    // フォーカスが不意に発火しないように)
-    pendingFocusRef.current = null;
-    pendingViewFocusRef.current = null;
-    pendingAnchorRef.current = null;
-    window.scrollTo({ top: 0 });
-  }, [organized]);
-  // 編集に入る前に、そのカーソル位置が Markdown 表示のどの高さに描かれているか (client 座標の上端)。
-  // 表示とエディタでは同じ内容でも高さが変わるので、切り替えた後にこの高さへ戻す (#45)。
-  // 表示が無い (空 / これから作るセクション) なら合わせる先が無いので null
-  const viewTopAt = (key: string, pos: number) => {
-    const view = viewsRef.current.get(key);
-    const content = latestRef.current.find((s) => s.key === key)?.content;
-    if (!view || content === undefined) return null;
-    return clientTopAtSourceOffset(view, content, pos);
-  };
-  // 描画後にカーソルを置く (エディタがまだ無いセクションを編集状態にしてから)。
-  // place を渡さないときは、切り替える前に同じ場所が描かれていた高さ (= 見ていた位置) を保つ。
-  // エディタの中の ↑↓ で隣のセクションへ移るときがこれ (移動先は隣なので、動かさないほうが続けて書きやすい)
-  const focusLater = (key: string, pos: number, place?: CursorPlace) => {
-    pendingFocusRef.current = { key, pos, place: place ?? viewTopAt(key, pos) };
-    setEditingKey(key);
-  };
-  const focus = (key: string, pos: number, place?: CursorPlace) => {
-    const editor = elementsRef.current.get(key);
-    if (!editor) {
-      focusLater(key, pos, place);
-      return;
-    }
-    setEditingKey(key);
-    editor.focus(pos, place);
-  };
-  // SectionEditor は自分の layout effect (親より先に走る) で value を doc に反映済みなので、ここで置く
-  // カーソル位置は新しい内容に対するもの
-  useLayoutEffect(() => {
-    const pending = pendingFocusRef.current;
-    if (!pending) return;
-    const editor = elementsRef.current.get(pending.key);
-    if (!editor) return; // 次の描画でエディタが現れるまで待つ
-    pendingFocusRef.current = null;
-    editor.focus(pending.pos, pending.place);
-  });
-  // セクションの Markdown 表示にフォーカスを移す。カーソルへの自動スクロールの代わりに、
-  // 区切り線ごと見えるよう外枠を最小限だけスクロールする
-  const focusView = (key: string) => {
-    viewsRef.current.get(key)?.focus({ preventScroll: true });
-    boxesRef.current.get(key)?.scrollIntoView({ block: "nearest" });
-  };
-  useLayoutEffect(() => {
-    const key = pendingViewFocusRef.current;
-    if (key === null) return;
-    pendingViewFocusRef.current = null;
-    focusView(key);
-  });
-  // 編集をやめて Markdown 表示に戻ったら、カーソルのあった場所が画面上の同じ高さに残るようにスクロールする。
-  // 同じ内容でもソースのまま (エディタ) とレンダリング後 (表示) では高さが違うので、何もしないと
-  // 見ていた場所が上下にずれる (文字の大きいスマホでは特に大きくずれる。#45)。
-  // Esc で抜けるときは使わない (focusView が区切り線ごと見えるように合わせる。onBlur 側で予約しない)
-  useLayoutEffect(() => {
-    const pending = pendingAnchorRef.current;
-    if (!pending) return;
-    pendingAnchorRef.current = null;
-    const view = viewsRef.current.get(pending.key);
-    const content = sections.find((s) => s.key === pending.key)?.content;
-    if (!view || content === undefined) return; // 空になった: 合わせる先が無い
-    const top = clientTopAtSourceOffset(view, content, pending.anchor.pos);
-    if (top !== null) window.scrollBy(0, top - pending.anchor.top);
-  });
 
-  // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
-  // 開いたときと、末尾に新しいセクションができたときに使う (下端に張り付いたまま書き続けなくて済むように)。
-  // 描画後に行う (末尾のセクションがまだ無いことがある)。同じ key でも毎回動かすので値はオブジェクトで持つ。
-  // 上の effect (フォーカス) より後に置く: フォーカスでカーソル位置へスクロールした後に、こちらで上書きする
-  // (SectionEditor の focus はそのためにカーソルへのスクロールを同期的に済ませる)
-  const [reveal, setReveal] = useState<{ key: string } | null>(null);
-  const revealLast = () => {
-    const last = latestRef.current.at(-1);
-    if (last) setReveal({ key: last.key });
-  };
-  useLayoutEffect(() => {
-    if (!reveal) return;
-    const box = boxesRef.current.get(reveal.key);
-    if (!box) return;
-    box.scrollIntoView({ block: "start" });
-    // 末尾に足したセクションのエディタ (CodeMirror) がマウントされていると、ここで合わせたスクロールが
-    // 次のフレームの終わりにページ先頭まで巻き戻されてしまう (#47。スクロール API を介さないので上書きではなく
-    // 巻き戻し。マウント直後の CodeMirror がある状態での最初のプログラムスクロールだけ起きる)。
-    // その後のフレームでもう一度合わせる (1 回の rAF では巻き戻しより先に走ってしまい効かない)
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        if (box.isConnected) box.scrollIntoView({ block: "start" });
-      }),
-    );
-  }, [reveal]);
+  const {
+    elementsRef,
+    viewsRef,
+    boxesRef,
+    pendingViewFocusRef,
+    pendingAnchorRef,
+    focus,
+    focusLater,
+    focusView,
+    revealLast,
+  } = useSectionFocus({ latestRef, sections, organized, setEditingKey });
 
-  const cancelTimer = () => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  const commit = (next: EditableSection[]) => {
-    latestRef.current = next;
-    setSections(next);
-  };
-
-  const save = useCallback(async () => {
-    cancelTimer();
-    // 保存中なら何もしない (完了時に最新の内容と比べて、差分があれば続けて保存する)
-    if (inFlightRef.current) return;
-
-    const draft = toDraft(latestRef.current);
-    if (sameDraft(draft, savedRef.current)) {
-      setStatus("saved");
-      return;
-    }
-    if (draft.length > BOARD_MAX_SECTIONS) {
-      setStatus("error");
-      setErrorMessage(
-        `セクション数が上限 (${BOARD_MAX_SECTIONS.toLocaleString()}) を超えています`,
-      );
-      return;
-    }
-    if (boardLength(draft) > BOARD_MAX_LENGTH) {
-      setStatus("error");
-      setErrorMessage(
-        `文字数が上限 (${BOARD_MAX_LENGTH.toLocaleString()}) を超えています`,
-      );
-      return;
-    }
-    // 確実にオフラインなら送らずに待つ (online イベントで再試行する)
-    if (isOffline()) {
-      setStatus("offline");
-      return;
-    }
-
-    inFlightRef.current = true;
-    setStatus("saving");
-    setErrorMessage(null);
-
-    let saved = false;
-    try {
-      const json = {
-        sections: draft.map(({ id, content }) => ({ id, content })),
-      };
-      const res = await fetchOrOffline(() => api.board.$put({ json }));
-      if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
-      const { sections: updated } = await res.json();
-      writeCachedBoard(userId, updated);
-      savedRef.current = updated.map(({ id, content }) => ({ id, content }));
-      // レスポンスは送った順に並ぶ (position 順) ので、送ったセクションにサーバの id と期限を戻す。
-      // 送っていない (空だった) セクションはサーバから消えているので id を外す。
-      // 保存中の入力 (content) はそのまま残す (差分があれば続けて保存される)
-      const byKey = new Map(draft.map((d, i) => [d.key, updated[i]]));
-      commit(
-        latestRef.current.map((s) => {
-          const u = byKey.get(s.key);
-          if (u) return { ...s, id: u.id, expiresAt: u.expiresAt };
-          return s.id === null ? s : { ...s, id: null, expiresAt: null };
-        }),
-      );
-      saved = true;
-      setStatus("saved");
-    } catch (e) {
-      if (e instanceof OfflineError) {
-        // 入力内容はそのまま保持し、オンライン復帰時に再送する
-        setStatus("offline");
-      } else {
-        setStatus("error");
-        setErrorMessage(e instanceof Error ? e.message : "保存に失敗しました");
-      }
-    } finally {
-      inFlightRef.current = false;
-    }
-
-    // 保存中にさらに入力があれば、debounce を挟んで続けて保存する (失敗時は「再試行」に任せる)。
-    // 即座に保存すると入力が続く限り PUT が連発するので、通常の自動保存と同じ待ち時間を置く
-    if (saved && !sameDraft(toDraft(latestRef.current), savedRef.current)) {
-      cancelTimer();
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        void save();
-      }, AUTOSAVE_DELAY_MS);
-    }
-  }, [userId]);
-
-  const scheduleSave = useCallback(() => {
-    cancelTimer();
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      void save();
-    }, AUTOSAVE_DELAY_MS);
-  }, [save]);
-
-  // 編集操作はすべてここを通す (状態を更新し、自動保存を予約する)
-  const update = (next: EditableSection[]) => {
-    commit(next);
-    if (sameDraft(toDraft(next), savedRef.current)) {
-      cancelTimer();
-      setStatus("saved");
-      return;
-    }
-    // 保存中は「保存中…」のまま (完了後に続けて保存されるので、その時点で状態が更新される)
-    if (!inFlightRef.current) setStatus("dirty");
-    scheduleSave();
-  };
+  // 右下固定の追加ボタンがソフトキーボードの裏に隠れないよう、キーボード分だけ持ち上げる
+  const keyboardInset = useKeyboardInset();
 
   const indexOf = (key: string) =>
     latestRef.current.findIndex((s) => s.key === key);
+
+  // update は useBoardAutosave が作るが、削除のフックを先に呼ぶ (effect の登録順 = 実行順を
+  // 保つため) ので、そちらへは ref 越しに渡す
+  const updateRef = useRef<(next: EditableSection[]) => void>(() => {});
+  const { deleted, cancelUndo, removeSection, removeGroup, undoDelete } =
+    useUndoableDelete({
+      latestRef,
+      organized,
+      indexOf,
+      focusLater,
+      update: (next) => updateRef.current(next),
+    });
+
+  const { update } = useBoardAutosave({
+    initial,
+    userId,
+    readOnly,
+    latestRef,
+    setSections,
+    revealLast,
+  });
+  updateRef.current = update;
 
   // 入力。区切り (空行 2 つ) が入ったらそこで分ける。
   // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key (= 今フォーカスのあるエディタの DOM) を引き継ぐ。
@@ -408,98 +175,6 @@ export function Board({
     update([...cur.slice(0, i), merged, ...cur.slice(i + 2)]);
   };
 
-  // 削除は即時に反映し (1 秒後に自動保存される)、しばらく「元に戻す」を出す (確認ダイアログの代わり)。
-  // 戻すときは元の位置に差し込む。保存が済んだ後なら id は無効になっているが、サーバは未知の id を
-  // 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)。
-  // まとめの削除 (removeGroup) は複数セクションに跨がるので、戻す対象はリストで持つ
-  const [deleted, setDeleted] = useState<{
-    title: string;
-    sections: { section: EditableSection; index: number }[];
-  } | null>(null);
-  // 右下固定の追加ボタンがソフトキーボードの裏に隠れないよう、キーボード分だけ持ち上げる
-  const keyboardInset = useKeyboardInset();
-  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelUndo = () => {
-    if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
-    undoTimerRef.current = null;
-    setDeleted(null);
-  };
-  useEffect(() => () => clearTimeout(undoTimerRef.current ?? undefined), []);
-  const showUndo = (
-    title: string,
-    sections: { section: EditableSection; index: number }[],
-  ) => {
-    if (undoTimerRef.current !== null) clearTimeout(undoTimerRef.current);
-    setDeleted({ title, sections });
-    undoTimerRef.current = setTimeout(() => {
-      undoTimerRef.current = null;
-      setDeleted(null);
-    }, UNDO_DELETE_MS);
-  };
-  const removeSection = (key: string) => {
-    const cur = latestRef.current;
-    const index = indexOf(key);
-    const section = cur[index];
-    if (!section) return;
-    const next = cur.filter((s) => s.key !== key);
-    update(next.length > 0 ? next : [newSection()]);
-    showUndo("セクションを削除しました", [{ section, index }]);
-  };
-  // まとめ表示 (#37) の削除: グループに連結した範囲を元の各セクションから取り除く。
-  // 取り除いて空になったセクションは丸ごと消す (空のままタイムラインに残っても意味がない)
-  const removeGroup = (group: OrganizedGroup) => {
-    const bySection = new Map<string, { start: number; end: number }[]>();
-    for (const { sectionKey, start, end } of group.sources) {
-      const list = bySection.get(sectionKey) ?? [];
-      list.push({ start, end });
-      bySection.set(sectionKey, list);
-    }
-    const cur = latestRef.current;
-    const affected: { section: EditableSection; index: number }[] = [];
-    const next: EditableSection[] = [];
-    cur.forEach((section, index) => {
-      const ranges = bySection.get(section.key);
-      if (!ranges) {
-        next.push(section);
-        return;
-      }
-      affected.push({ section, index });
-      const content = cutRanges(section.content, ranges);
-      if (content.trim() !== "") next.push({ ...section, content });
-    });
-    if (affected.length === 0) return;
-    update(next.length > 0 ? next : [newSection()]);
-    const subject =
-      group.heading !== null ? `「${group.heading}」のまとめ` : "見出しなしのまとめ";
-    showUndo(`${subject}を削除しました`, affected);
-  };
-  const undoDelete = () => {
-    if (!deleted) return;
-    cancelUndo();
-    const cur = latestRef.current;
-    // 最後の 1 つを消して空のセクションだけになっていたら、それは置き換える (書き足していなければ)
-    const base =
-      cur.length === 1 && cur[0]!.id === null && cur[0]!.content === ""
-        ? []
-        : cur;
-    // まとめの削除で一部だけ取り除いたセクションはまだ残っているので差し替え、
-    // 丸ごと消えたものは元の位置に差し込む (位置関係を保つよう index 昇順に)
-    const next = [...base];
-    for (const d of [...deleted.sections].sort((a, b) => a.index - b.index)) {
-      const i = next.findIndex((s) => s.key === d.section.key);
-      if (i >= 0) next[i] = d.section;
-      else next.splice(Math.min(d.index, next.length), 0, d.section);
-    }
-    // まとめ表示中はエディタが無いのでフォーカスは予約しない (内容が戻ればよい。
-    // 予約するとタイムラインへ戻った拍子に不意にエディタが開いてしまう)。
-    // 複数セクションに跨がる削除の取り消しも同様 (どこか 1 つに置いても意味が薄い)
-    if (!organized && deleted.sections.length === 1) {
-      const { section } = deleted.sections[0]!;
-      focusLater(section.key, section.content.length);
-    }
-    update(next);
-  };
-
   // 隣のセクションとの結合 / 移動。境界にいるかの判定 (選択なし・IME 変換中でない・先頭 / 末尾 / 表示上の
   // 最初 / 最後の行) は SectionEditor が行い、ここは隣が無ければ何もしない (↑↓ は false を返して通常の動きに任せる)
   const backspaceAtStart = (i: number) => {
@@ -537,86 +212,11 @@ export function Board({
   };
   // Esc: エディタを Markdown 表示に戻し、描画後にその表示へフォーカスを移す。
   // CodeMirror の blur 通知 (onBlur) は 10ms 遅れて届くので待たない (その間に別の描画 (自動保存の状態表示など) が
-  // 入ると上の layout effect が pendingViewFocusRef を消費してしまい、フォーカスが移らない)
+  // 入ると useSectionFocus の layout effect が pendingViewFocusRef を消費してしまい、フォーカスが移らない)
   const exitEditing = (key: string) => {
     pendingViewFocusRef.current = key;
     setEditingKey((k) => (k === key ? null : k));
   };
-
-  // マウント時: 最後のセクションの冒頭を画面の上端に出す。カーソルは置かない (全部 Markdown 表示のまま。
-  // まず読み返すことが多く、タッチ端末では開くたびにキーボードが出てしまう)。
-  // アンマウント時: タイマーを片付け、debounce 待ちの編集があればその場で保存する。
-  // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
-  // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
-  useEffect(() => {
-    revealLast();
-    return () => {
-      cancelTimer();
-      const draft = toDraft(latestRef.current);
-      if (
-        !inFlightRef.current &&
-        !isOffline() &&
-        !sameDraft(draft, savedRef.current)
-      ) {
-        if (
-          draft.length > BOARD_MAX_SECTIONS ||
-          boardLength(draft) > BOARD_MAX_LENGTH
-        )
-          return;
-        const json = {
-          sections: draft.map(({ id, content }) => ({ id, content })),
-        };
-        void api.board.$put({ json }).catch(() => {
-          // 離脱後なので UI には出せない。ネットワーク断ならその編集は失われる (スコープ外)
-        });
-      }
-    };
-    // マウント時に一度だけ実行する (readOnly はマウント後に変わらない: 変わるときは key で作り直される)
-  }, []);
-
-  // オンラインに復帰したら、オフラインで保存できなかった分 (や失敗したまま残っている分) を再送する
-  useEffect(() => {
-    if (readOnly) return;
-    const onOnline = () => {
-      const s = statusRef.current;
-      if (s === "offline" || s === "error" || s === "dirty") void save();
-    };
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, [readOnly, save]);
-
-  // 保存状態をヘッダーのアイコンに出す (編集中のときだけ。離れたら消す)
-  useEffect(() => {
-    if (readOnly) return;
-    publishSaveState({ status, errorMessage, retry: () => void save() });
-  }, [readOnly, status, errorMessage, save]);
-  useEffect(() => () => publishSaveState(null), []);
-
-  // 未保存の内容がある間はタブを閉じる / リロード前に確認を出す
-  const unsaved = status !== "saved";
-  useEffect(() => {
-    if (!unsaved) return;
-    const handler = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [unsaved]);
-
-  // オフラインで保存できていない変更がある間は、SPA 内の遷移も確認してから (アンマウント時の
-  // 保存が届かず、入力内容が失われるため)。オンラインなら unmount 時にその場で保存するので確認しない
-  const blockNavigation = status === "offline" || (unsaved && isOffline());
-  const confirmLeave = useCallback(
-    () =>
-      !window.confirm(
-        "オフラインのため未保存の変更を保存できません。このページを離れると変更は失われます。移動しますか?",
-      ),
-    [],
-  );
-  useBlocker({
-    shouldBlockFn: confirmLeave,
-    disabled: !blockNavigation,
-    // beforeunload は上の useEffect で扱う
-    enableBeforeUnload: false,
-  });
 
   // 「セクションを追加」ボタン (PC 幅ではヘッダー、狭い画面では右下固定):
   // 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
@@ -845,20 +445,7 @@ export function Board({
               onMouseDown={(e) => e.preventDefault()}
               onClick={addSection}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                width={22}
-                height={22}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <path d="M12 5l0 14" />
-                <path d="M5 12l14 0" />
-              </svg>
+              <PlusIcon size={22} />
             </ActionIcon>
           </Tooltip>
         </Affix>

@@ -1,6 +1,7 @@
 import { Center, SegmentedControl, Tooltip, VisuallyHidden } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import { Svg } from "@/components/TablerIcon";
 import { type BoardViewMode, setViewMode, useViewMode } from "@/lib/view-mode";
 
 /**
@@ -43,30 +44,10 @@ export function ViewToggle() {
   );
 }
 
-// Tabler Icons (MIT) のアウトラインをそのまま使う (依存を増やさないためインライン)
-function Svg({ children }: { children: ReactNode }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      width={16}
-      height={16}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {children}
-    </svg>
-  );
-}
-
 /** タイムライン: 書いた順の行 (align-left) */
 function TimelineIcon() {
   return (
-    <Svg>
+    <Svg size={16}>
       <path d="M4 6l16 0" />
       <path d="M4 12l10 0" />
       <path d="M4 18l14 0" />
@@ -77,7 +58,7 @@ function TimelineIcon() {
 /** まとめ: 見出しの下に項目がぶら下がる形 (list-tree) */
 function OrganizedIcon() {
   return (
-    <Svg>
+    <Svg size={16}>
       <path d="M9 6h11" />
       <path d="M12 12h8" />
       <path d="M15 18h5" />

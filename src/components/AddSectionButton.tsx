@@ -12,7 +12,7 @@ export function AddSectionButton() {
     <Button
       size="xs"
       visibleFrom="sm"
-      leftSection={<PlusIcon />}
+      leftSection={<PlusIcon size={16} />}
       // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。Board 内のボタンと同じ)
       onMouseDown={(e) => e.preventDefault()}
       onClick={actions.addSection}
@@ -22,13 +22,14 @@ export function AddSectionButton() {
   );
 }
 
-function PlusIcon() {
+/** + アイコン (Board の右下固定ボタンとも共用する。size は表示サイズ (px)) */
+export function PlusIcon({ size }: { size: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      width={16}
-      height={16}
+      width={size}
+      height={size}
       fill="none"
       stroke="currentColor"
       strokeWidth={2}

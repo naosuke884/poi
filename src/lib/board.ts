@@ -1,5 +1,10 @@
 import type { InferResponseType } from "hono/client";
-import { SECTION_SEPARATOR } from "../../worker/memo/constants";
+import {
+  BOARD_MAX_LENGTH,
+  BOARD_MAX_SECTIONS,
+  SECTION_SEPARATOR,
+  boardLength,
+} from "../../worker/memo/constants";
 import { api } from "@/lib/api";
 
 // GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる
@@ -56,6 +61,28 @@ export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
     a.length === b.length &&
     a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content)
   );
+}
+
+/**
+ * 保存の上限チェック。超えていればエラーメッセージ、収まっていれば null。
+ * 上限はサーバ (PUT /api/board) と同じ値で、拒否される量を送る前に UI 側で気づくためのもの
+ */
+export function overLimitMessage(draft: DraftSection[]): string | null {
+  if (draft.length > BOARD_MAX_SECTIONS)
+    return `セクション数が上限 (${BOARD_MAX_SECTIONS.toLocaleString()}) を超えています`;
+  if (boardLength(draft) > BOARD_MAX_LENGTH)
+    return `文字数が上限 (${BOARD_MAX_LENGTH.toLocaleString()}) を超えています`;
+  return null;
+}
+
+/** 保存済みの控え (差分の有無の判定用) にする形: id と内容だけに絞る */
+export function toSaved(sections: { id: string | null; content: string }[]): DraftSection[] {
+  return sections.map(({ id, content }) => ({ id, content }));
+}
+
+/** PUT /api/board に送る payload (key など画面内だけの情報は落とす) */
+export function toPutPayload(draft: DraftSection[]): { sections: DraftSection[] } {
+  return { sections: toSaved(draft) };
 }
 
 /**
