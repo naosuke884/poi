@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Box, Button, Modal, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useReducedMotion } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -37,6 +37,8 @@ export function Landing() {
   // Google へのリダイレクトが始まるまでの間、二度押しで OAuth を 2 回始めないようにする
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // デモ動画の拡大表示 (#54)
+  const [zoomed, setZoomed] = useState(false);
   // Google の同意画面からブラウザバックで戻ると、bfcache がページを busy=true のまま
   // 復元して CTA が押せなくなるので、復元されたときは戻す
   useEffect(() => {
@@ -85,24 +87,49 @@ export function Landing() {
         </Text>
       </Stack>
 
-      {/* 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする */}
+      {/* 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする。
+          クリックでモーダル拡大 (#54)。インラインには controls を置かない (置くとクリックが
+          再生操作と取り合いになる) ので、「動きを減らす」の人も再生はモーダル側の controls で行う */}
       <Box maw={860} w="100%">
+        <button
+          type="button"
+          className={classes.videoZoomButton}
+          aria-label="デモ動画を拡大表示する"
+          onClick={() => setZoomed(true)}
+        >
+          <video
+            src="/demo.mp4"
+            autoPlay={!reduceMotion}
+            muted
+            loop
+            playsInline
+            style={{
+              width: "100%",
+              display: "block",
+              borderRadius: "var(--mantine-radius-md)",
+              border: "1px solid var(--mantine-color-default-border)",
+            }}
+          />
+        </button>
+      </Box>
+      {/* 拡大表示。閉じると unmount されるので、開くたびに頭から自動再生になる */}
+      <Modal
+        opened={zoomed}
+        onClose={() => setZoomed(false)}
+        title="poi を操作するデモ動画"
+        size="min(88rem, 94vw)"
+        centered
+      >
         <video
           src="/demo.mp4"
-          aria-label="poi を操作するデモ動画"
           autoPlay={!reduceMotion}
-          controls={reduceMotion}
+          controls
           muted
           loop
           playsInline
-          style={{
-            width: "100%",
-            display: "block",
-            borderRadius: "var(--mantine-radius-md)",
-            border: "1px solid var(--mantine-color-default-border)",
-          }}
+          style={{ width: "100%", display: "block", borderRadius: "var(--mantine-radius-md)" }}
         />
-      </Box>
+      </Modal>
 
       <Stack gap="sm" maw={860} w="100%">
         <Title order={2} size="h4" ta="center">

@@ -5,3 +5,19 @@
   font-size: clamp(1.9rem, 4vw + 0.6rem, 3rem);
   line-height: 1.25;
 }
+
+/* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままにする */
+.videoZoomButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  border-radius: var(--mantine-radius-md);
+}
+
+.videoZoomButton:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
