@@ -29,10 +29,15 @@
   padding: 0;
 }
 
-/* 複数行のプレースホルダ (\n 区切り) */
+/* 複数行のプレースホルダ (\n 区切り)。
+   既定の inline-block のままだと placeholder 全体が 1 行目の行ボックスに収まり、行ボックスが placeholder の
+   高さ (5 行ぶん) まで伸びてキャレットがその高さで描かれる (特にモバイルで巨大に見える。issue #53)。
+   inline なら placeholder は普通のテキストと同じく行ボックスごとに割れ、1 行目 (キャレットの行) は 1 行ぶんのまま */
 .root :global(.cm-editor .cm-placeholder) {
   color: var(--mantine-color-placeholder);
   white-space: pre-line;
+  display: inline;
+  vertical-align: baseline;
 }
 
 /* 見出し行: 大きさは MarkdownView.module.css と同じ。
