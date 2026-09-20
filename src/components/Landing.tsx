@@ -2,7 +2,7 @@ import { Anchor, Box, Button, Paper, SimpleGrid, Stack, Text, Title } from "@man
 import { useReducedMotion } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { authClient } from "@/lib/auth-client";
+import { startGoogleLogin } from "@/lib/auth-client";
 import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
 import classes from "./Landing.module.css";
 
@@ -72,11 +72,10 @@ export function Landing() {
     setBusy(true);
     setError(null);
     try {
-      const { error: err } = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
-      if (err) throw err;
+      await startGoogleLogin();
       // 成功すると Google へ遷移するので busy は戻さない
     } catch {
-      setError("ログインを開始できませんでした。接続を確認してもう一度お試しください。");
+      setError("ログインを開始できませんでした。接続を確認してもう一度お試しください");
       setBusy(false);
     }
   };

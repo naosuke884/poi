@@ -1,7 +1,6 @@
 import { Alert } from "@mantine/core";
 import { useRouter } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { useOnline } from "@/lib/use-online";
+import { useOnBackOnline, useOnline } from "@/lib/use-online";
 
 /**
  * navigator.onLine が false の間、ヘッダー下に「オフラインです」バナーを出す。
@@ -12,12 +11,7 @@ import { useOnline } from "@/lib/use-online";
 export function OfflineBanner() {
   const online = useOnline();
   const router = useRouter();
-  const wasOffline = useRef(!online);
-
-  useEffect(() => {
-    if (online && wasOffline.current) void router.invalidate();
-    wasOffline.current = !online;
-  }, [online, router]);
+  useOnBackOnline(() => void router.invalidate());
 
   if (online) return null;
 

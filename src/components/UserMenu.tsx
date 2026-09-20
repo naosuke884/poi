@@ -13,15 +13,15 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { affixInset } from "@/lib/affix";
-import { authClient } from "@/lib/auth-client";
+import { authClient, startGoogleLogin } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
 import { CONTACT_URL } from "@/components/LegalPage";
-import { InstallGuideModal, useInstallApp } from "@/components/InstallAppMenuItem";
+import { InstallGuideModal, useInstallApp } from "@/components/InstallGuideModal";
 import { TtlSettingModal } from "@/components/TtlSettingModal";
 import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
-import { useOnline } from "@/lib/use-online";
+import { useOnBackOnline, useOnline } from "@/lib/use-online";
 
 // listDeviceSessions の戻り (この端末でログイン中のアカウント一覧) のうち使う部分。
 // クライアントの推論が any になるので、表示と setActive に必要な形だけ自前で書く
@@ -30,35 +30,35 @@ type DeviceSessions = {
   user: { id: string; name: string; email: string; image?: string | null };
 }[];
 
+// 実行中の操作。どれか 1 つしか同時に走らない (busy で他の項目を無効にする) ので 1 つの state で持ち、
+// 対応する Loader の読み上げ文言をここから引く
+const RUNNING_LABELS = {
+  logout: "ログアウト中…",
+  delete: "アカウント削除中…",
+  switch: "アカウント切り替え中…",
+} as const;
+type RunningAction = keyof typeof RUNNING_LABELS;
+
 export function UserMenu() {
   const { data, isPending, error, refetch } = authClient.useSession();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const online = useOnline();
   const install = useInstallApp();
-  const [logoutError, setLogoutError] = useState<string | null>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [runningAction, setRunningAction] = useState<RunningAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [settingTtl, setSettingTtl] = useState(false);
-  const [switchError, setSwitchError] = useState<string | null>(null);
-  const [switching, setSwitching] = useState(false);
   // この端末でログイン中の他アカウント (multiSession)。メニューを開くたびに取り直す
   const [deviceSessions, setDeviceSessions] = useState<DeviceSessions>([]);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
   // オフライン → オンラインに戻った瞬間だけセッションを取り直す (エラーのまま残らないように)。
-  // error を deps に入れると、取得に失敗するたびに新しい error オブジェクトになって
-  // refetch → 失敗 → refetch … と無限に繰り返すので、復帰のエッジだけで判定し error は ref で読む
-  const errorRef = useRef(error);
-  errorRef.current = error;
-  const wasOffline = useRef(!online);
-  useEffect(() => {
-    if (online && wasOffline.current && errorRef.current) void refetch();
-    wasOffline.current = !online;
-  }, [online, refetch]);
+  // 取得に失敗するたびに refetch → 失敗 → refetch … と無限に繰り返さないよう、復帰のエッジだけで判定する
+  useOnBackOnline(() => {
+    if (error) void refetch();
+  });
 
   if (isPending) return <Skeleton h={32} w={100} />;
 
@@ -91,41 +91,48 @@ export function UserMenu() {
   // 今表示しているアカウント以外 (一覧には自分も含まれる)
   const otherSessions = deviceSessions.filter((d) => d.user.id !== user.id);
   const switchAccount = async (sessionToken: string) => {
-    setSwitchError(null);
-    setSwitching(true);
+    setActionError(null);
+    setRunningAction("switch");
     try {
       const { error: switchApiError } = await authClient.multiSession.setActive({ sessionToken });
       if (switchApiError) {
         // 主な失敗は相手側セッションの期限切れ。もう一度ログインしてもらう
-        setSwitchError("切り替えられませんでした。もう一度そのアカウントでログインしてください");
-        setSwitching(false);
+        setActionError("切り替えられませんでした。もう一度そのアカウントでログインしてください");
+        setRunningAction(null);
         return;
       }
     } catch {
-      setSwitchError("オフラインのためアカウントを切り替えられません");
-      setSwitching(false);
+      setActionError("オフラインのためアカウントを切り替えられません");
+      setRunningAction(null);
       return;
     }
     // useSession は setActive が再取得を発火する。板 (loader) はここで取り直す
     await router.invalidate();
-    setSwitching(false);
+    setRunningAction(null);
   };
   // もう 1 つの Google アカウントでログインする (今のセッションは cookie に残り、切り替えで戻れる)
   const addAccount = async () => {
-    setSwitchError(null);
-    setSwitching(true);
+    setActionError(null);
+    setRunningAction("switch");
     try {
-      const { error: signInError } = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
-      if (signInError) throw signInError;
-      // 成功すると Google へ遷移するので switching は戻さない
+      await startGoogleLogin();
+      // 成功すると Google へ遷移するので runningAction は戻さない
     } catch {
-      setSwitchError("ログインを開始できませんでした。接続を確認してもう一度お試しください");
-      setSwitching(false);
+      setActionError("ログインを開始できませんでした。接続を確認してもう一度お試しください");
+      setRunningAction(null);
     }
   };
+  // ログアウト / アカウント削除の後始末: この端末に残るオフライン閲覧用のキャッシュを消し、
+  // 板 (loader) を取り直してランディングへ戻る
+  const clearCachesAndGoHome = async (cachedUserIds: string[]) => {
+    clearCachedUser();
+    for (const id of cachedUserIds) clearBoardCache(id);
+    await router.invalidate();
+    await router.navigate({ to: "/" });
+  };
   const logout = async () => {
-    setLogoutError(null);
-    setLoggingOut(true);
+    setActionError(null);
+    setRunningAction("logout");
     // multiSession の signOut はこの端末の全アカウントを一括で外すので、消すべき
     // 板キャッシュのユーザー一覧を先に取っておく (取れなければ今のアカウントの分だけ)
     let cachedUserIds = [user.id];
@@ -139,45 +146,37 @@ export function UserMenu() {
       await authClient.signOut();
     } catch {
       // navigator.onLine が true でも実際には届かないことがある (Wi-Fi はあるが接続なし等)
-      setLogoutError("オフラインのためログアウトできません");
-      setLoggingOut(false);
+      setActionError("オフラインのためログアウトできません");
+      setRunningAction(null);
       return;
     }
-    // この端末に残るオフライン閲覧用のキャッシュも消す
-    clearCachedUser();
-    for (const id of cachedUserIds) clearBoardCache(id);
-    await router.invalidate();
-    await router.navigate({ to: "/" });
-    setLoggingOut(false);
+    await clearCachesAndGoHome(cachedUserIds);
+    setRunningAction(null);
   };
   // 確認は Modal (下記) で済ませてから呼ばれる
   const deleteAccount = async () => {
-    setDeleteError(null);
-    setDeleting(true);
+    setActionError(null);
+    setRunningAction("delete");
     try {
       const { error: deleteApiError } = await authClient.deleteUser();
       if (deleteApiError) {
         // 主な失敗はログインから 1 日以上経ったセッション (Better Auth の鮮度チェック)。
         // 再ログインすれば新しいセッションになり削除できる
-        setDeleteError(
+        setActionError(
           "アカウントを削除できませんでした。一度ログアウトして再ログインし、もう一度お試しください",
         );
-        setDeleting(false);
+        setRunningAction(null);
         return;
       }
     } catch {
-      setDeleteError("オフラインのためアカウントを削除できません");
-      setDeleting(false);
+      setActionError("オフラインのためアカウントを削除できません");
+      setRunningAction(null);
       return;
     }
-    // この端末に残るオフライン閲覧用のキャッシュも消す
-    clearCachedUser();
-    clearBoardCache(user.id);
-    await router.invalidate();
-    await router.navigate({ to: "/" });
-    setDeleting(false);
+    await clearCachesAndGoHome([user.id]);
+    setRunningAction(null);
   };
-  const busy = loggingOut || deleting || switching;
+  const busy = runningAction !== null;
   return (
     <Group gap="xs" wrap="nowrap">
       <Menu shadow="md" width={200} onOpen={() => void loadDeviceSessions()}>
@@ -219,7 +218,7 @@ export function UserMenu() {
             アカウントを追加
           </Menu.Item>
           <Menu.Divider />
-          {/* スマホでホーム画面にまだ追加していない人だけに出す (InstallAppMenuItem を参照) */}
+          {/* スマホでホーム画面にまだ追加していない人だけに出す (InstallGuideModal を参照) */}
           {install.available && (
             <>
               <Menu.Item onClick={install.start}>ホーム画面に追加</Menu.Item>
@@ -284,11 +283,9 @@ export function UserMenu() {
           </Group>
         </Stack>
       </Modal>
-      {loggingOut && <Loader size="xs" aria-label="ログアウト中…" />}
-      {deleting && <Loader size="xs" aria-label="アカウント削除中…" />}
-      {switching && <Loader size="xs" aria-label="アカウント切り替え中…" />}
+      {runningAction && <Loader size="xs" aria-label={RUNNING_LABELS[runningAction]} />}
       {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
-      {(logoutError ?? deleteError ?? switchError) && (
+      {actionError && (
         <Affix
           position={{
             bottom: "calc(16px + env(safe-area-inset-bottom))",
@@ -299,14 +296,10 @@ export function UserMenu() {
             color="red"
             withBorder
             role="alert"
-            onClose={() => {
-              setLogoutError(null);
-              setDeleteError(null);
-              setSwitchError(null);
-            }}
+            onClose={() => setActionError(null)}
             closeButtonProps={{ "aria-label": "閉じる" }}
           >
-            {logoutError ?? deleteError ?? switchError}
+            {actionError}
           </Notification>
         </Affix>
       )}
