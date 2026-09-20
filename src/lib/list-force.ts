@@ -70,25 +70,36 @@ export const forceListMarkers: Extension = [
 
 // 記号だけの空の項目に # / ＃ だけが続く形 (IME で # を確定した直後)
 const EMPTY_ITEM_HASH_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+([#＃]+)$/;
+// 項目の本文が # / ＃ の並び (1〜6 個) + 空白で始まる形 (# の直後に後からスペースを入れた直後)
+const ITEM_HASH_SPACE_RE = /^[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+([#＃]{1,6})(?![#＃])[ \t　]/;
 // 行が # / ＃ の並びだけの形 (見出しの ＃ を書き足している途中)
 const HASH_RUN_RE = /^( {0,3})([#＃]+)$/;
 
 /**
- * IME で確定した # / ＃ を見出しの書き出しに直す変更 (#46)。対象は 2 つ:
+ * IME で確定した # / ＃ を見出しの書き出しに直す変更 (#46, #55)。対象は 3 つ:
  * - 空の項目に # / ＃ だけ → hashStartsHeading と同じく記号とインデントを消して見出しの書き出しにする
+ * - 項目の本文が # / ＃ の並び + 空白で始まる (# の直後に後からスペースを入れた) →
+ *   spaceAfterHashStartsHeading と同じく記号とインデントを消して見出しにする (本文はそのまま、
+ *   カーソルは変更に合わせて動かすだけなので selection は返さない)
  * - 行が # / ＃ の並びだけで全角を含む (h2..h6 へ書き足す途中) → ＃ を半角に揃える
- * それ以外 (# の後ろに本文があるなど) は触らない (普通の文中の # まで変えないため)
+ * それ以外 (# の後ろに空白を挟まず本文があるなど) は触らない (普通の文中の # まで変えないため)
  */
 function hashHeadingFix(
   text: string,
   from: number,
-): { changes: { from: number; to: number; insert: string }; selection: SelectionRange } | null {
+): { changes: { from: number; to: number; insert: string }; selection?: SelectionRange } | null {
   const item = EMPTY_ITEM_HASH_RE.exec(text);
   if (item) {
     const hashes = "#".repeat(item[1]!.length);
     return {
       changes: { from, to: from + text.length, insert: hashes },
       selection: EditorSelection.cursor(from + hashes.length),
+    };
+  }
+  const space = ITEM_HASH_SPACE_RE.exec(text);
+  if (space) {
+    return {
+      changes: { from, to: from + space[0].length, insert: `${"#".repeat(space[1]!.length)} ` },
     };
   }
   const run = HASH_RUN_RE.exec(text);
@@ -129,6 +140,35 @@ export const hashStartsHeading = EditorView.inputHandler.of((view, from, to, tex
   view.dispatch({
     changes: { from: line.from, to: line.to, insert: "#" },
     selection: EditorSelection.cursor(line.from + 1),
+    scrollIntoView: true,
+    userEvent: "input.type",
+  });
+  return true;
+});
+
+/**
+ * `#` の直後に後からスペースを入れたときも見出しにする (#55)。
+ * `#foo` と続けて書いた項目 (`- #foo`) は hashStartsHeading を通らず箇条書きに残るが、
+ * `#` と本文の間にカーソルを戻してスペースを打ったら `# ` の形になるので、そのときも
+ * 記号とインデントを消して見出しにする (見出しは階層に属さないのも hashStartsHeading と同じ)。
+ * 対象は本文が `#` の並び (1〜6 個) で始まり、カーソルがその並びの直後にあるときだけ
+ * (並びの途中や、7 個以上でそもそも見出しにならない形は普通のスペースとして通す)。
+ * 全角 ＃ と全角スペースも同じ扱いで半角にする (#46 と同じくスマホの IME 対応)
+ */
+export const spaceAfterHashStartsHeading = EditorView.inputHandler.of((view, from, to, text) => {
+  if ((text !== " " && text !== "　") || from !== to || view.composing) return false;
+  const { state } = view;
+  const sel = state.selection.main;
+  if (!sel.empty || state.selection.ranges.length > 1 || sel.head !== from) return false;
+  const line = state.doc.lineAt(from);
+  const m = LIST_ITEM_RE.exec(line.text);
+  if (!m) return false;
+  const run = /^[#＃]{1,6}(?![#＃])/.exec(line.text.slice(m[0].length));
+  if (!run || from !== line.from + m[0].length + run[0].length) return false;
+  const heading = `${"#".repeat(run[0].length)} `;
+  view.dispatch({
+    changes: { from: line.from, to: from, insert: heading },
+    selection: EditorSelection.cursor(line.from + heading.length),
     scrollIntoView: true,
     userEvent: "input.type",
   });

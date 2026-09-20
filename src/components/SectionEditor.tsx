@@ -15,6 +15,7 @@ import {
   deleteListMarkerForward,
   forceListMarkers,
   hashStartsHeading,
+  spaceAfterHashStartsHeading,
 } from "@/lib/list-force";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "@/lib/list-indent";
 import { sectionMarkdown } from "@/lib/section-markdown";
@@ -227,6 +228,8 @@ export function SectionEditor({
           forceListMarkers,
           // 空の項目で `#` を打ったら記号を消して見出しにする (箇条書きの途中に見出しを書く入り口)
           hashStartsHeading,
+          // `#foo` と書いてしまった項目でも、後から # の直後にスペースを入れたら見出しにする
+          spaceAfterHashStartsHeading,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
           // 下にカーソルが隠れず、下は次に書く行ぶんの余白が残るようにする。
