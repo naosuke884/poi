@@ -86,9 +86,11 @@ function BoardView({
         </Alert>
       )}
       {/* キャッシュ表示 (閲覧のみ) → オンライン復帰で最新を取得したときは作り直して最新の内容にする。
-          編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため) */}
+          編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため)。
+          アカウント切り替え (UserMenu の setActive → router.invalidate) では userId が変わるので、
+          作り直して切り替え先の板にする (issue #52) */}
       <Board
-        key={readOnly ? "offline" : "online"}
+        key={`${userId}-${readOnly ? "offline" : "online"}`}
         sections={sections}
         userId={userId}
         readOnly={readOnly}
