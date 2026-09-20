@@ -37,6 +37,7 @@ export const Route = createFileRoute("/")({
         ttlDays: undefined,
         offline: true as const,
         cachedAt: cached.cachedAt,
+        userId,
       };
     }
     if (res.status === 401) {
@@ -50,7 +51,8 @@ export const Route = createFileRoute("/")({
     const { sections, ttlDays } = await res.json();
     // オフライン閲覧用に最新の内容で上書きする
     writeCachedBoard(userId, sections);
-    return { sections, ttlDays, offline: false as const, cachedAt: null };
+    // userId も返す: 板の持ち主は sections と同じスナップショットから取る (下記 BoardView)
+    return { sections, ttlDays, offline: false as const, cachedAt: null, userId };
   },
   component: BoardPage,
 });
@@ -59,15 +61,18 @@ function BoardPage() {
   const data = Route.useLoaderData();
   const { session } = Route.useRouteContext();
   if ("landing" in data || session === null) return <Landing />;
-  return <BoardView data={data} userId={session.user.id} />;
+  return <BoardView data={data} />;
 }
 
 function BoardView({
-  data: { sections, ttlDays, offline, cachedAt },
-  userId,
+  // userId は context.session からではなく loader の結果から取る: アカウント切り替え (UserMenu の setActive →
+  // router.invalidate) では beforeLoad (context) が先に確定し、loader が終わるまで sections は前のアカウントの
+  // まま一度描画される。context の userId で key を作るとその瞬間に前の内容のまま作り直してしまい、
+  // 新しい板が来ても key が変わらず表示が 1 回前のままになる (issue #52)。
+  // loader の userId なら sections と必ず同じアカウントで、板の到着と同時に key が変わる
+  data: { sections, ttlDays, offline, cachedAt, userId },
 }: {
   data: Exclude<ReturnType<typeof Route.useLoaderData>, { landing: true }>;
-  userId: string;
 }) {
   // 一度でもオンラインで (最新の内容で) 開いたかどうか。
   // オンラインで開いた後にオフラインになり、復帰時の再取得 (OfflineBanner の router.invalidate) が
@@ -87,8 +92,7 @@ function BoardView({
       )}
       {/* キャッシュ表示 (閲覧のみ) → オンライン復帰で最新を取得したときは作り直して最新の内容にする。
           編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため)。
-          アカウント切り替え (UserMenu の setActive → router.invalidate) では userId が変わるので、
-          作り直して切り替え先の板にする (issue #52) */}
+          アカウント切り替えでは userId (loader 由来。上記) が変わるので、作り直して切り替え先の板にする (issue #52) */}
       <Board
         key={`${userId}-${readOnly ? "offline" : "online"}`}
         sections={sections}
