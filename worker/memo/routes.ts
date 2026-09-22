@@ -79,14 +79,14 @@ export const boardRoutes = new Hono<AppEnv>()
   // 板を取得。ttlDays は「セクションごとに N 日で消えます」の表示用
   .get("/", async (c) => {
     const db = createDb(c.env.DB);
-    const userId = c.get("user")!.id;
+    const userId = c.get("user").id;
     const sections = await selectBoard(db, userId, new Date());
     return c.json({ sections, ttlDays: await selectTtlDays(db, userId) });
   })
   // 板を丸ごと置き換える。既存の行との突き合わせ (更新 / 新規 / 削除) は planBoardSync (board-sync.ts)
   .put("/", validate("json", putBoardSchema), async (c) => {
     const db = createDb(c.env.DB);
-    const userId = c.get("user")!.id;
+    const userId = c.get("user").id;
     const now = new Date();
     const { sections } = c.req.valid("json");
 
@@ -138,12 +138,12 @@ const putSettingsSchema = z.object({
 export const settingsRoutes = new Hono<AppEnv>()
   .use(requireAuth)
   .get("/", async (c) => {
-    const memoTtlDays = await selectTtlDays(createDb(c.env.DB), c.get("user")!.id);
+    const memoTtlDays = await selectTtlDays(createDb(c.env.DB), c.get("user").id);
     return c.json({ memoTtlDays });
   })
   .put("/", validate("json", putSettingsSchema), async (c) => {
     const db = createDb(c.env.DB);
-    const userId = c.get("user")!.id;
+    const userId = c.get("user").id;
     const now = new Date();
     const { memoTtlDays } = c.req.valid("json");
     // 設定の upsert と期限の引き直しを 1 トランザクションで
