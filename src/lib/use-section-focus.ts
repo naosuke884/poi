@@ -136,6 +136,12 @@ export function useSectionFocus({
     const last = latestRef.current.at(-1);
     if (last) setReveal({ key: last.key });
   };
+  // 開いたときは最後のセクションの冒頭を上端に出す。カーソルは置かない (全部 Markdown 表示のまま。
+  // まず読み返すことが多く、タッチ端末では開くたびにキーボードが出てしまう)
+  useEffect(() => {
+    revealLast();
+    // マウント時に一度だけ
+  }, []);
   useLayoutEffect(() => {
     if (!reveal) return;
     const box = boxesRef.current.get(reveal.key);

@@ -16,12 +16,7 @@ import { MEMO_TTL_DAYS } from "@worker/memo/constants";
 import { affixInset } from "@/lib/affix";
 import { publishBoardActions } from "@/lib/board-actions";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
-import {
-  type BoardSection,
-  type EditableSection,
-  newSection,
-  toEditable,
-} from "@/lib/board";
+import type { BoardSection } from "@/lib/board";
 import { appendSection, changeSection, mergeSections } from "@/lib/board-ops";
 import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { PlusIcon } from "@/components/AddSectionButton";
@@ -29,7 +24,7 @@ import { MarkdownView } from "@/components/MarkdownView";
 import { OrganizedView } from "@/components/OrganizedView";
 import { SectionActions } from "@/components/SectionActions";
 import { type EditAnchor, SectionEditor } from "@/components/SectionEditor";
-import { useBoardAutosave } from "@/lib/use-board-autosave";
+import { useBoardSections } from "@/lib/use-board-sections";
 import { useSectionFocus } from "@/lib/use-section-focus";
 import { useUndoableDelete } from "@/lib/use-undoable-delete";
 import {
@@ -73,12 +68,9 @@ export function Board({
   readOnly?: boolean;
   ttlDays?: number;
 }) {
-  // 画面上のセクション。state は描画用で、ハンドラや保存処理は常に latestRef (同じ内容) を読む
-  const [sections, setSections] = useState<EditableSection[]>(() => {
-    const s = toEditable(initial);
-    return s.length > 0 ? s : [newSection()];
-  });
-  const latestRef = useRef(sections);
+  // 画面上のセクションと編集の入口 (update = 状態の更新 + 自動保存の予約)。
+  // state (sections) は描画用で、ハンドラは常に latestRef (同じ内容) を読む
+  const { sections, latestRef, update } = useBoardSections({ initial, userId, readOnly });
 
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)
@@ -109,26 +101,8 @@ export function Board({
   const indexOf = (key: string) =>
     latestRef.current.findIndex((s) => s.key === key);
 
-  // update は useBoardAutosave が作るが、削除のフックを先に呼ぶ (effect の登録順 = 実行順を
-  // 保つため) ので、そちらへは ref 越しに渡す
-  const updateRef = useRef<(next: EditableSection[]) => void>(() => {});
   const { deleted, cancelUndo, removeSection, removeGroup, undoDelete } =
-    useUndoableDelete({
-      latestRef,
-      organized,
-      focusLater,
-      update: (next) => updateRef.current(next),
-    });
-
-  const { update } = useBoardAutosave({
-    initial,
-    userId,
-    readOnly,
-    latestRef,
-    setSections,
-    revealLast,
-  });
-  updateRef.current = update;
+    useUndoableDelete({ latestRef, organized, focusLater, update });
 
   // 入力。区切り (空行 2 つ) が入ったらそこで分け、カーソルを行き先へ (配列の変換は board-ops)
   const change = (key: string, value: string, cursor: number) => {

@@ -24,23 +24,21 @@ const AUTOSAVE_DELAY_MS = 1000;
  * - アンマウント時は debounce 待ちの編集をその場で保存し、未保存の間はタブを閉じる /
  *   リロード / SPA 内の遷移 (オフライン時) の前に確認を出す
  * - オフラインの間は送らずに待ち、online イベントで再送する
- * latestRef / setSections は Board と共有する画面上のセクション (state は描画用、処理は ref を読む)。
- * revealLast はマウント時の「最後のセクションを画面の上端へ」(useSectionFocus)
+ * latestRef / commit は useBoardSections が持つ画面上のセクション (state は描画用、処理は ref を読む)。
+ * commit は状態の差し替えだけで、保存後にサーバの id / 期限を戻すのにも使う
  */
 export function useBoardAutosave({
   initial,
   userId,
   readOnly,
   latestRef,
-  setSections,
-  revealLast,
+  commit,
 }: {
   initial: BoardSection[];
   userId: string;
   readOnly: boolean;
   latestRef: RefObject<EditableSection[]>;
-  setSections: (next: EditableSection[]) => void;
-  revealLast: () => void;
+  commit: (next: EditableSection[]) => void;
 }) {
   // サーバに保存済みのもの (差分の有無の判定用)
   const savedRef = useRef<DraftSection[]>(toSaved(initial));
@@ -58,11 +56,6 @@ export function useBoardAutosave({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-  };
-
-  const commit = (next: EditableSection[]) => {
-    latestRef.current = next;
-    setSections(next);
   };
 
   const save = useCallback(async () => {
@@ -157,13 +150,10 @@ export function useBoardAutosave({
     scheduleSave();
   };
 
-  // マウント時: 最後のセクションの冒頭を画面の上端に出す。カーソルは置かない (全部 Markdown 表示のまま。
-  // まず読み返すことが多く、タッチ端末では開くたびにキーボードが出てしまう)。
   // アンマウント時: タイマーを片付け、debounce 待ちの編集があればその場で保存する。
   // 保存中なら完了時のフォローアップ保存 (save 内のタイマー) に任せる。
   // オフラインなら送っても届かない (離脱前に useBlocker で確認済み) ので何もしない
   useEffect(() => {
-    revealLast();
     return () => {
       cancelTimer();
       const draft = toDraft(latestRef.current);
