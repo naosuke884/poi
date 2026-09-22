@@ -6,7 +6,7 @@
 **poi** is a single-page scratchpad for the things you only need for a little while.
 Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
-https://github.com/user-attachments/assets/4650a4ee-9e64-4e72-9a40-a033654f3346
+https://github.com/user-attachments/assets/b54ecc35-68ed-4000-9c2e-ae42d4a45f12
 
 ## Features
 
