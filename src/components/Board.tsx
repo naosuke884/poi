@@ -12,7 +12,7 @@ import {
 } from "@mantine/core";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
+import { MEMO_TTL_DAYS } from "@worker/memo/constants";
 import { affixInset } from "@/lib/affix";
 import { publishBoardActions } from "@/lib/board-actions";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";

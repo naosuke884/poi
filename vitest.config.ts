@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 // `// @vitest-environment jsdom` で切り替える
 export default defineConfig({
   resolve: {
-    // tsconfig.app.json の "paths" ("@/*" -> "./src/*") を解決する
+    // tsconfig.app.json の "paths" ("@/*" -> "./src/*", "@worker/*" -> "./worker/*") を解決する
     tsconfigPaths: true,
   },
   test: {

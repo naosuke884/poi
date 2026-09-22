@@ -1,6 +1,6 @@
 import { Button, Group, Modal, Select, Skeleton, Stack, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { MEMO_TTL_CHOICES } from "../../worker/memo/constants";
+import { MEMO_TTL_CHOICES } from "@worker/memo/constants";
 import { api } from "@/lib/api";
 
 /**

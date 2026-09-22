@@ -4,7 +4,7 @@ import {
   BOARD_MAX_SECTIONS,
   SECTION_SEPARATOR,
   boardLength,
-} from "../../worker/memo/constants";
+} from "@worker/memo/constants";
 import { api } from "@/lib/api";
 
 // GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる

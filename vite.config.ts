@@ -13,7 +13,7 @@ export default defineConfig({
     strictPort: true,
   },
   resolve: {
-    // tsconfig.app.json の "paths" ("@/*" -> "./src/*") を Vite でも解決する
+    // tsconfig.app.json の "paths" ("@/*" -> "./src/*", "@worker/*" -> "./worker/*") を Vite でも解決する
     tsconfigPaths: true,
   },
   plugins: [

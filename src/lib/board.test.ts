@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS } from "../../worker/memo/constants";
+import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS } from "@worker/memo/constants";
 import {
   newSection,
   overLimitMessage,

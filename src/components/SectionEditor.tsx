@@ -8,7 +8,7 @@ import {
 import { Annotation, Compartment, EditorSelection, EditorState, Prec, Transaction } from "@codemirror/state";
 import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
-import { BOARD_MAX_LENGTH } from "../../worker/memo/constants";
+import { BOARD_MAX_LENGTH } from "@worker/memo/constants";
 import { cursorOf, insertNewlineContinueList } from "@/lib/list-continue";
 import {
   deleteListMarkerBackward,

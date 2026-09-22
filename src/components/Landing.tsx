@@ -3,7 +3,7 @@ import { useReducedMotion } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { startGoogleLogin } from "@/lib/auth-client";
-import { MEMO_TTL_DAYS } from "../../worker/memo/constants";
+import { MEMO_TTL_DAYS } from "@worker/memo/constants";
 import classes from "./Landing.module.css";
 
 // 特徴カード。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
