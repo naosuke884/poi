@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createDb, type Db } from "../db";
 import { memo, userSetting } from "../db/memo";
 import { requireAuth, type AppEnv } from "../middleware";
+import { planBoardSync } from "./board-sync";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
@@ -82,9 +83,7 @@ export const boardRoutes = new Hono<AppEnv>()
     const sections = await selectBoard(db, userId, new Date());
     return c.json({ sections, ttlDays: await selectTtlDays(db, userId) });
   })
-  // 板を丸ごと置き換える。
-  // 送られたセクションのうち id が既存のものと一致すれば内容と並び順だけ更新し (createdAt / expiresAt は維持)、
-  // それ以外は新規作成、送られてこなかった既存のセクションは削除する。
+  // 板を丸ごと置き換える。既存の行との突き合わせ (更新 / 新規 / 削除) は planBoardSync (board-sync.ts)
   .put("/", validate("json", putBoardSchema), async (c) => {
     const db = createDb(c.env.DB);
     const userId = c.get("user")!.id;
@@ -92,39 +91,28 @@ export const boardRoutes = new Hono<AppEnv>()
     const { sections } = c.req.valid("json");
 
     const ttlDays = await selectTtlDays(db, userId);
-    const existing = await selectBoard(db, userId, now);
-    const byId = new Map(existing.map((row) => [row.id, row]));
+    const plan = planBoardSync(await selectBoard(db, userId, now), sections);
 
-    const ops: BatchItem<"sqlite">[] = [];
-    const kept = new Set<string>();
-    sections.forEach((section, position) => {
-      const row = section.id !== null && !kept.has(section.id) ? byId.get(section.id) : undefined;
-      if (row) {
-        kept.add(row.id);
-        // 変わっていないセクションは触らない (updatedAt も進めない)
-        if (row.content === section.content && row.position === position) return;
-        ops.push(
-          db
-            .update(memo)
-            .set({ content: section.content, position })
-            .where(and(eq(memo.id, row.id), eq(memo.userId, userId))),
-        );
-      } else {
-        ops.push(
-          db.insert(memo).values({
-            userId,
-            content: section.content,
-            position,
-            createdAt: now,
-            updatedAt: now,
-            expiresAt: memoExpiresAt(now, ttlDays),
-          }),
-        );
-      }
-    });
-    const removed = existing.filter((row) => !kept.has(row.id)).map((row) => row.id);
-    if (removed.length > 0) {
-      ops.push(db.delete(memo).where(and(eq(memo.userId, userId), inArray(memo.id, removed))));
+    const ops: BatchItem<"sqlite">[] = [
+      ...plan.updates.map(({ id, content, position }) =>
+        db
+          .update(memo)
+          .set({ content, position })
+          .where(and(eq(memo.id, id), eq(memo.userId, userId))),
+      ),
+      ...plan.inserts.map(({ content, position }) =>
+        db.insert(memo).values({
+          userId,
+          content,
+          position,
+          createdAt: now,
+          updatedAt: now,
+          expiresAt: memoExpiresAt(now, ttlDays),
+        }),
+      ),
+    ];
+    if (plan.deletes.length > 0) {
+      ops.push(db.delete(memo).where(and(eq(memo.userId, userId), inArray(memo.id, plan.deletes))));
     }
     // D1 の batch は 1 トランザクションとして実行される (途中で失敗すれば全部ロールバック)
     if (ops.length > 0) {
