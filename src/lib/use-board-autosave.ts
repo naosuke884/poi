@@ -19,6 +19,19 @@ import { publishSaveState, type SaveStatus } from "@/lib/save-status";
 const AUTOSAVE_DELAY_MS = 1000;
 
 /**
+ * 板を保存し (PUT /api/board)、成功したらオフライン閲覧用のキャッシュも更新して、保存後のセクションを返す。
+ * 通常の自動保存とアンマウント時の保存の両方がこれを通る (どちらの経路でもキャッシュが古いまま残らないように)。
+ * 上限の確認は呼び出し側で済ませておく
+ */
+async function putBoard(userId: string, draft: DraftSection[]): Promise<BoardSection[]> {
+  const res = await api.board.$put({ json: toPutPayload(draft) });
+  if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
+  const { sections } = await res.json();
+  writeCachedBoard(userId, sections);
+  return sections;
+}
+
+/**
  * 板の自動保存と保存状態。編集操作はすべて update() を通す (状態を更新し、自動保存を予約する)。
  * - 入力停止から 1 秒後に丸ごと保存し、保存状態はヘッダーのアイコン (SaveStatusIcon) に出す
  * - アンマウント時は debounce 待ちの編集をその場で保存し、未保存の間はタブを閉じる /
@@ -86,12 +99,7 @@ export function useBoardAutosave({
 
     let saved = false;
     try {
-      const res = await fetchOrOffline(() =>
-        api.board.$put({ json: toPutPayload(draft) }),
-      );
-      if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
-      const { sections: updated } = await res.json();
-      writeCachedBoard(userId, updated);
+      const updated = await fetchOrOffline(() => putBoard(userId, draft));
       savedRef.current = toSaved(updated);
       // レスポンスは送った順に並ぶ (position 順) ので、送ったセクションにサーバの id と期限を戻す。
       // 送っていない (空だった) セクションはサーバから消えているので id を外す。
@@ -163,7 +171,7 @@ export function useBoardAutosave({
         !sameDraft(draft, savedRef.current)
       ) {
         if (overLimitMessage(draft) !== null) return;
-        void api.board.$put({ json: toPutPayload(draft) }).catch(() => {
+        void putBoard(userId, draft).catch(() => {
           // 離脱後なので UI には出せない。ネットワーク断ならその編集は失われる (スコープ外)
         });
       }

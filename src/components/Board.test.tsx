@@ -33,6 +33,7 @@ vi.mock("@/lib/api", () => ({
 vi.mock("@tanstack/react-router", () => ({ useBlocker: () => {} }));
 
 const { Board } = await import("@/components/Board");
+const { readCachedBoard } = await import("@/lib/board-cache");
 const { useBoardActions } = await import("@/lib/board-actions");
 
 beforeAll(() => {
@@ -192,5 +193,22 @@ describe("Board", () => {
     await waitForSave();
     // 戻した結果が保存済みと同じなら送らない
     expect(puts).toEqual([]);
+  });
+
+  it("自動保存を待たずに離れても、保存してオフライン用キャッシュも更新する", async () => {
+    await mount([{ content: "- a" }]);
+    await act(async () => actions!.addSection());
+    await type("- b");
+    await act(async () => root.unmount());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(puts).toEqual([[
+      { id: "id-0", content: "- a" },
+      { id: null, content: "- b" },
+    ]]);
+    expect(readCachedBoard("u")?.sections.map((s) => s.content)).toEqual(["- a", "- b"]);
+    // afterEach の unmount 用に空の root を用意し直す
+    root = createRoot(container);
   });
 });
