@@ -26,6 +26,7 @@ https://github.com/user-attachments/assets/b54ecc35-68ed-4000-9c2e-ae42d4a45f12
 | DB        | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit migrations           |
 | Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
 | Build     | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
+| Test      | [Vitest](https://vitest.dev/) (+ jsdom)                                     |
 
 ## Contributing
 
