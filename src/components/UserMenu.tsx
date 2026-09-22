@@ -1,12 +1,10 @@
 import {
-  Affix,
   Avatar,
   Button,
   Group,
   Loader,
   Menu,
   Modal,
-  Notification,
   Skeleton,
   Stack,
   Text,
@@ -14,8 +12,8 @@ import {
 } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { affixInset } from "@/lib/affix";
 import { authClient } from "@/lib/auth-client";
+import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { CONTACT_URL } from "@/components/LegalPage";
 import { InstallGuideModal, useInstallApp } from "@/components/InstallGuideModal";
 import { TtlSettingModal } from "@/components/TtlSettingModal";
@@ -185,22 +183,9 @@ export function UserMenu() {
       {runningAction && <Loader size="xs" aria-label={RUNNING_LABELS[runningAction]} />}
       {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
       {actionError && (
-        <Affix
-          position={{
-            bottom: "calc(16px + env(safe-area-inset-bottom))",
-            left: affixInset("left"),
-          }}
-        >
-          <Notification
-            color="red"
-            withBorder
-            role="alert"
-            onClose={clearActionError}
-            closeButtonProps={{ "aria-label": "閉じる" }}
-          >
-            {actionError}
-          </Notification>
-        </Affix>
+        <BottomLeftNotice color="red" role="alert" onClose={clearActionError}>
+          {actionError}
+        </BottomLeftNotice>
       )}
     </Group>
   );

@@ -1,6 +1,7 @@
 import { Box, CloseButton, Divider, Group, Tooltip } from "@mantine/core";
 import type { RefObject } from "react";
 import type { EditableSection } from "@/lib/board";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import { copySectionText } from "@/lib/section-export";
 import { MarkdownView } from "@/components/MarkdownView";
 import { SectionActions } from "@/components/SectionActions";
@@ -119,8 +120,7 @@ export function SectionRow({
               size="xs"
               c="red"
               aria-label={`${label} を削除`}
-              // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる)
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={keepEditorFocus}
               onClick={() => h.remove(s.key)}
             />
           </Tooltip>

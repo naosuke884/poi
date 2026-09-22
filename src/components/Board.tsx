@@ -3,7 +3,6 @@ import {
   Affix,
   Box,
   Button,
-  Notification,
   Stack,
   Tooltip,
 } from "@mantine/core";
@@ -11,12 +10,14 @@ import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { MEMO_TTL_DAYS } from "@worker/memo/constants";
 import { affixInset } from "@/lib/affix";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import { publishBoardActions } from "@/lib/board-actions";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import type { BoardSection } from "@/lib/board";
 import { appendSection, changeSection, mergeSections } from "@/lib/board-ops";
 import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { PlusIcon } from "@/components/AddSectionButton";
+import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { OrganizedView } from "@/components/OrganizedView";
 import type { EditAnchor } from "@/components/SectionEditor";
 import { type SectionHandlers, type SectionRefs, SectionRow } from "@/components/SectionRow";
@@ -315,8 +316,7 @@ export function Board({
               radius="xl"
               aria-label="セクションを追加"
               style={{ boxShadow: "var(--mantine-shadow-md)" }}
-              // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。削除ボタンと同じ)
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={keepEditorFocus}
               onClick={addSection}
             >
               <PlusIcon size={22} />
@@ -327,23 +327,11 @@ export function Board({
 
       {/* 削除の取り消し (左下角。PwaUpdateBanner はこの上、右下は追加ボタン) */}
       {deleted && (
-        <Affix
-          position={{
-            bottom: "calc(16px + env(safe-area-inset-bottom))",
-            left: affixInset("left"),
-          }}
-        >
-          <Notification
-            title={deleted.title}
-            withBorder
-            onClose={cancelUndo}
-            closeButtonProps={{ "aria-label": "閉じる" }}
-          >
-            <Button size="xs" mt="xs" variant="default" onClick={undoDelete}>
-              元に戻す
-            </Button>
-          </Notification>
-        </Affix>
+        <BottomLeftNotice title={deleted.title} onClose={cancelUndo}>
+          <Button size="xs" mt="xs" variant="default" onClick={undoDelete}>
+            元に戻す
+          </Button>
+        </BottomLeftNotice>
       )}
     </Stack>
   );

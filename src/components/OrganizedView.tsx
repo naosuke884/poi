@@ -1,5 +1,6 @@
 import { Box, CloseButton, Divider, Group, Text, Tooltip } from "@mantine/core";
 import { useMemo, useRef } from "react";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import type { EditableSection } from "@/lib/board";
 import { type OrganizedGroup, locateInSection, organizeSections } from "@/lib/organized";
 import { copySectionText, deliverImage, renderSectionImage } from "@/lib/section-export";
@@ -77,7 +78,7 @@ export function OrganizedView({
                     size="xs"
                     c="red"
                     aria-label={`${subject} を削除`}
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={keepEditorFocus}
                     onClick={() => onDelete(g)}
                   />
                 </Tooltip>

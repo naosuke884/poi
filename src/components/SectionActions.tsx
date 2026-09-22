@@ -1,5 +1,6 @@
 import { ActionIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import { Svg } from "@/components/TablerIcon";
 
 // 結果の表示 (チェック / ×) を出しておく時間
@@ -105,7 +106,7 @@ function ActionButton({
           size="xs"
           aria-label={label}
           loading={busy}
-          onMouseDown={(e) => e.preventDefault()}
+          onMouseDown={keepEditorFocus}
           onClick={() => void onClick()}
         >
           {feedback ? feedback.ok ? <CheckIcon /> : <XIcon /> : children}

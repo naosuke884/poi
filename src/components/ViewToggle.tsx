@@ -1,6 +1,7 @@
 import { Center, SegmentedControl, Tooltip, VisuallyHidden } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import { Svg } from "@/components/TablerIcon";
 import { type BoardViewMode, setViewMode, useViewMode } from "@/lib/view-mode";
 
@@ -28,8 +29,7 @@ export function ViewToggle() {
       aria-label="板の表示方法"
       value={mode}
       onChange={(value) => setViewMode(value as BoardViewMode)}
-      // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。ヘッダーの他のボタンと同じ)
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={keepEditorFocus}
       data={[
         {
           value: "timeline",

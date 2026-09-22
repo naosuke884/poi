@@ -1,4 +1,5 @@
 import { Button } from "@mantine/core";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import { useBoardActions } from "@/lib/board-actions";
 
 /**
@@ -13,8 +14,7 @@ export function AddSectionButton() {
       size="xs"
       visibleFrom="sm"
       leftSection={<PlusIcon size={16} />}
-      // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる。Board 内のボタンと同じ)
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={keepEditorFocus}
       onClick={actions.addSection}
     >
       セクションを追加

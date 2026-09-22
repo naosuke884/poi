@@ -1,6 +1,6 @@
-import { Affix, Button, Notification } from "@mantine/core";
+import { Button } from "@mantine/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
-import { affixInset } from "@/lib/affix";
+import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 
 /**
  * Service Worker を登録し、新バージョンが待機状態になったら「更新があります」のバナーを出す。
@@ -22,24 +22,11 @@ export function PwaUpdateBanner() {
   if (!needRefresh) return null;
 
   return (
-    // ホームインジケータ / ノッチ (safe-area) の分だけ内側に寄せる。
-    // 通知は左下に揃える。左下角は板の「削除の取り消し」通知 (Board.tsx の Affix) が使うので、その上に出す
-    <Affix
-      position={{
-        bottom: "calc(72px + env(safe-area-inset-bottom))",
-        left: affixInset("left"),
-      }}
-    >
-      <Notification
-        title="更新があります"
-        withBorder
-        onClose={() => setNeedRefresh(false)}
-        closeButtonProps={{ "aria-label": "閉じる" }}
-      >
-        <Button size="xs" mt="xs" onClick={() => void updateServiceWorker(true)}>
-          リロード
-        </Button>
-      </Notification>
-    </Affix>
+    // 通知は左下に揃える。左下角は板の「削除の取り消し」通知 (Board.tsx) が使うので、その上に出す
+    <BottomLeftNotice raised title="更新があります" onClose={() => setNeedRefresh(false)}>
+      <Button size="xs" mt="xs" onClick={() => void updateServiceWorker(true)}>
+        リロード
+      </Button>
+    </BottomLeftNotice>
   );
 }
