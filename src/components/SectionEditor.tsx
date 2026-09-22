@@ -18,6 +18,7 @@ import {
   spaceAfterHashStartsHeading,
 } from "@/lib/list-force";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "@/lib/list-indent";
+import { minimalChange } from "@/lib/minimal-change";
 import { sectionMarkdown } from "@/lib/section-markdown";
 import { viewportInsets } from "@/lib/use-keyboard-inset";
 import classes from "./SectionEditor.module.css";
@@ -295,19 +296,10 @@ export function SectionEditor({
   useLayoutEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    const current = view.state.doc.toString();
-    if (current === value) return;
-    let from = 0;
-    while (from < current.length && from < value.length && current[from] === value[from]) from++;
-    let tail = 0;
-    while (
-      tail < current.length - from &&
-      tail < value.length - from &&
-      current[current.length - 1 - tail] === value[value.length - 1 - tail]
-    )
-      tail++;
+    const changes = minimalChange(view.state.doc.toString(), value);
+    if (!changes) return;
     view.dispatch({
-      changes: { from, to: current.length - tail, insert: value.slice(from, value.length - tail) },
+      changes,
       annotations: [externalSync.of(true), Transaction.addToHistory.of(false)],
     });
   }, [value]);
