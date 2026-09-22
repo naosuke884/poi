@@ -19,11 +19,10 @@ import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import {
   type BoardSection,
   type EditableSection,
-  newKey,
   newSection,
-  splitAtSeparator,
   toEditable,
 } from "@/lib/board";
+import { appendSection, changeSection, mergeSections } from "@/lib/board-ops";
 import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { PlusIcon } from "@/components/AddSectionButton";
 import { MarkdownView } from "@/components/MarkdownView";
@@ -117,7 +116,6 @@ export function Board({
     useUndoableDelete({
       latestRef,
       organized,
-      indexOf,
       focusLater,
       update: (next) => updateRef.current(next),
     });
@@ -132,57 +130,32 @@ export function Board({
   });
   updateRef.current = update;
 
-  // 入力。区切り (空行 2 つ) が入ったらそこで分ける。
-  // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key (= 今フォーカスのあるエディタの DOM) を引き継ぐ。
-  // 残りは新しいセクション
-  const changeSection = (key: string, value: string, cursor: number) => {
-    const cur = latestRef.current;
-    const i = indexOf(key);
-    const orig = cur[i];
-    if (!orig) return;
-    const split = splitAtSeparator(value, cursor);
-    if (!split) {
-      update(cur.map((s) => (s.key === key ? { ...s, content: value } : s)));
-      return;
-    }
-    const parts = split.parts.map((content, j): EditableSection => ({
-      key: j === split.focus.index ? orig.key : newKey(),
-      id: j === 0 ? orig.id : null,
-      expiresAt: j === 0 ? orig.expiresAt : null,
-      content,
-    }));
-    focusLater(orig.key, split.focus.offset);
-    update([...cur.slice(0, i), ...parts, ...cur.slice(i + 1)]);
+  // 入力。区切り (空行 2 つ) が入ったらそこで分け、カーソルを行き先へ (配列の変換は board-ops)
+  const change = (key: string, value: string, cursor: number) => {
+    const r = changeSection(latestRef.current, key, value, cursor);
+    if (!r) return;
+    if (r.focus) focusLater(r.focus.key, r.focus.offset);
+    update(r.next);
     // 末尾に新しいセクションができてそこへ移るなら、その冒頭を画面の上端に持ってくる
-    if (i === cur.length - 1 && split.focus.index === parts.length - 1)
-      revealLast();
+    if (r.revealLast) revealLast();
   };
 
-  // i 番目と i+1 番目をつなげる。前のセクションが id (期限) を保ち、フォーカスのある方 (focused) が key を保つ。
-  // カーソルはつなぎ目に置く
-  const mergeSections = (i: number, focused: string) => {
-    const cur = latestRef.current;
-    const a = cur[i];
-    const b = cur[i + 1];
-    if (!a || !b) return;
-    const merged: EditableSection = {
-      key: focused,
-      id: a.id,
-      expiresAt: a.expiresAt,
-      content: a.content + b.content,
-    };
-    focusLater(focused, a.content.length);
-    update([...cur.slice(0, i), merged, ...cur.slice(i + 2)]);
+  // i 番目と i+1 番目をつなげ、カーソルをつなぎ目に置く
+  const merge = (i: number, focused: string) => {
+    const r = mergeSections(latestRef.current, i, focused);
+    if (!r) return;
+    focusLater(r.focus.key, r.focus.offset);
+    update(r.next);
   };
 
   // 隣のセクションとの結合 / 移動。境界にいるかの判定 (選択なし・IME 変換中でない・先頭 / 末尾 / 表示上の
   // 最初 / 最後の行) は SectionEditor が行い、ここは隣が無ければ何もしない (↑↓ は false を返して通常の動きに任せる)
   const backspaceAtStart = (i: number) => {
-    if (latestRef.current[i - 1]) mergeSections(i - 1, latestRef.current[i]!.key);
+    if (latestRef.current[i - 1]) merge(i - 1, latestRef.current[i]!.key);
   };
   const deleteAtEnd = (i: number) => {
     const cur = latestRef.current;
-    if (cur[i + 1]) mergeSections(i, cur[i]!.key);
+    if (cur[i + 1]) merge(i, cur[i]!.key);
   };
   const arrowUpAtFirstLine = (i: number) => {
     const prev = latestRef.current[i - 1];
@@ -220,19 +193,16 @@ export function Board({
 
   // 「セクションを追加」ボタン (PC 幅ではヘッダー、狭い画面では右下固定):
   // 空のセクションを末尾に足してカーソルを置く (冒頭を画面の上端へ)。
-  // 末尾が既に空 (完全に空文字。空白だけのセクションは保存されて期限を持っているので使い回さない)
-  // なら、それを使う (空のセクションは保存されないので、増やしても意味がない)
+  // 末尾が既に空ならそれを使う (空のセクションは保存されないので、増やしても意味がない。appendSection)
   const addSection = () => {
     // まとめ表示中ならタイムラインへ戻ってから (エディタはタイムラインにしか無い)
     setViewMode("timeline");
-    const cur = latestRef.current;
-    const last = cur.at(-1);
-    if (last && last.content === "") {
-      focus(last.key, last.content.length);
+    const { next, focus: target } = appendSection(latestRef.current);
+    if (next) {
+      focusLater(target.key, target.offset);
+      update(next);
     } else {
-      const s = newSection();
-      focusLater(s.key, 0);
-      update([...cur, s]);
+      focus(target.key, target.offset);
     }
     revealLast();
   };
@@ -396,7 +366,7 @@ export function Board({
                 }
                 value={s.content}
                 onChange={(value, cursor) =>
-                  changeSection(s.key, value, cursor)
+                  change(s.key, value, cursor)
                 }
                 onFocus={() => setEditingKey(s.key)}
                 onBlur={(anchor) => onBlur(s.key, anchor)}
