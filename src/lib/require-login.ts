@@ -8,15 +8,14 @@ import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } fro
 // どちらも user.id / name / email / image を持つので、loader や画面はこの形だけを見ればよい。
 export type LoginContext = { session: { user: CachedUser } | null };
 
-// サーバが「未ログイン」と答えた (セッション切れを含む) ときの後始末。
-// 他人に見えないよう、この端末に残るオフライン閲覧用キャッシュ (ユーザー情報と板) を消す。
-// userId を省略すると、キャッシュ済みユーザーの板を消す
-export function clearOfflineCaches(userId?: string): void {
-  const id = userId ?? readCachedUser()?.id;
+// この端末に残るオフライン閲覧用キャッシュ (ユーザー情報と、userIds の各ユーザーの板) を消す。
+// サーバが「未ログイン」と答えた (セッション切れを含む) とき、ログアウト / アカウント削除のときに、
+// 他人に見えないよう呼ぶ。userIds を省略すると、キャッシュ済みユーザーの板を消す
+export function clearOfflineCaches(userIds?: string[]): void {
+  const cached = readCachedUser()?.id;
+  const ids = userIds ?? (cached !== undefined ? [cached] : []);
   clearCachedUser();
-  if (id !== undefined) {
-    clearBoardCache(id);
-  }
+  for (const id of ids) clearBoardCache(id);
 }
 
 // ログイン状態を調べる beforeLoad 用のガード。未ログインでも redirect しない

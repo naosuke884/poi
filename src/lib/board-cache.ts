@@ -1,17 +1,16 @@
-import { readJson, removeByPrefix, writeJson } from "@/lib/local-storage";
+import { readJson, removeItem, writeJson } from "@/lib/local-storage";
 import type { BoardSection } from "@/lib/board";
 
 // オフライン閲覧用の板のキャッシュ (localStorage)。
 // - 取得 / 保存が成功するたびに上書きし、loader が fetch に失敗したときだけ読む
 // - キーはユーザー id ごとに分ける (別アカウントでログインし直しても混ざらない)
-// - ログアウト時は clearBoardCache(userId) で消す
+// - ログアウト時などは clearOfflineCaches (require-login.ts) 経由で clearBoardCache(userId) で消す
 //
 // あくまで「前回取得した内容の表示」用で、オフラインで行った編集の保存先ではない
 // (Board はオンライン復帰時に API へ再送する)。
 
-// v1 は行単位 ({ lines }) だった。形式を変えたのでキーごと切り替え、v1 は読まない (clear では一緒に消す)
-const BASE_PREFIX = "poi:board-cache:";
-const PREFIX = `${BASE_PREFIX}v2:`;
+// v1 は行単位 ({ lines }) だった (本番公開前の形式)。形式を変えたのでキーごと切り替えている
+const PREFIX = "poi:board-cache:v2:";
 
 const boardKey = (userId: string) => `${PREFIX}${userId}`;
 
@@ -31,13 +30,7 @@ export function writeCachedBoard(userId: string, sections: BoardSection[], now =
   writeJson(boardKey(userId), { sections, cachedAt: now } satisfies CachedBoard);
 }
 
-/** そのユーザーのキャッシュを消す (ログアウト時)。userId 省略で全ユーザー分 */
-export function clearBoardCache(userId?: string): void {
-  if (userId === undefined) {
-    removeByPrefix(BASE_PREFIX);
-    return;
-  }
-  removeByPrefix(boardKey(userId));
-  // 旧形式のキーが残っていれば一緒に消す
-  removeByPrefix(`${BASE_PREFIX}v1:${userId}`);
+/** そのユーザーのキャッシュを消す */
+export function clearBoardCache(userId: string): void {
+  removeItem(boardKey(userId));
 }

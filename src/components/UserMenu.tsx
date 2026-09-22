@@ -16,11 +16,11 @@ import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { affixInset } from "@/lib/affix";
 import { authClient, startGoogleLogin } from "@/lib/auth-client";
-import { clearBoardCache } from "@/lib/board-cache";
 import { CONTACT_URL } from "@/components/LegalPage";
 import { InstallGuideModal, useInstallApp } from "@/components/InstallGuideModal";
 import { TtlSettingModal } from "@/components/TtlSettingModal";
-import { clearCachedUser, readCachedUser } from "@/lib/session-cache";
+import { clearOfflineCaches } from "@/lib/require-login";
+import { readCachedUser } from "@/lib/session-cache";
 import { useOnBackOnline, useOnline } from "@/lib/use-online";
 
 // listDeviceSessions の戻り (この端末でログイン中のアカウント一覧) のうち使う部分。
@@ -125,8 +125,7 @@ export function UserMenu() {
   // ログアウト / アカウント削除の後始末: この端末に残るオフライン閲覧用のキャッシュを消し、
   // 板 (loader) を取り直してランディングへ戻る
   const clearCachesAndGoHome = async (cachedUserIds: string[]) => {
-    clearCachedUser();
-    for (const id of cachedUserIds) clearBoardCache(id);
+    clearOfflineCaches(cachedUserIds);
     await router.invalidate();
     await router.navigate({ to: "/" });
   };

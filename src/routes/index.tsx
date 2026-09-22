@@ -41,7 +41,7 @@ export const Route = createFileRoute("/")({
     }
     if (res.status === 401) {
       // beforeLoad 後にセッションが切れた場合。この端末に残るキャッシュを消してランディングを見せる
-      clearOfflineCaches(userId);
+      clearOfflineCaches([userId]);
       return { landing: true as const };
     }
     if (!res.ok) throw new Error("板の取得に失敗しました");
