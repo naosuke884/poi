@@ -3,9 +3,6 @@ import {
   Affix,
   Box,
   Button,
-  CloseButton,
-  Divider,
-  Group,
   Notification,
   Stack,
   Tooltip,
@@ -20,18 +17,13 @@ import type { BoardSection } from "@/lib/board";
 import { appendSection, changeSection, mergeSections } from "@/lib/board-ops";
 import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { PlusIcon } from "@/components/AddSectionButton";
-import { MarkdownView } from "@/components/MarkdownView";
 import { OrganizedView } from "@/components/OrganizedView";
-import { SectionActions } from "@/components/SectionActions";
-import { type EditAnchor, SectionEditor } from "@/components/SectionEditor";
+import type { EditAnchor } from "@/components/SectionEditor";
+import { type SectionHandlers, type SectionRefs, SectionRow } from "@/components/SectionRow";
 import { useBoardSections } from "@/lib/use-board-sections";
 import { useSectionFocus } from "@/lib/use-section-focus";
 import { useUndoableDelete } from "@/lib/use-undoable-delete";
-import {
-  copySectionText,
-  deliverImage,
-  renderSectionImage,
-} from "@/lib/section-export";
+import { deliverImage, renderSectionImage } from "@/lib/section-export";
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
@@ -124,21 +116,23 @@ export function Board({
 
   // 隣のセクションとの結合 / 移動。境界にいるかの判定 (選択なし・IME 変換中でない・先頭 / 末尾 / 表示上の
   // 最初 / 最後の行) は SectionEditor が行い、ここは隣が無ければ何もしない (↑↓ は false を返して通常の動きに任せる)
-  const backspaceAtStart = (i: number) => {
-    if (latestRef.current[i - 1]) merge(i - 1, latestRef.current[i]!.key);
+  const backspaceAtStart = (key: string) => {
+    const i = indexOf(key);
+    if (i > 0) merge(i - 1, key);
   };
-  const deleteAtEnd = (i: number) => {
-    const cur = latestRef.current;
-    if (cur[i + 1]) merge(i, cur[i]!.key);
+  const deleteAtEnd = (key: string) => {
+    const i = indexOf(key);
+    if (i >= 0 && latestRef.current[i + 1]) merge(i, key);
   };
-  const arrowUpAtFirstLine = (i: number) => {
-    const prev = latestRef.current[i - 1];
+  const arrowUpAtFirstLine = (key: string) => {
+    const prev = latestRef.current[indexOf(key) - 1];
     if (!prev) return false;
     focus(prev.key, prev.content.length);
     return true;
   };
-  const arrowDownAtLastLine = (i: number) => {
-    const next = latestRef.current[i + 1];
+  const arrowDownAtLastLine = (key: string) => {
+    const i = indexOf(key);
+    const next = i >= 0 ? latestRef.current[i + 1] : undefined;
     if (!next) return false;
     focus(next.key, 0);
     return true;
@@ -234,6 +228,33 @@ export function Board({
     setEditingKey((k) => (k === key ? null : k));
   };
 
+  // 各セクション (SectionRow) への操作
+  const handlers: SectionHandlers = {
+    change,
+    startEditing: setEditingKey,
+    blur: onBlur,
+    exitEditing,
+    backspaceAtStart,
+    deleteAtEnd,
+    arrowUpAtFirstLine,
+    arrowDownAtLastLine,
+    // 編集に移るときは、その場所を画面の上のほうに出す (下のほうをタップしたとき、
+    // キーボードの上に書く場所が残らないため。まとめ表示からの移動と同じ扱い)
+    edit: (key, pos) => focus(key, pos, "top"),
+    navigateView: focusViewFrom,
+    screenshot,
+    remove: removeSection,
+  };
+  const refs: SectionRefs = { boxes: boxesRef, views: viewsRef, editors: elementsRef };
+  // セクションが 1 つだけのときのエディタのプレースホルダ (書き方の案内)
+  const placeholder = [
+    "ここに書く…",
+    `セクションごとに ${ttlDays} 日で消えます`,
+    "空行 2 つで次のセクションへ",
+    "Markdown が使えます (# 見出し、- 箇条書き)",
+    "Tab でインデント、Esc で編集をやめる",
+  ].join("\n");
+
   return (
     <Stack gap="xs" style={{ flex: 1 }}>
       {organized ? (
@@ -257,108 +278,17 @@ export function Board({
         onMouseDown={keepFocus}
       >
         {sections.map((s, i) => (
-          <Box
+          <SectionRow
             key={s.key}
-            data-section
-            ref={(el) => {
-              if (el) boxesRef.current.set(s.key, el);
-              else boxesRef.current.delete(s.key);
-            }}
-            style={{
-              // scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)
-              scrollMarginTop:
-                "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
-              // ↑ でのフォーカス移動 (focusView) は nearest で下端に合わせることがある。ぴったりに合うと
-              // フォーカスリング (outline 2px + offset 4px。MarkdownView) が画面の外に出るので、そのぶん余白を残す
-              scrollMarginBottom: 12,
-              // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
-              // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る)
-              minHeight:
-                i === sections.length - 1 && sections.length > 1
-                  ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
-                  : undefined,
-            }}
-          >
-            {/* 区切り: ラベルは線の中 (左)、コピー / スクショ / 削除は線の外の右端 */}
-            <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
-              <Divider
-                labelPosition="left"
-                style={{ flex: 1 }}
-                // 未保存のセクションだけラベルを出す (保存済みはラベルが無いほうが線がすっきりする)
-                label={s.expiresAt === null ? "新しいセクション" : undefined}
-              />
-              {s.content.trim() !== "" && (
-                <SectionActions
-                  subject={`セクション ${i + 1}`}
-                  onCopy={() => copySectionText(s.content)}
-                  onScreenshot={() => screenshot(s.key)}
-                />
-              )}
-              {!readOnly && (
-                <Tooltip label="削除" withArrow>
-                  <CloseButton
-                    size="xs"
-                    c="red"
-                    aria-label={`セクション ${i + 1} を削除`}
-                    // 編集中のエディタを blur させない (blur でレイアウトが動くとクリックが外れる)
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => removeSection(s.key)}
-                  />
-                </Tooltip>
-              )}
-            </Group>
-            {(readOnly || s.key !== editingKey) && s.content.trim() !== "" ? (
-              <MarkdownView
-                content={s.content}
-                aria-label={`セクション ${i + 1}`}
-                /* 編集に移るときは、その場所を画面の上のほうに出す (下のほうをタップしたとき、
-                   キーボードの上に書く場所が残らないため。まとめ表示からの移動と同じ扱い) */
-                onEdit={readOnly ? undefined : (pos) => focus(s.key, pos, "top")}
-                onNavigate={
-                  readOnly ? undefined : (dir) => focusViewFrom(s.key, dir)
-                }
-                ref={(el) => {
-                  if (el) viewsRef.current.set(s.key, el);
-                  else viewsRef.current.delete(s.key);
-                }}
-              />
-            ) : (
-              <SectionEditor
-                // Tab がインデントに使われて外へ出ないので、抜け方 (Esc) を読み上げでも案内する
-                // (MarkdownView の「(Enter で編集)」と対)
-                aria-label={`セクション ${i + 1} (Esc で編集をやめる)`}
-                placeholder={
-                  sections.length === 1
-                    ? [
-                        "ここに書く…",
-                        `セクションごとに ${ttlDays} 日で消えます`,
-                        "空行 2 つで次のセクションへ",
-                        "Markdown が使えます (# 見出し、- 箇条書き)",
-                        "Tab でインデント、Esc で編集をやめる",
-                      ].join("\n")
-                    : undefined
-                }
-                value={s.content}
-                onChange={(value, cursor) =>
-                  change(s.key, value, cursor)
-                }
-                onFocus={() => setEditingKey(s.key)}
-                onBlur={(anchor) => onBlur(s.key, anchor)}
-                onBackspaceAtStart={() => backspaceAtStart(indexOf(s.key))}
-                onDeleteAtEnd={() => deleteAtEnd(indexOf(s.key))}
-                onArrowUpAtFirstLine={() => arrowUpAtFirstLine(indexOf(s.key))}
-                onArrowDownAtLastLine={() =>
-                  arrowDownAtLastLine(indexOf(s.key))
-                }
-                onEscape={() => exitEditing(s.key)}
-                readOnly={readOnly}
-                ref={(editor) => {
-                  if (editor) elementsRef.current.set(s.key, editor);
-                  else elementsRef.current.delete(s.key);
-                }}
-              />
-            )}
-          </Box>
+            section={s}
+            index={i}
+            editing={s.key === editingKey}
+            readOnly={readOnly}
+            fillScreen={i === sections.length - 1 && sections.length > 1}
+            placeholder={sections.length === 1 ? placeholder : undefined}
+            handlers={handlers}
+            refs={refs}
+          />
         ))}
       </Box>
       )}
