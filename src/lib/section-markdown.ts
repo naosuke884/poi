@@ -9,6 +9,7 @@ import {
   type Line,
   parser as markdownParser,
 } from "@lezer/markdown";
+import { HEADING_RE } from "@/lib/markdown-syntax";
 
 /**
  * 編集中セクション (CodeMirror) の Markdown 言語と装飾。
@@ -47,11 +48,11 @@ const languageData = defineLanguageFacet();
  * なる。一方 MarkdownView (micromark で codeIndented を無効化) はこれを箇条書きとして描画するため、編集中は
  * 装飾されないのに blur すると箇条書きになる、という食い違いが起きる。leaf parser の nextLine はインデントに
  * 関係なく毎行呼ばれるので、ここで段落を確定させて (行は消費しない) 次の advance() にブロックとして読ませる。
- * 段落を割れる条件は micromark と同じ: ATX 見出し、空でない箇条書き、1 で始まる空でない番号付きだけ
+ * 段落を割れる条件は micromark と同じ: ATX 見出し (HEADING_RE)、空でない箇条書き、1 で始まる空でない番号付きだけ
  */
 function interruptsParagraph(line: Line): boolean {
   const text = line.text.slice(line.pos);
-  return /^#{1,6}(\s|$)/.test(text) || /^[-+*]\s+\S/.test(text) || /^1[.)]\s+\S/.test(text);
+  return HEADING_RE.test(text) || /^[-+*]\s+\S/.test(text) || /^1[.)]\s+\S/.test(text);
 }
 /**
  * 開いている番号付きリストの兄弟項目 (番号は 1 でなくてよい)。

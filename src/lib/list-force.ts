@@ -10,7 +10,8 @@ import {
   Transaction,
 } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
-import { cursorOf, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "@/lib/list-continue";
+import { cursorOf } from "@/lib/list-continue";
+import { HEADING_RE, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "@/lib/markdown-syntax";
 import { dedentChange } from "@/lib/list-indent";
 
 /**
@@ -115,15 +116,11 @@ function hashHeadingFix(
   return null;
 }
 
-// ATX 見出しの行頭: スペース 0〜3 + `#` 1〜6 + 空白か行末 (CommonMark。MarkdownView (micromark) が
-// 見出しと見なす形。`#` の直後がタブでも micromark は見出しにする)
-const HEADING_RE = /^ {0,3}#{1,6}(?:[ \t]|$)/;
-
 /**
  * 空の項目で `#` を打ったら、記号 (とインデント) を消して見出しの書き出しにする。
  * 本文は常に箇条書きで、空の項目の Enter はセクション区切りになるため、これが箇条書きの
  * 途中に見出しを書く唯一の入り口 (Enter で空の項目を作って `#`)。
- * インデントも消すのは、見出しは階層に属さない (深さ 4 以上はそもそも見出しにならない) ため。
+ * インデントも消すのは、見出しは階層に属さない (インデントしても表示は同じ見出しになるだけ) ため。
  * スペースのインデント (spaceIndentsListItem) と同じく、仮想キーボード対応で inputHandler にする。
  * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる (見出しの行は forceListMarkers が触らない)。
  * 全角 ＃ も同じ扱いで半角にする (#46)。IME の変換 (composition) を経る ＃ はここに届かないので、

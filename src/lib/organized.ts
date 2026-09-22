@@ -1,4 +1,5 @@
 import type { EditableSection } from "@/lib/board";
+import { parseHeading } from "@/lib/markdown-syntax";
 
 /**
  * まとめ表示 (OrganizedView) 用に、板のセクションを見出しごとにまとめ直す (#37)。
@@ -48,21 +49,6 @@ export type OrganizedGroup = {
 
 /** チャンク同士のつなぎ (空行 1 つ)。段落やリストのブロック境界を保つ */
 const JOINER = "\n\n";
-
-/**
- * ATX 見出し行ならレベルと見出しテキスト (トリム済み) を返す。
- * # は 1〜6 個で直後は空白か行末、末尾の閉じ # 列 (空白の後) は落とす (CommonMark と同じ)。
- * 行頭のインデントは無制限に許す: この板は codeIndented を無効にしているので、
- * micromark は 4 スペースやタブの後の # も見出しとして描画する (CommonMark の 3 スペース制限とは違う)
- */
-function parseHeading(line: string): { level: number; text: string } | null {
-  const m = /^[ \t]*(#{1,6})(?:[ \t]+(.*))?$/.exec(line);
-  if (!m) return null;
-  return {
-    level: m[1]!.length,
-    text: (m[2] ?? "").replace(/(?:^|[ \t]+)#+[ \t]*$/, "").trim(),
-  };
-}
 
 /** セクション content を見出し行で区切った 1 つ分 */
 type Chunk = {

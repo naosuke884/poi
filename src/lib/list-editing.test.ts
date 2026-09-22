@@ -129,6 +129,14 @@ describe("常に箇条書き (forceListMarkers)", () => {
     expect(text(view)).toBe("# a|");
   });
 
+  it("インデントした見出しの行にも足さない (表示でも見出しになる)", () => {
+    for (const doc of ["    # |", "\t# |", "\t\t## |"]) {
+      const view = editor(doc, ext);
+      type(view, "a");
+      expect(text(view)).toBe(doc.replace("|", "a|"));
+    }
+  });
+
   it("空の項目で # を打つと見出しの書き出しにする", () => {
     const view = editor("- a\n\t- |", ext);
     type(view, "#");

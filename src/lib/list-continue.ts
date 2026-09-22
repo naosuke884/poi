@@ -2,14 +2,7 @@ import { insertNewline } from "@codemirror/commands";
 import { EditorSelection } from "@codemirror/state";
 import type { Command, EditorView } from "@codemirror/view";
 import { dedentChange } from "@/lib/list-indent";
-
-// 箇条書きの記号 (`-` / `+` / `*` / `1.` / `1)`) の正規表現の素。
-// 番号は CommonMark と同じ 9 桁まで: 10 桁以上の数字で始まる行はリストではなくただの文
-export const LIST_MARKER_SOURCE = String.raw`[-+*]|\d{1,9}[.)]`;
-
-// 箇条書きの項目の行頭: インデント + 記号 + 空白。
-// MarkdownView (micromark) が項目と見なす形と揃えている (記号の後に空白が必要)
-export const LIST_ITEM_RE = new RegExp(String.raw`^([ \t]*)(${LIST_MARKER_SOURCE})([ \t]+)`);
+import { LIST_ITEM_RE } from "@/lib/markdown-syntax";
 
 /** 選択が無い (カーソルだけ) なら head。IME 変換中・選択あり・複数カーソルは null */
 export function cursorOf(view: EditorView): number | null {
