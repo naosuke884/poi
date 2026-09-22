@@ -9,6 +9,6 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
-    include: ["src/**/*.test.ts", "worker/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "worker/**/*.test.ts"],
   },
 });
