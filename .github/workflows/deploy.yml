@@ -1,4 +1,6 @@
-# main への push で本番 (Cloudflare Workers) にデプロイする。
+# main への push で CI (ci.yml: lint / typecheck / test / build) が成功したら、そのコミットを本番 (Cloudflare Workers) に
+# デプロイする。CI が落ちた / キャンセルされたコミットはデプロイしない。
+# 手動 (workflow_dispatch) でも main を出せる。その場合は CI を待たないので、ここで同じ確認をしてから出す。
 #
 # 既定では何もしない (job 全体を `vars.ENABLE_DEPLOY == 'true'` でガードしている)。
 # 有効にするには GitHub リポジトリの Settings > Secrets and variables > Actions で
@@ -8,7 +10,9 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -24,13 +28,23 @@ permissions:
 jobs:
   deploy:
     name: wrangler deploy
+    # CI からは main への push で成功したときだけ (PR の run は除く)。
     # workflow_dispatch で他ブランチから起動しても本番には出さない
-    if: ${{ vars.ENABLE_DEPLOY == 'true' && github.ref == 'refs/heads/main' }}
+    if: >-
+      ${{ vars.ENABLE_DEPLOY == 'true' && (
+        (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push') ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      ) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
     steps:
+      # workflow_run の既定のチェックアウトは main の最新なので、CI が通ったコミットそのものを明示する
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v5
         with:
@@ -39,8 +53,9 @@ jobs:
 
       - run: npm ci
 
-      # デプロイ前にもう一度型を確認しておく (CI と同じ内容)
-      - run: npm run typecheck
+      # 手動のときは CI を経ていないので、CI と同じ確認をしてから出す
+      - if: github.event_name == 'workflow_dispatch'
+        run: npm run lint && npm run typecheck && npm test
 
       # dist/client (アセット) と dist/poi (Worker) を作る。wrangler deploy はビルド済み設定
       # (.wrangler/deploy/config.json) を読むので、必ず deploy の前に build する
