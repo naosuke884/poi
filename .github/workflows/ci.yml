@@ -1,4 +1,4 @@
-# PR ごと / main への push ごとに typecheck と単体テストと build を回し、壊れていないことを機械的に確認する。
+# PR ごと / main への push ごとに lint と typecheck と単体テストと build を回し、壊れていないことを機械的に確認する。
 # `npm run typecheck` は `wrangler types` を含むが、これは wrangler.jsonc からローカルで型を生成するだけなので
 # Cloudflare の認証情報は不要 (secrets 無しで動く)。
 name: CI
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   check:
-    name: typecheck / test / build
+    name: lint / typecheck / test / build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -30,6 +30,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - run: npm run lint
 
       - run: npm run typecheck
 
