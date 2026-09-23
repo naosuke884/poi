@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EditableSection } from "@/lib/board";
 import {
   appendSection,
+  canRestore,
   changeSection,
   mergeSections,
   removeGroup,
@@ -119,6 +120,18 @@ describe("removeGroup", () => {
     expect(r.removed.map((d) => d.section.key)).toEqual(["a", "b"]);
     // 戻すと一部だけ削ったものは差し替え、消えたものは元の位置へ
     expect(restoreSections(r.next, r.removed)).toEqual(cur);
+  });
+
+  it("一部だけ削ったセクションを後から編集したら、戻せない", () => {
+    const cur = [saved("a", "# A\n- 1"), saved("b", "- 前\n# A\n- 2")];
+    const group = organizeSections(cur).find((g) => g.heading === "A")!;
+    const r = removeGroup(cur, group)!;
+    expect(canRestore(r.next, r.removed)).toBe(true);
+    const edited = r.next.map((s) => (s.key === "b" ? { ...s, content: "- 前\n- 追記" } : s));
+    expect(canRestore(edited, r.removed)).toBe(false);
+    // 丸ごと消えたセクションだけなら、他を編集していても戻せる
+    const whole = removeSection(cur, "a")!;
+    expect(canRestore(edited, whole.removed)).toBe(true);
   });
 
   it("どれにも当たらなければ null", () => {

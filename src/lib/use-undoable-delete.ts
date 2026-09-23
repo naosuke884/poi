@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import type { EditableSection } from "@/lib/board";
 import {
+  canRestore,
   type RemovedSection,
   removeGroup as removeGroupRanges,
   removeSection as removeSectionAt,
@@ -17,6 +18,7 @@ const UNDO_DELETE_MS = 8000;
  * 戻すときは元の位置に差し込む。保存が済んだ後なら id は無効になっているが、サーバは未知の id を
  * 新しいセクションとして保存するので内容は戻る (期限だけ新しくなる)。
  * まとめの削除 (removeGroup) は複数セクションに跨がるので、戻す対象はリストで持つ。
+ * 一部だけ削ったセクションをその後に編集したら、戻すとその編集が消えるので「元に戻す」は出さない (canRestore)。
  * deleted / cancelUndo / undoDelete は「元に戻す」の Notification (Board の JSX) が使う
  */
 export function useUndoableDelete({
@@ -65,8 +67,11 @@ export function useUndoableDelete({
     const subject = group.heading !== null ? `「${group.heading}」のまとめ` : "見出しなしのまとめ";
     showUndo(`${subject}を削除しました`, r.removed);
   };
+  // 対象のセクションが編集されて戻せなくなったら出さない (編集を取り消して戻れば、また出る)。
+  // 描画のたびに今の内容で確かめる (編集は必ず Board の再描画を伴う)
+  const undoable = deleted && canRestore(latestRef.current, deleted.sections) ? deleted : null;
   const undoDelete = () => {
-    if (!deleted) return;
+    if (!deleted || !canRestore(latestRef.current, deleted.sections)) return;
     cancelUndo();
     const next = restoreSections(latestRef.current, deleted.sections);
     // まとめ表示中はエディタが無いのでフォーカスは予約しない (内容が戻ればよい。
@@ -79,5 +84,5 @@ export function useUndoableDelete({
     update(next);
   };
 
-  return { deleted, cancelUndo, removeSection, removeGroup, undoDelete };
+  return { deleted: undoable, cancelUndo, removeSection, removeGroup, undoDelete };
 }

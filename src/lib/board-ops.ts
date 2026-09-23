@@ -14,8 +14,11 @@ import { cutRanges, type OrganizedGroup } from "@/lib/organized";
 /** カーソルを置く先 (描画後に置く) */
 export type FocusTarget = { key: string; offset: number };
 
-/** 削除して「元に戻す」で差し戻すセクションと、その元の位置 */
-export type RemovedSection = { section: EditableSection; index: number };
+/**
+ * 削除して「元に戻す」で差し戻すセクションと、その元の位置。
+ * remaining は一部だけ削って残したときの、削った後の内容 (丸ごと消したときは null)
+ */
+export type RemovedSection = { section: EditableSection; index: number; remaining: string | null };
 
 /** セクションが 1 つも無くならないようにする (板には常に書く場所を 1 つ残す) */
 const nonEmpty = (sections: EditableSection[]) => (sections.length > 0 ? sections : [newSection()]);
@@ -108,7 +111,7 @@ export function removeSection(
   if (!section) return null;
   return {
     next: nonEmpty(cur.filter((s) => s.key !== key)),
-    removed: [{ section, index }],
+    removed: [{ section, index, remaining: null }],
   };
 }
 
@@ -135,16 +138,28 @@ export function removeGroup(
       next.push(section);
       return;
     }
-    removed.push({ section, index });
     const content = cutRanges(section.content, ranges);
-    if (content.trim() !== "") next.push({ ...section, content });
+    const kept = content.trim() !== "";
+    removed.push({ section, index, remaining: kept ? content : null });
+    if (kept) next.push({ ...section, content });
   });
   if (removed.length === 0) return null;
   return { next: nonEmpty(next), removed };
 }
 
 /**
- * 削除したセクションを戻す。一部だけ削って残っているセクションは元の姿に差し替え、
+ * 削除をまだ元に戻せるか: 一部だけ削って残したセクションが、その後に編集されていない (削った直後の内容のまま)。
+ * 編集されていたら戻せない (元の姿に差し替えると、その後の編集が消えてしまう)
+ */
+export function canRestore(cur: EditableSection[], removed: RemovedSection[]): boolean {
+  return removed.every(
+    (d) =>
+      d.remaining === null || cur.some((s) => s.key === d.section.key && s.content === d.remaining),
+  );
+}
+
+/**
+ * 削除したセクションを戻す (canRestore を確かめてから呼ぶ)。一部だけ削って残っているセクションは元の内容に戻し、
  * 丸ごと消えたものは元の位置に差し込む (位置関係を保つよう index 昇順に)。
  * 最後の 1 つを消して空のセクションだけになっていたら、それは置き換える (書き足していなければ)
  */
@@ -156,7 +171,8 @@ export function restoreSections(
   const next = [...base];
   for (const d of [...removed].sort((a, b) => a.index - b.index)) {
     const i = next.findIndex((s) => s.key === d.section.key);
-    if (i >= 0) next[i] = d.section;
+    // 残っているものは内容だけ戻す (id / 期限は保存で付いた今のもの)
+    if (i >= 0) next[i] = { ...next[i]!, content: d.section.content };
     else next.splice(Math.min(d.index, next.length), 0, d.section);
   }
   return next;
