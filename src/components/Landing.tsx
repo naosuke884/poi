@@ -51,12 +51,21 @@ export function Landing() {
     const video = videoRef.current;
     // 全画面中のクリック (controls の余白など) が video からここへバブルしても再入しない
     if (!video || document.fullscreenElement) return;
-    if (video.requestFullscreen) {
-      void video.requestFullscreen();
-    } else {
-      // iPhone の Safari には requestFullscreen が無い。ネイティブの全画面プレイヤー
-      // (controls 付き) を開く webkitEnterFullscreen で代える
+    // iPhone の Safari には requestFullscreen が無い。ネイティブの全画面プレイヤー
+    // (controls 付き) を開く webkitEnterFullscreen で代える
+    const enterNative = () =>
       (video as { webkitEnterFullscreen?: () => void }).webkitEnterFullscreen?.();
+    if (video.requestFullscreen) {
+      // 全画面が許可されていない (iframe 内など) と reject される。代わりを試し、それも無ければその場で見てもらう
+      video.requestFullscreen().catch(() => {
+        try {
+          enterNative();
+        } catch {
+          // 全画面にできない。インラインの再生のまま
+        }
+      });
+    } else {
+      enterNative();
     }
   };
   // Google の同意画面からブラウザバックで戻ると、bfcache がページを busy=true のまま
