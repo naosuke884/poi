@@ -11,13 +11,23 @@ import type { BoardSection } from "@/lib/board";
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の
 // PUT までを通しで確かめる。レイアウトが無いので、スクロールや表示上の行の判定は対象外
 
-// 自動保存の PUT を横取りする (送った sections を記録し、id を振って返す)
+// 自動保存の PUT を横取りする (送った sections を記録し、id を振って返す)。
+// 送った userId がセッションのユーザー (sessionUserId) と違えば、サーバと同じく 409 を返す
 const puts: { id: string | null; content: string }[][] = [];
+let sessionUserId = "u";
+const invalidate = vi.fn(async () => {});
 vi.mock("@/lib/api", () => ({
   api: {
     board: {
       $put: vi.fn(
-        async ({ json }: { json: { sections: { id: string | null; content: string }[] } }) => {
+        async ({
+          json,
+        }: {
+          json: { userId: string; sections: { id: string | null; content: string }[] };
+        }) => {
+          if (json.userId !== sessionUserId) {
+            return { ok: false, status: 409, json: async () => ({ error: "UserMismatch" }) };
+          }
           puts.push(json.sections);
           let n = 0;
           const sections = json.sections.map((s, position) => ({
@@ -32,8 +42,12 @@ vi.mock("@/lib/api", () => ({
     },
   },
 }));
-// Board が router から使うのは useBlocker だけ
-vi.mock("@tanstack/react-router", () => ({ useBlocker: () => {} }));
+const routerStub = { invalidate };
+// Board が router から使うのは useBlocker と (保存先のアカウントが違ったときの) invalidate だけ
+vi.mock("@tanstack/react-router", () => ({
+  useBlocker: () => {},
+  useRouter: () => routerStub,
+}));
 
 const { Board } = await import("@/components/Board");
 const { readCachedBoard } = await import("@/lib/board-cache");
@@ -100,6 +114,8 @@ async function mount(sections: Partial<BoardSection>[]) {
 
 beforeEach(() => {
   puts.length = 0;
+  sessionUserId = "u";
+  invalidate.mockClear();
   localStorage.clear();
 });
 afterEach(async () => {
@@ -223,5 +239,16 @@ describe("Board", () => {
     expect(readCachedBoard("u")?.sections.map((s) => s.content)).toEqual(["- a", "- b"]);
     // afterEach の unmount 用に空の root を用意し直す
     root = createRoot(container);
+  });
+
+  it("別のアカウントに切り替わっていたら保存せず、読み込み直す", async () => {
+    await mount([{ content: "- a" }]);
+    sessionUserId = "other";
+    await act(async () => actions!.addSection());
+    await type("- b");
+    await waitForSave();
+    expect(puts).toEqual([]);
+    expect(invalidate).toHaveBeenCalled();
+    expect(readCachedBoard("u")).toBeNull();
   });
 });

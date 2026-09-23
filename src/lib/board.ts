@@ -79,9 +79,15 @@ export function toSaved(sections: { id: string | null; content: string }[]): Dra
   return sections.map(({ id, content }) => ({ id, content }));
 }
 
-/** PUT /api/board に送る payload (key など画面内だけの情報は落とす) */
-export function toPutPayload(draft: DraftSection[]): { sections: DraftSection[] } {
-  return { sections: toSaved(draft) };
+/**
+ * PUT /api/board に送る payload (key など画面内だけの情報は落とす)。
+ * userId は保存先として想定している板の持ち主。セッションのユーザーと違えばサーバは保存しない (409)
+ */
+export function toPutPayload(
+  userId: string,
+  draft: DraftSection[],
+): { userId: string; sections: DraftSection[] } {
+  return { userId, sections: toSaved(draft) };
 }
 
 /**

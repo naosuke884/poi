@@ -34,8 +34,9 @@ const sectionSchema = z.object({
     ),
 });
 
+// userId は保存先としてクライアントが想定している板の持ち主 (アカウント切り替え後の上書き防止。下記)
 const putBoardSchema = z
-  .object({ sections: z.array(sectionSchema).max(BOARD_MAX_SECTIONS) })
+  .object({ userId: z.string().min(1), sections: z.array(sectionSchema).max(BOARD_MAX_SECTIONS) })
   .refine((v) => boardLength(v.sections) <= BOARD_MAX_LENGTH, {
     message: `板全体で ${BOARD_MAX_LENGTH} 文字までです`,
   });
@@ -91,7 +92,12 @@ export const boardRoutes = new Hono<AppEnv>()
     const db = createDb(c.env.DB);
     const userId = c.get("user").id;
     const now = new Date();
-    const { sections } = c.req.valid("json");
+    const { userId: expectedUserId, sections } = c.req.valid("json");
+    // 切り替え前のアカウントの下書きが、切り替え後の cookie で送られてきた (別タブの自動保存など)。
+    // 保存すると切り替え先の板が丸ごと置き換わるので断る (クライアントは保存をやめて読み込み直す)
+    if (expectedUserId !== userId) {
+      return c.json({ error: "UserMismatch" }, 409);
+    }
 
     const ttlDays = await selectTtlDays(db, userId);
     const plan = planBoardSync(await selectBoard(db, userId, now), sections);

@@ -1,4 +1,4 @@
-import { useBlocker } from "@tanstack/react-router";
+import { useBlocker, useRouter } from "@tanstack/react-router";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import {
@@ -21,14 +21,27 @@ const AUTOSAVE_DELAY_MS = 1000;
 /**
  * 板を保存し (PUT /api/board)、成功したらオフライン閲覧用のキャッシュも更新して、保存後のセクションを返す。
  * 通常の自動保存とアンマウント時の保存の両方がこれを通る (どちらの経路でもキャッシュが古いまま残らないように)。
- * 上限の確認は呼び出し側で済ませておく
+ * 上限の確認は呼び出し側で済ませておく。
+ * ログイン中のアカウントが userId と違えば (別タブ / 別の操作で切り替わった) 保存されず、UserMismatchError
  */
 async function putBoard(userId: string, draft: DraftSection[]): Promise<BoardSection[]> {
-  const res = await api.board.$put({ json: toPutPayload(draft) });
+  const res = await api.board.$put({ json: toPutPayload(userId, draft) });
+  if (res.status === 409) {
+    const body = (await res.json()) as { error?: string };
+    if (body.error === "UserMismatch") throw new UserMismatchError();
+  }
   if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
   const { sections } = await res.json();
   writeCachedBoard(userId, sections);
   return sections;
+}
+
+/** 保存しようとした板の持ち主と、ログイン中のアカウントが違う */
+class UserMismatchError extends Error {
+  constructor() {
+    super("別のアカウントに切り替わったため、保存しませんでした");
+    this.name = "UserMismatchError";
+  }
 }
 
 /**
@@ -53,6 +66,7 @@ export function useBoardAutosave({
   latestRef: RefObject<EditableSection[]>;
   commit: (next: EditableSection[]) => void;
 }) {
+  const router = useRouter();
   // サーバに保存済みのもの (差分の有無の判定用)
   const savedRef = useRef<DraftSection[]>(toSaved(initial));
 
@@ -115,7 +129,13 @@ export function useBoardAutosave({
       saved = true;
       setStatus("saved");
     } catch (e) {
-      if (e instanceof OfflineError) {
+      if (e instanceof UserMismatchError) {
+        // 切り替え前のアカウントの下書きなので保存しない。読み込み直して切り替え先の板にする
+        // (loader の userId が変わるので Board ごと作り直される)
+        setStatus("error");
+        setErrorMessage(e.message);
+        void router.invalidate();
+      } else if (e instanceof OfflineError) {
         // 入力内容はそのまま保持し、オンライン復帰時に再送する
         setStatus("offline");
       } else {
@@ -135,7 +155,7 @@ export function useBoardAutosave({
         void save();
       }, AUTOSAVE_DELAY_MS);
     }
-  }, [userId]);
+  }, [userId, router]);
 
   const scheduleSave = useCallback(() => {
     cancelTimer();
