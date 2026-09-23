@@ -1,14 +1,26 @@
 import {
+  deleteCharBackwardStrict,
   history,
   historyKeymap,
   simplifySelection,
   standardKeymap,
-  deleteCharBackwardStrict,
 } from "@codemirror/commands";
-import { Annotation, Compartment, EditorSelection, EditorState, Prec, Transaction } from "@codemirror/state";
-import { EditorView, type KeyBinding, keymap, placeholder as placeholderExt } from "@codemirror/view";
-import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import {
+  Annotation,
+  Compartment,
+  EditorSelection,
+  EditorState,
+  Prec,
+  Transaction,
+} from "@codemirror/state";
+import {
+  EditorView,
+  type KeyBinding,
+  keymap,
+  placeholder as placeholderExt,
+} from "@codemirror/view";
 import { BOARD_MAX_LENGTH } from "@worker/memo/constants";
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { cursorOf, insertNewlineContinueList } from "@/lib/list-continue";
 import {
   deleteListMarkerBackward,
@@ -246,7 +258,10 @@ export function SectionEditor({
           }),
           EditorView.updateListener.of((update) => {
             const cb = callbacksRef.current;
-            if (update.docChanged && !update.transactions.some((tr) => tr.annotation(externalSync))) {
+            if (
+              update.docChanged &&
+              !update.transactions.some((tr) => tr.annotation(externalSync))
+            ) {
               cb.onChange(update.state.doc.toString(), update.state.selection.main.head);
             }
             if (update.focusChanged) {
@@ -320,7 +335,11 @@ function cursorAnchor(view: EditorView): EditAnchor | null {
 
 type Callbacks = Pick<
   Props,
-  "onBackspaceAtStart" | "onDeleteAtEnd" | "onArrowUpAtFirstLine" | "onArrowDownAtLastLine" | "onEscape"
+  | "onBackspaceAtStart"
+  | "onDeleteAtEnd"
+  | "onArrowUpAtFirstLine"
+  | "onArrowDownAtLastLine"
+  | "onEscape"
 >;
 
 /**
@@ -374,7 +393,8 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
         const head = cursorOf(view);
         if (head === null) return false;
         // 座標が取れないときは論理行で判定する
-        const first = sameVisualRow(view, head, 0, false) ?? view.state.doc.lineAt(head).number === 1;
+        const first =
+          sameVisualRow(view, head, 0, false) ?? view.state.doc.lineAt(head).number === 1;
         return first && callbacks.current.onArrowUpAtFirstLine();
       },
     },
@@ -384,7 +404,8 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
         const head = cursorOf(view);
         if (head === null) return false;
         const { doc } = view.state;
-        const last = sameVisualRow(view, head, doc.length, true) ?? doc.lineAt(head).number === doc.lines;
+        const last =
+          sameVisualRow(view, head, doc.length, true) ?? doc.lineAt(head).number === doc.lines;
         return last && callbacks.current.onArrowDownAtLastLine();
       },
     },

@@ -5,7 +5,9 @@ import { clearOfflineCaches } from "@/lib/require-login";
 import { readCachedUser, writeCachedUser } from "@/lib/session-cache";
 
 const board = (content: string) =>
-  [{ id: "1", content, expiresAt: "2099-01-01T00:00:00.000Z" }] as Parameters<typeof writeCachedBoard>[1];
+  [{ id: "1", content, expiresAt: "2099-01-01T00:00:00.000Z" }] as Parameters<
+    typeof writeCachedBoard
+  >[1];
 
 describe("clearOfflineCaches", () => {
   beforeEach(() => {

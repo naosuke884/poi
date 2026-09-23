@@ -1,5 +1,5 @@
-import { Button } from "@mantine/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { Button } from "@mantine/core";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 
 /**

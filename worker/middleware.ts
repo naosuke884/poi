@@ -1,6 +1,6 @@
-import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
-import { createAuth, type Auth, type Session } from "./auth";
+import { createMiddleware } from "hono/factory";
+import { type Auth, createAuth, type Session } from "./auth";
 
 export type AppEnv = {
   Bindings: Env;
@@ -32,9 +32,11 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
 // ログイン必須ルート用ガード。未ログインならここで 401 を返すので、後続では user が null にならない。
 // その保証を型に載せるため、本体は AppEnv で書いて AuthedEnv のミドルウェアとして公開する
-export const requireAuth: MiddlewareHandler<AuthedEnv> = createMiddleware<AppEnv>(async (c, next) => {
-  if (!c.get("user") || !c.get("session")) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  await next();
-}) as MiddlewareHandler as MiddlewareHandler<AuthedEnv>;
+export const requireAuth: MiddlewareHandler<AuthedEnv> = createMiddleware<AppEnv>(
+  async (c, next) => {
+    if (!c.get("user") || !c.get("session")) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    await next();
+  },
+) as MiddlewareHandler as MiddlewareHandler<AuthedEnv>;

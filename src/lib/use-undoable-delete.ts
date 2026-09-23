@@ -62,8 +62,7 @@ export function useUndoableDelete({
     const r = removeGroupRanges(latestRef.current, group);
     if (!r) return;
     update(r.next);
-    const subject =
-      group.heading !== null ? `「${group.heading}」のまとめ` : "見出しなしのまとめ";
+    const subject = group.heading !== null ? `「${group.heading}」のまとめ` : "見出しなしのまとめ";
     showUndo(`${subject}を削除しました`, r.removed);
   };
   const undoDelete = () => {

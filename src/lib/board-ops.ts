@@ -1,10 +1,5 @@
-import {
-  type EditableSection,
-  newKey,
-  newSection,
-  splitAtSeparator,
-} from "@/lib/board";
-import { type OrganizedGroup, cutRanges } from "@/lib/organized";
+import { type EditableSection, newKey, newSection, splitAtSeparator } from "@/lib/board";
+import { cutRanges, type OrganizedGroup } from "@/lib/organized";
 
 /**
  * 板のセクション配列の編集操作 (React や DOM に触らない純粋関数)。
@@ -23,8 +18,7 @@ export type FocusTarget = { key: string; offset: number };
 export type RemovedSection = { section: EditableSection; index: number };
 
 /** セクションが 1 つも無くならないようにする (板には常に書く場所を 1 つ残す) */
-const nonEmpty = (sections: EditableSection[]) =>
-  sections.length > 0 ? sections : [newSection()];
+const nonEmpty = (sections: EditableSection[]) => (sections.length > 0 ? sections : [newSection()]);
 
 /**
  * key のセクションの入力を反映する。区切り (空行 2 つ) が入っていたらそこで分ける。
@@ -50,12 +44,14 @@ export function changeSection(
     };
   }
   // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key を引き継ぐ。残りは新しいセクション
-  const parts = split.parts.map((content, j): EditableSection => ({
-    key: j === split.focus.index ? orig.key : newKey(),
-    id: j === 0 ? orig.id : null,
-    expiresAt: j === 0 ? orig.expiresAt : null,
-    content,
-  }));
+  const parts = split.parts.map(
+    (content, j): EditableSection => ({
+      key: j === split.focus.index ? orig.key : newKey(),
+      id: j === 0 ? orig.id : null,
+      expiresAt: j === 0 ? orig.expiresAt : null,
+      content,
+    }),
+  );
   return {
     next: [...cur.slice(0, i), ...parts, ...cur.slice(i + 1)],
     focus: { key: orig.key, offset: split.focus.offset },
@@ -156,8 +152,7 @@ export function restoreSections(
   cur: EditableSection[],
   removed: RemovedSection[],
 ): EditableSection[] {
-  const base =
-    cur.length === 1 && cur[0]!.id === null && cur[0]!.content === "" ? [] : cur;
+  const base = cur.length === 1 && cur[0]!.id === null && cur[0]!.content === "" ? [] : cur;
   const next = [...base];
   for (const d of [...removed].sort((a, b) => a.index - b.index)) {
     const i = next.findIndex((s) => s.key === d.section.key);

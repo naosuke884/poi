@@ -1,10 +1,10 @@
-import type { InferResponseType } from "hono/client";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
-  SECTION_SEPARATOR,
   boardLength,
+  SECTION_SEPARATOR,
 } from "@worker/memo/constants";
+import type { InferResponseType } from "hono/client";
 import { api } from "@/lib/api";
 
 // GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる
@@ -58,8 +58,7 @@ export function toDraft(sections: EditableSection[]): (DraftSection & { key: str
 /** 保存対象が前回保存したものと同じか (id と内容と並び順) */
 export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
   return (
-    a.length === b.length &&
-    a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content)
+    a.length === b.length && a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content)
   );
 }
 

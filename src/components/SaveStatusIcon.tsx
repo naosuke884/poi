@@ -98,7 +98,13 @@ function RetryStatus({
     <>
       <VisuallyHidden>{label}</VisuallyHidden>
       <Tooltip label={`${label} (クリックで再試行)`}>
-        <ActionIcon variant="subtle" color={color} size="sm" aria-label="保存を再試行" onClick={onRetry}>
+        <ActionIcon
+          variant="subtle"
+          color={color}
+          size="sm"
+          aria-label="保存を再試行"
+          onClick={onRetry}
+        >
           {children}
         </ActionIcon>
       </Tooltip>

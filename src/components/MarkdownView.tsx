@@ -54,7 +54,10 @@ export function MarkdownView({
               // リンクのクリックはリンクに任せる。文字を選択しただけなら編集に切り替えない
               if ((e.target as HTMLElement).closest("a")) return;
               if (window.getSelection()?.toString()) return;
-              onEdit(sourceOffsetAtPoint(e.currentTarget, e.clientX, e.clientY, content) ?? content.length);
+              onEdit(
+                sourceOffsetAtPoint(e.currentTarget, e.clientX, e.clientY, content) ??
+                  content.length,
+              );
             }
           : undefined
       }
@@ -66,12 +69,8 @@ export function MarkdownView({
               if (e.key === "Enter") {
                 e.preventDefault();
                 onEdit(content.length);
-              } else if (
-                onNavigate &&
-                (e.key === "ArrowUp" || e.key === "ArrowDown")
-              ) {
-                if (onNavigate(e.key === "ArrowUp" ? -1 : 1))
-                  e.preventDefault();
+              } else if (onNavigate && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+                if (onNavigate(e.key === "ArrowUp" ? -1 : 1)) e.preventDefault();
               }
             }
           : undefined
@@ -90,7 +89,9 @@ export function MarkdownView({
           remarkPlugins={[remarkGfm, remarkBreaks, [remarkDisable, BOARD_MARKDOWN_DISABLED]]}
           rehypePlugins={[rehypeSourcePositions]}
           components={{
-            a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+            a: ({ node: _node, ...props }) => (
+              <a {...props} target="_blank" rel="noopener noreferrer" />
+            ),
             table: ({ node: _node, ...props }) => (
               <div className={classes.tableScroll}>
                 <table {...props} />

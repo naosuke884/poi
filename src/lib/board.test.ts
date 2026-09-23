@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS } from "@worker/memo/constants";
+import { describe, expect, it } from "vitest";
 import {
   newSection,
   overLimitMessage,
@@ -52,20 +52,34 @@ describe("splitAtSeparator", () => {
 
 describe("toDraft / sameDraft", () => {
   it("空のセクションは保存対象にしない", () => {
-    const sections = [
-      { ...newSection("a"), id: "x" },
-      newSection(""),
-      newSection(" "),
-    ];
+    const sections = [{ ...newSection("a"), id: "x" }, newSection(""), newSection(" ")];
     expect(toDraft(sections).map((d) => d.content)).toEqual(["a", " "]);
   });
 
   it("id・内容・並び順が同じなら同じ", () => {
-    const a = [{ id: "1", content: "a" }, { id: null, content: "b" }];
-    expect(sameDraft(a, [{ id: "1", content: "a" }, { id: null, content: "b" }])).toBe(true);
+    const a = [
+      { id: "1", content: "a" },
+      { id: null, content: "b" },
+    ];
+    expect(
+      sameDraft(a, [
+        { id: "1", content: "a" },
+        { id: null, content: "b" },
+      ]),
+    ).toBe(true);
     expect(sameDraft(a, [{ id: "1", content: "a" }])).toBe(false);
-    expect(sameDraft(a, [{ id: "1", content: "a" }, { id: "2", content: "b" }])).toBe(false);
-    expect(sameDraft(a, [{ id: null, content: "b" }, { id: "1", content: "a" }])).toBe(false);
+    expect(
+      sameDraft(a, [
+        { id: "1", content: "a" },
+        { id: "2", content: "b" },
+      ]),
+    ).toBe(false);
+    expect(
+      sameDraft(a, [
+        { id: null, content: "b" },
+        { id: "1", content: "a" },
+      ]),
+    ).toBe(false);
   });
 });
 
@@ -86,13 +100,21 @@ describe("overLimitMessage", () => {
   });
 
   it("セクション数の上限を超えたらメッセージ", () => {
-    const draft = Array.from({ length: BOARD_MAX_SECTIONS + 1 }, () => ({ id: null, content: "a" }));
+    const draft = Array.from({ length: BOARD_MAX_SECTIONS + 1 }, () => ({
+      id: null,
+      content: "a",
+    }));
     expect(overLimitMessage(draft)).toMatch(/セクション数/);
   });
 
   it("文字数の上限は区切りの長さも含めて数える", () => {
     const half = "a".repeat(BOARD_MAX_LENGTH / 2);
     expect(overLimitMessage([{ id: null, content: half }])).toBeNull();
-    expect(overLimitMessage([{ id: null, content: half }, { id: null, content: half }])).toMatch(/文字数/);
+    expect(
+      overLimitMessage([
+        { id: null, content: half },
+        { id: null, content: half },
+      ]),
+    ).toMatch(/文字数/);
   });
 });

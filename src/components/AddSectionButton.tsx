@@ -1,6 +1,6 @@
 import { Button } from "@mantine/core";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
 import { useBoardActions } from "@/lib/board-actions";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
 
 /**
  * ヘッダーの「セクションを追加」ボタン (PC 幅 = sm 以上のみ。狭い画面では Board の右下固定ボタン)。

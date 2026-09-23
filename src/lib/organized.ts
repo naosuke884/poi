@@ -201,7 +201,9 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
     parts.push({
       text: node.headingLine.line,
       sectionKey: node.headingLine.sectionKey,
-      ranges: [{ start: 0, end: node.headingLine.line.length, sectionStart: node.headingLine.start }],
+      ranges: [
+        { start: 0, end: node.headingLine.line.length, sectionStart: node.headingLine.start },
+      ],
     });
     for (const c of node.chunks) {
       all.push(c);
@@ -210,7 +212,12 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
     for (const child of node.children.values()) collect(child, parts, all);
   };
 
-  const assemble = (key: string, heading: string | null, parts: Part[], chunks: Chunk[]): OrganizedGroup => {
+  const assemble = (
+    key: string,
+    heading: string | null,
+    parts: Part[],
+    chunks: Chunk[],
+  ): OrganizedGroup => {
     const ranges: OrganizedRange[] = [];
     let offset = 0;
     const texts: string[] = [];
@@ -243,12 +250,7 @@ export function organizeSections(sections: EditableSection[]): OrganizedGroup[] 
   });
   if (noHeading.length > 0)
     groups.push(
-      assemble(
-        "none",
-        null,
-        noHeading.filter((c) => c.body !== "").map(bodyPart),
-        noHeading,
-      ),
+      assemble("none", null, noHeading.filter((c) => c.body !== "").map(bodyPart), noHeading),
     );
   return groups;
 }

@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/d1";
-import * as authSchema from "./schema";
 import * as memoSchema from "./memo";
+import * as authSchema from "./schema";
 
 // Better Auth 生成分 (schema.ts) + アプリ独自分 (memo.ts) を 1 つにまとめる
 export const schema = { ...authSchema, ...memoSchema };

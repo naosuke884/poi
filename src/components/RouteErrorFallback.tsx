@@ -1,5 +1,5 @@
 import { Alert, Anchor, Button, Group, Stack } from "@mantine/core";
-import { Link, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
+import { type ErrorComponentProps, Link, useRouter } from "@tanstack/react-router";
 import { OfflineError } from "@/lib/offline";
 
 /**
@@ -12,7 +12,10 @@ export function RouteErrorFallback({ error }: ErrorComponentProps) {
   const offline = error instanceof OfflineError;
   return (
     <Stack>
-      <Alert color={offline ? "yellow" : "red"} title={offline ? "オフラインです" : "エラーが発生しました"}>
+      <Alert
+        color={offline ? "yellow" : "red"}
+        title={offline ? "オフラインです" : "エラーが発生しました"}
+      >
         {error.message}
       </Alert>
       <Group>

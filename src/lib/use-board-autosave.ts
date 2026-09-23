@@ -12,7 +12,7 @@ import {
   toSaved,
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
-import { OfflineError, fetchOrOffline, isOffline } from "@/lib/offline";
+import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
 
 // 入力停止からこの時間だけ待ってから保存する
@@ -165,11 +165,7 @@ export function useBoardAutosave({
     return () => {
       cancelTimer();
       const draft = toDraft(latestRef.current);
-      if (
-        !inFlightRef.current &&
-        !isOffline() &&
-        !sameDraft(draft, savedRef.current)
-      ) {
+      if (!inFlightRef.current && !isOffline() && !sameDraft(draft, savedRef.current)) {
         if (overLimitMessage(draft) !== null) return;
         void putBoard(userId, draft).catch(() => {
           // 離脱後なので UI には出せない。ネットワーク断ならその編集は失われる (スコープ外)

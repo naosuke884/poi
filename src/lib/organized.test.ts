@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cutRanges, locateInSection, organizeSections } from "@/lib/organized";
 import type { EditableSection } from "@/lib/board";
+import { cutRanges, locateInSection, organizeSections } from "@/lib/organized";
 
 const section = (key: string, content: string): EditableSection => ({
   key,
@@ -22,7 +22,10 @@ describe("organizeSections", () => {
   });
 
   it("見出しの無い内容は最後の「見出しなし」グループ", () => {
-    const groups = organizeSections([section("a", "- メモ\n# 見出し\n- 本文"), section("b", "- 別")]);
+    const groups = organizeSections([
+      section("a", "- メモ\n# 見出し\n- 本文"),
+      section("b", "- 別"),
+    ]);
     expect(groups.map((g) => g.heading)).toEqual(["見出し", null]);
     expect(groups[1]!.content).toBe("- メモ\n\n- 別");
   });
@@ -32,7 +35,10 @@ describe("organizeSections", () => {
       section("a", "# A\n## メモ\n- 1"),
       section("b", "# B\n## メモ\n- 2"),
     ]);
-    expect(groups.map((g) => g.content)).toEqual(["# A\n\n## メモ\n\n- 1", "# B\n\n## メモ\n\n- 2"]);
+    expect(groups.map((g) => g.content)).toEqual([
+      "# A\n\n## メモ\n\n- 1",
+      "# B\n\n## メモ\n\n- 2",
+    ]);
   });
 
   it("子見出しは親の本文の後ろにまとまる", () => {
@@ -52,7 +58,10 @@ describe("organizeSections", () => {
     expect(group!.content).toBe("# A\n\n- 子");
     // まとめ内の「子」の位置 → 元セクションの「子」の位置
     const offset = group!.content.indexOf("子");
-    expect(locateInSection(group!.ranges, offset)).toEqual({ sectionKey: "a", pos: "# A\n  - 子".indexOf("子") });
+    expect(locateInSection(group!.ranges, offset)).toEqual({
+      sectionKey: "a",
+      pos: "# A\n  - 子".indexOf("子"),
+    });
   });
 });
 
@@ -60,7 +69,10 @@ describe("locateInSection", () => {
   it("まとめ内の位置を元セクションの位置に戻す", () => {
     const groups = organizeSections([section("a", "# X\n- 1"), section("b", "# X\n- 2")]);
     const { content, ranges } = groups[0]!;
-    expect(locateInSection(ranges, content.indexOf("2"))).toEqual({ sectionKey: "b", pos: "# X\n- ".length });
+    expect(locateInSection(ranges, content.indexOf("2"))).toEqual({
+      sectionKey: "b",
+      pos: "# X\n- ".length,
+    });
     expect(locateInSection(ranges, 0)).toEqual({ sectionKey: "a", pos: 0 });
   });
 

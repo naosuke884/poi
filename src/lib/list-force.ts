@@ -11,8 +11,8 @@ import {
 } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
 import { cursorOf } from "@/lib/list-continue";
-import { HEADING_RE, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "@/lib/markdown-syntax";
 import { dedentChange } from "@/lib/list-indent";
+import { HEADING_RE, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "@/lib/markdown-syntax";
 
 /**
  * 本文を常に箇条書きに保つ (#40)。
@@ -73,7 +73,9 @@ export const forceListMarkers: Extension = [
 // 記号だけの空の項目に # / ＃ だけが続く形 (IME で # を確定した直後)
 const EMPTY_ITEM_HASH_RE = new RegExp(String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]+([#＃]+)$`);
 // 項目の本文が # / ＃ の並び (1〜6 個) + 空白で始まる形 (# の直後に後からスペースを入れた直後)
-const ITEM_HASH_SPACE_RE = new RegExp(String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]+([#＃]{1,6})(?![#＃])[ \t　]`);
+const ITEM_HASH_SPACE_RE = new RegExp(
+  String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]+([#＃]{1,6})(?![#＃])[ \t　]`,
+);
 // 行が # / ＃ の並びだけの形 (見出しの ＃ を書き足している途中)
 const HASH_RUN_RE = /^( {0,3})([#＃]+)$/;
 
@@ -221,7 +223,11 @@ export const deleteListMarkerBackward: Command = (view) => {
   }
   if (line.number === 1) {
     if (line.text.slice(m[0].length).trim() === "")
-      view.dispatch({ changes: { from: line.from, to: line.to }, scrollIntoView: true, userEvent: "delete" });
+      view.dispatch({
+        changes: { from: line.from, to: line.to },
+        scrollIntoView: true,
+        userEvent: "delete",
+      });
     return true;
   }
   const prev = state.doc.line(line.number - 1);

@@ -1,7 +1,12 @@
 import { authClient } from "@/lib/auth-client";
 import { clearBoardCache } from "@/lib/board-cache";
 import { isNetworkError } from "@/lib/offline";
-import { clearCachedUser, readCachedUser, writeCachedUser, type CachedUser } from "@/lib/session-cache";
+import {
+  type CachedUser,
+  clearCachedUser,
+  readCachedUser,
+  writeCachedUser,
+} from "@/lib/session-cache";
 
 // beforeLoad の戻り値 (ルートの context にマージされる)。
 // オンラインなら Better Auth のセッション、オフラインなら前回キャッシュしたユーザー情報 (未ログインなら null)。

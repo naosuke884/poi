@@ -1,8 +1,5 @@
 import { Box, CloseButton, Divider, Group, Tooltip } from "@mantine/core";
 import type { RefObject } from "react";
-import type { EditableSection } from "@/lib/board";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
-import { copySectionText } from "@/lib/section-export";
 import { MarkdownView } from "@/components/MarkdownView";
 import { SectionActions } from "@/components/SectionActions";
 import {
@@ -10,6 +7,9 @@ import {
   SectionEditor,
   type SectionEditorHandle,
 } from "@/components/SectionEditor";
+import type { EditableSection } from "@/lib/board";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
+import { copySectionText } from "@/lib/section-export";
 
 /**
  * セクションへの操作 (Board が持つ)。どれも対象のセクションの key を受け取る。
@@ -87,8 +87,7 @@ export function SectionRow({
       ref={register(refs.boxes, s.key)}
       style={{
         // scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)
-        scrollMarginTop:
-          "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
+        scrollMarginTop: "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
         // ↑ でのフォーカス移動 (focusView) は nearest で下端に合わせることがある。ぴったりに合うと
         // フォーカスリング (outline 2px + offset 4px。MarkdownView) が画面の外に出るので、そのぶん余白を残す
         scrollMarginBottom: 12,

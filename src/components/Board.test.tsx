@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
+
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,17 +16,19 @@ const puts: { id: string | null; content: string }[][] = [];
 vi.mock("@/lib/api", () => ({
   api: {
     board: {
-      $put: vi.fn(async ({ json }: { json: { sections: { id: string | null; content: string }[] } }) => {
-        puts.push(json.sections);
-        let n = 0;
-        const sections = json.sections.map((s, position) => ({
-          id: s.id ?? `new-${puts.length}-${n++}`,
-          content: s.content,
-          position,
-          expiresAt: "2099-01-01T00:00:00.000Z",
-        }));
-        return { ok: true, status: 200, json: async () => ({ sections }) };
-      }),
+      $put: vi.fn(
+        async ({ json }: { json: { sections: { id: string | null; content: string }[] } }) => {
+          puts.push(json.sections);
+          let n = 0;
+          const sections = json.sections.map((s, position) => ({
+            id: s.id ?? `new-${puts.length}-${n++}`,
+            content: s.content,
+            position,
+            expiresAt: "2099-01-01T00:00:00.000Z",
+          }));
+          return { ok: true, status: 200, json: async () => ({ sections }) };
+        },
+      ),
     },
   },
 }));
@@ -109,7 +112,11 @@ function sectionTexts(): string[] {
   return [...container.querySelectorAll<HTMLElement>("[data-section]")].map((box, i) => {
     const editor = box.querySelector<HTMLElement>(".cm-editor");
     if (editor) return EditorView.findFromDOM(editor)!.state.doc.toString();
-    return box.querySelector<HTMLElement>(`[aria-label^="セクション ${i + 1} ("]`)?.textContent?.trim() ?? "";
+    return (
+      box
+        .querySelector<HTMLElement>(`[aria-label^="セクション ${i + 1} ("]`)
+        ?.textContent?.trim() ?? ""
+    );
   });
 }
 
@@ -134,7 +141,9 @@ async function type(text: string) {
 
 async function key(k: string) {
   await act(async () => {
-    editor().contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+    editor().contentDOM.dispatchEvent(
+      new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }),
+    );
   });
 }
 
@@ -187,7 +196,9 @@ describe("Board", () => {
       container.querySelector<HTMLElement>("[aria-label='セクション 2 を削除']")!.click();
     });
     expect(sectionTexts()).toEqual(["a", "c"]);
-    const undo = [...document.querySelectorAll("button")].find((b) => b.textContent === "元に戻す")!;
+    const undo = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "元に戻す",
+    )!;
     await act(async () => undo.click());
     expect(container.querySelectorAll("[data-section]")).toHaveLength(3);
     await waitForSave();
@@ -203,10 +214,12 @@ describe("Board", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
     });
-    expect(puts).toEqual([[
-      { id: "id-0", content: "- a" },
-      { id: null, content: "- b" },
-    ]]);
+    expect(puts).toEqual([
+      [
+        { id: "id-0", content: "- a" },
+        { id: null, content: "- b" },
+      ],
+    ]);
     expect(readCachedBoard("u")?.sections.map((s) => s.content)).toEqual(["- a", "- b"]);
     // afterEach の unmount 用に空の root を用意し直す
     root = createRoot(container);

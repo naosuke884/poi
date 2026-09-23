@@ -47,7 +47,9 @@ function type(view: EditorView, input: string) {
     const { from, to } = view.state.selection.main;
     const handled = view.state
       .facet(EditorView.inputHandler)
-      .some((h) => h(view, from, to, ch, () => view.state.update({ changes: { from, to, insert: ch } })));
+      .some((h) =>
+        h(view, from, to, ch, () => view.state.update({ changes: { from, to, insert: ch } })),
+      );
     if (!handled)
       view.dispatch({
         changes: { from, to, insert: ch },

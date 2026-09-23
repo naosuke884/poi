@@ -33,7 +33,9 @@ export const rehypeSourcePositions: Plugin<[], Root> = () => (tree) => {
  * 文書順に前から順番に探すので正しい方に当たる
  */
 export function sourceOffsetAt(node: Node, offset: number, source: string): number | null {
-  const owner = (node instanceof Element ? node : node.parentElement)?.closest<HTMLElement>("[data-pos]");
+  const owner = (node instanceof Element ? node : node.parentElement)?.closest<HTMLElement>(
+    "[data-pos]",
+  );
   if (!owner) return null;
   const range = posRange(owner);
   if (!range) return null;
@@ -74,7 +76,12 @@ function lastTextNode(node: Node): Text | null {
 }
 
 /** 画面上の点 (clientX / clientY) に対応する元テキストの位置。root の外や対応が取れないときは null */
-export function sourceOffsetAtPoint(root: HTMLElement, x: number, y: number, source: string): number | null {
+export function sourceOffsetAtPoint(
+  root: HTMLElement,
+  x: number,
+  y: number,
+  source: string,
+): number | null {
   const doc = root.ownerDocument;
   let node: Node | null = null;
   let offset = 0;
@@ -93,7 +100,8 @@ export function sourceOffsetAtPoint(root: HTMLElement, x: number, y: number, sou
 /** 要素の data-pos="start-end" を読んだ元テキストの範囲 (無い・壊れているときは null) */
 function posRange(el: HTMLElement): [start: number, end: number] | null {
   const [start, end] = (el.getAttribute("data-pos") ?? "").split("-").map(Number);
-  if (start === undefined || end === undefined || Number.isNaN(start) || Number.isNaN(end)) return null;
+  if (start === undefined || end === undefined || Number.isNaN(start) || Number.isNaN(end))
+    return null;
   return [start, end];
 }
 
@@ -130,7 +138,11 @@ function ownerAtSourceOffset(root: HTMLElement, pos: number): Owner | null {
  * 同じ内容でもソースのまま (エディタ) とレンダリング後 (表示) では高さが違うので、
  * 編集の切り替えで見ていた場所を同じ高さに保つのに使う
  */
-export function clientTopAtSourceOffset(root: HTMLElement, source: string, pos: number): number | null {
+export function clientTopAtSourceOffset(
+  root: HTMLElement,
+  source: string,
+  pos: number,
+): number | null {
   const owner = ownerAtSourceOffset(root, pos);
   if (!owner) return null;
   const region = source.slice(owner.start, owner.end);

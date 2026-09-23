@@ -10,7 +10,10 @@ const auth = vi.hoisted(() => ({
   deleteUser: vi.fn(),
   startGoogleLogin: vi.fn(),
 }));
-const router = vi.hoisted(() => ({ invalidate: vi.fn(async () => {}), navigate: vi.fn(async () => {}) }));
+const router = vi.hoisted(() => ({
+  invalidate: vi.fn(async () => {}),
+  navigate: vi.fn(async () => {}),
+}));
 const clearOfflineCaches = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth-client", () => ({
@@ -68,7 +71,9 @@ describe("useAccountActions", () => {
   });
 
   it("ログアウトはこの端末の全アカウントのキャッシュを消してトップへ", async () => {
-    auth.listDeviceSessions.mockResolvedValue({ data: [{ user: { id: "me" } }, { user: { id: "b" } }] });
+    auth.listDeviceSessions.mockResolvedValue({
+      data: [{ user: { id: "me" } }, { user: { id: "b" } }],
+    });
     auth.signOut.mockResolvedValue({});
     await act(() => actions.logout("me"));
     expect(clearOfflineCaches).toHaveBeenCalledWith(["me", "b"]);

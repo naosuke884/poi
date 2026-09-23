@@ -22,7 +22,10 @@ export type BoardSyncPlan = {
  * - それ以外は新規作成。同じ id が 2 回来たら 2 つ目以降は新規 (1 つの行を 2 か所に置けないため)
  * - 送られてこなかった既存の行は削除
  */
-export function planBoardSync(existing: ExistingSection[], sections: IncomingSection[]): BoardSyncPlan {
+export function planBoardSync(
+  existing: ExistingSection[],
+  sections: IncomingSection[],
+): BoardSyncPlan {
   const byId = new Map(existing.map((row) => [row.id, row]));
   const kept = new Set<string>();
   const plan: BoardSyncPlan = { updates: [], inserts: [], deletes: [] };

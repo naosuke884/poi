@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import type { BoardSection } from "@/lib/board";
 import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
-import { OfflineError, fetchOrOffline } from "@/lib/offline";
+import { fetchOrOffline, OfflineError } from "@/lib/offline";
 import { clearOfflineCaches, type LoginContext } from "@/lib/require-login";
 
 /** トップ (/) に出すもの: 未ログインならランディング、ログイン済みなら板 */

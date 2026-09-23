@@ -45,7 +45,9 @@ describe("changeSection", () => {
 
   it("末尾のセクションを分けて新しい末尾へ移るなら revealLast", () => {
     expect(changeSection([saved("a", "x")], "a", "x\n\n\n", 4)!.revealLast).toBe(true);
-    expect(changeSection([saved("a", "x"), saved("b", "y")], "a", "x\n\n\n", 4)!.revealLast).toBe(false);
+    expect(changeSection([saved("a", "x"), saved("b", "y")], "a", "x\n\n\n", 4)!.revealLast).toBe(
+      false,
+    );
   });
 
   it("知らない key なら null", () => {

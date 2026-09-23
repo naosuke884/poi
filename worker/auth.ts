@@ -1,6 +1,6 @@
+import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 import { multiSession } from "better-auth/plugins/multi-session";
-import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { createDb, schema } from "./db";
 
 export function createAuth(env: Env, requestOrigin: string) {

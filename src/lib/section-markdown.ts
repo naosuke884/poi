@@ -1,6 +1,12 @@
-import { Language, defineLanguageFacet, languageDataProp, syntaxTree } from "@codemirror/language";
+import { defineLanguageFacet, Language, languageDataProp, syntaxTree } from "@codemirror/language";
 import type { Extension, Range } from "@codemirror/state";
-import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate,
+} from "@codemirror/view";
 import {
   Autolink,
   type BlockContext,
@@ -80,7 +86,12 @@ class DeepIndentBreak implements LeafBlockParser {
     if (!interruptsParagraph(line) && !continuesOrderedList(cx, line)) return false;
     cx.addLeafElement(
       leaf,
-      cx.elt("Paragraph", leaf.start, leaf.start + leaf.content.length, cx.parser.parseInline(leaf.content, leaf.start)),
+      cx.elt(
+        "Paragraph",
+        leaf.start,
+        leaf.start + leaf.content.length,
+        cx.parser.parseInline(leaf.content, leaf.start),
+      ),
     );
     return true; // 現在行は消費しない: 次の advance() で ATXHeading / BulletList / OrderedList として読まれる
   }
@@ -134,7 +145,12 @@ export const sectionMarkdownParser = markdownParser.configure([
 ]);
 
 /** `syntaxTree(state)` が使えるように Language facet として state に入れる */
-export const sectionMarkdownLanguage = new Language(languageData, sectionMarkdownParser, [], "markdown");
+export const sectionMarkdownLanguage = new Language(
+  languageData,
+  sectionMarkdownParser,
+  [],
+  "markdown",
+);
 
 // ATXHeading1..6 → 見出し行 (見出しは 1 行なので行全体に line decoration)
 const headingLine = new Map(
@@ -188,9 +204,13 @@ function buildDecorations(view: EditorView): DecorationSet {
           depth++;
           const first = doc.lineAt(node.from).number;
           const last = doc.lineAt(node.to).number;
-          for (let n = first; n <= last; n++) listLines.set(n, Math.max(listLines.get(n) ?? 0, depth));
+          for (let n = first; n <= last; n++)
+            listLines.set(n, Math.max(listLines.get(n) ?? 0, depth));
           const mark = node.node.getChild("ListMark");
-          if (mark) ranges.push(listDecoration(listMarkCache, MD_CLASS.listMark, depth).range(mark.from, mark.to));
+          if (mark)
+            ranges.push(
+              listDecoration(listMarkCache, MD_CLASS.listMark, depth).range(mark.from, mark.to),
+            );
         }
       },
       leave(node) {
@@ -202,7 +222,13 @@ function buildDecorations(view: EditorView): DecorationSet {
   for (const [n, depth] of listLines) {
     const line = doc.line(n);
     const indent = /^[ \t]+/.exec(line.text)?.[0].length ?? 0;
-    if (indent > 0) ranges.push(listDecoration(listIndentCache, MD_CLASS.listIndent, depth).range(line.from, line.from + indent));
+    if (indent > 0)
+      ranges.push(
+        listDecoration(listIndentCache, MD_CLASS.listIndent, depth).range(
+          line.from,
+          line.from + indent,
+        ),
+      );
   }
   // 行装飾と mark が混ざり、visibleRanges の順にも依存するので sort させる
   return Decoration.set(ranges, true);
@@ -242,7 +268,11 @@ export function urlHref(text: string): string {
 /** pos を含む URL ノードの文字列 (無ければ null) */
 function urlAt(view: EditorView, pos: number): string | null {
   const tree = syntaxTree(view.state);
-  for (let node: ReturnType<typeof tree.resolveInner> | null = tree.resolveInner(pos, 1); node; node = node.parent) {
+  for (
+    let node: ReturnType<typeof tree.resolveInner> | null = tree.resolveInner(pos, 1);
+    node;
+    node = node.parent
+  ) {
     if (node.name === "URL") return view.state.sliceDoc(node.from, node.to);
   }
   return null;
@@ -255,7 +285,8 @@ function urlAt(view: EditorView, pos: number): string | null {
 export const sectionMarkdownLinkOpener = EditorView.domEventHandlers({
   mousedown(event, view) {
     if (!(event.ctrlKey || event.metaKey) || event.button !== 0) return false;
-    const target = event.target instanceof Element ? event.target.closest(`.${MD_CLASS.url}`) : null;
+    const target =
+      event.target instanceof Element ? event.target.closest(`.${MD_CLASS.url}`) : null;
     if (!target) return false;
     // mark 装飾は他の装飾と重なると複数の span に分かれるので、クリックした span の位置から構文木で URL 全体を得る
     const url = urlAt(view, view.posAtDOM(target));

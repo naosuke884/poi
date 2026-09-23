@@ -1,12 +1,12 @@
-import { AppShell, Container, Group, Title, Anchor, Stack, Text } from "@mantine/core";
+import { Anchor, AppShell, Container, Group, Stack, Text, Title } from "@mantine/core";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AddSectionButton } from "@/components/AddSectionButton";
-import { SaveStatusIcon } from "@/components/SaveStatusIcon";
-import { ViewToggle } from "@/components/ViewToggle";
-import { UserMenu } from "@/components/UserMenu";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdateBanner } from "@/components/PwaUpdateBanner";
+import { SaveStatusIcon } from "@/components/SaveStatusIcon";
+import { UserMenu } from "@/components/UserMenu";
+import { ViewToggle } from "@/components/ViewToggle";
 import classes from "./__root.module.css";
 
 export const Route = createRootRoute({

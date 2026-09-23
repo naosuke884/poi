@@ -1,30 +1,23 @@
-import {
-  ActionIcon,
-  Affix,
-  Box,
-  Button,
-  Stack,
-  Tooltip,
-} from "@mantine/core";
+import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
+import { MEMO_TTL_DAYS } from "@worker/memo/constants";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { MEMO_TTL_DAYS } from "@worker/memo/constants";
-import { affixInset } from "@/lib/affix";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
-import { publishBoardActions } from "@/lib/board-actions";
-import { useKeyboardInset } from "@/lib/use-keyboard-inset";
-import type { BoardSection } from "@/lib/board";
-import { appendSection, changeSection, mergeSections } from "@/lib/board-ops";
-import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 import { PlusIcon } from "@/components/AddSectionButton";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { OrganizedView } from "@/components/OrganizedView";
 import type { EditAnchor } from "@/components/SectionEditor";
 import { type SectionHandlers, type SectionRefs, SectionRow } from "@/components/SectionRow";
+import { affixInset } from "@/lib/affix";
+import type { BoardSection } from "@/lib/board";
+import { publishBoardActions } from "@/lib/board-actions";
+import { appendSection, changeSection, mergeSections } from "@/lib/board-ops";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
+import { deliverImage, renderSectionImage } from "@/lib/section-export";
 import { useBoardSections } from "@/lib/use-board-sections";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { useSectionFocus } from "@/lib/use-section-focus";
 import { useUndoableDelete } from "@/lib/use-undoable-delete";
-import { deliverImage, renderSectionImage } from "@/lib/section-export";
+import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
@@ -91,11 +84,14 @@ export function Board({
   // 右下固定の追加ボタンがソフトキーボードの裏に隠れないよう、キーボード分だけ持ち上げる
   const keyboardInset = useKeyboardInset();
 
-  const indexOf = (key: string) =>
-    latestRef.current.findIndex((s) => s.key === key);
+  const indexOf = (key: string) => latestRef.current.findIndex((s) => s.key === key);
 
-  const { deleted, cancelUndo, removeSection, removeGroup, undoDelete } =
-    useUndoableDelete({ latestRef, organized, focusLater, update });
+  const { deleted, cancelUndo, removeSection, removeGroup, undoDelete } = useUndoableDelete({
+    latestRef,
+    organized,
+    focusLater,
+    update,
+  });
 
   // 入力。区切り (空行 2 つ) が入ったらそこで分け、カーソルを行き先へ (配列の変換は board-ops)
   const change = (key: string, value: string, cursor: number) => {
@@ -196,8 +192,7 @@ export function Board({
   // (画面全体が書ける場所に見えるように)。
   // mousedown を止めて、編集中のエディタがクリックの途中で blur (→ Markdown 表示) しないようにする
   const isBlank = (e: MouseEvent<HTMLDivElement>) =>
-    e.target === e.currentTarget ||
-    (e.target as HTMLElement).hasAttribute("data-section");
+    e.target === e.currentTarget || (e.target as HTMLElement).hasAttribute("data-section");
   const focusEnd = (e: MouseEvent<HTMLDivElement>) => {
     if (readOnly || !isBlank(e)) return;
     const last = latestRef.current.at(-1);
@@ -224,8 +219,7 @@ export function Board({
     if (!document.hasFocus()) return;
     // ここで本当に編集をやめる (別のセクションへ移ったのでも、Esc で既にやめたのでもない) ときだけ、
     // 描画後にスクロールを合わせるためのカーソル位置を控える (#45)
-    if (editingKeyRef.current === key && anchor)
-      pendingAnchorRef.current = { key, anchor };
+    if (editingKeyRef.current === key && anchor) pendingAnchorRef.current = { key, anchor };
     setEditingKey((k) => (k === key ? null : k));
   };
 
@@ -273,25 +267,25 @@ export function Board({
           onDelete={removeGroup}
         />
       ) : (
-      <Box
-        style={{ flex: 1, cursor: readOnly ? undefined : "text" }}
-        onClick={focusEnd}
-        onMouseDown={keepFocus}
-      >
-        {sections.map((s, i) => (
-          <SectionRow
-            key={s.key}
-            section={s}
-            index={i}
-            editing={s.key === editingKey}
-            readOnly={readOnly}
-            fillScreen={i === sections.length - 1 && sections.length > 1}
-            placeholder={sections.length === 1 ? placeholder : undefined}
-            handlers={handlers}
-            refs={refs}
-          />
-        ))}
-      </Box>
+        <Box
+          style={{ flex: 1, cursor: readOnly ? undefined : "text" }}
+          onClick={focusEnd}
+          onMouseDown={keepFocus}
+        >
+          {sections.map((s, i) => (
+            <SectionRow
+              key={s.key}
+              section={s}
+              index={i}
+              editing={s.key === editingKey}
+              readOnly={readOnly}
+              fillScreen={i === sections.length - 1 && sections.length > 1}
+              placeholder={sections.length === 1 ? placeholder : undefined}
+              handlers={handlers}
+              refs={refs}
+            />
+          ))}
+        </Box>
       )}
 
       {/* 右下固定の追加ボタンの下に本文が隠れないよう、スクロールの終端に余白を足しておく */}

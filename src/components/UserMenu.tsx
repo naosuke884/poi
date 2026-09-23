@@ -12,11 +12,11 @@ import {
 } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { authClient } from "@/lib/auth-client";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
-import { CONTACT_URL } from "@/components/LegalPage";
 import { InstallGuideModal, useInstallApp } from "@/components/InstallGuideModal";
+import { CONTACT_URL } from "@/components/LegalPage";
 import { TtlSettingModal } from "@/components/TtlSettingModal";
+import { authClient } from "@/lib/auth-client";
 import { readCachedUser } from "@/lib/session-cache";
 import { RUNNING_LABELS, useAccountActions } from "@/lib/use-account-actions";
 import { useOnBackOnline, useOnline } from "@/lib/use-online";
@@ -141,7 +141,11 @@ export function UserMenu() {
           <Menu.Item color="red" disabled={offline || busy} onClick={() => void logout(user.id)}>
             ログアウト
           </Menu.Item>
-          <Menu.Item color="red" disabled={offline || busy} onClick={() => setConfirmingDelete(true)}>
+          <Menu.Item
+            color="red"
+            disabled={offline || busy}
+            onClick={() => setConfirmingDelete(true)}
+          >
             アカウント削除
           </Menu.Item>
         </Menu.Dropdown>
@@ -155,7 +159,12 @@ export function UserMenu() {
         onSaved={() => void router.invalidate()}
       />
       {/* 見出しは付けない (本文だけで足りる)。閉じるのはキャンセル / Esc / 外側クリック */}
-      <Modal opened={confirmingDelete} onClose={() => setConfirmingDelete(false)} withCloseButton={false} centered>
+      <Modal
+        opened={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        withCloseButton={false}
+        centered
+      >
         <Stack gap="md">
           <Text size="sm">
             アカウントを削除しますか？

@@ -5,17 +5,17 @@ import { Hono, type ValidationTargets } from "hono";
 import { z } from "zod";
 import { createDb, type Db } from "../db";
 import { memo, userSetting } from "../db/memo";
-import { requireAuth, type AppEnv } from "../middleware";
+import { type AppEnv, requireAuth } from "../middleware";
 import { planBoardSync } from "./board-sync";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
+  boardLength,
   DAY_MS,
   MEMO_TTL_CHOICES,
   MEMO_TTL_DAYS,
-  SECTION_SEPARATOR,
-  boardLength,
   memoExpiresAt,
+  SECTION_SEPARATOR,
 } from "./constants";
 
 // 板 (ユーザーごとに 1 枚) をセクションの配列としてやり取りする。
@@ -28,7 +28,10 @@ const sectionSchema = z.object({
   content: z
     .string()
     .refine((s) => !s.includes("\r"), "セクションに CR は含められません")
-    .refine((s) => !s.includes(SECTION_SEPARATOR), "セクションに空行 2 つ (区切り) は含められません"),
+    .refine(
+      (s) => !s.includes(SECTION_SEPARATOR),
+      "セクションに空行 2 つ (区切り) は含められません",
+    ),
 });
 
 const putBoardSchema = z

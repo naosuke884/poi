@@ -2,9 +2,9 @@ import { Alert, Stack } from "@mantine/core";
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef } from "react";
 import { Board } from "@/components/Board";
-import { formatDateTime } from "@/lib/board";
-import { type TopPage, loadTopPage } from "@/lib/board-loader";
 import { Landing } from "@/components/Landing";
+import { formatDateTime } from "@/lib/board";
+import { loadTopPage, type TopPage } from "@/lib/board-loader";
 import { optionalLogin } from "@/lib/require-login";
 
 // メイン画面: ログイン済みなら自分の板、未ログインならランディング (何ができるか + ログイン導線)

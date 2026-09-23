@@ -96,7 +96,9 @@ export const indentMoreOrInsertTab: Command = (view) => {
   const sel = state.selection.main;
   const hasSelection = state.selection.ranges.some((r) => !r.empty);
   if (!hasSelection && !LIST_ITEM_RE.test(state.doc.lineAt(sel.head).text)) {
-    view.dispatch(state.update(state.replaceSelection("\t"), { scrollIntoView: true, userEvent: "input" }));
+    view.dispatch(
+      state.update(state.replaceSelection("\t"), { scrollIntoView: true, userEvent: "input" }),
+    );
     return true;
   }
   const lines = coveredLines(view);
@@ -150,7 +152,8 @@ export const indentLess: Command = (view) => {
     const change = dedentChange(line);
     return change ? [change] : [];
   });
-  if (changes.length > 0) view.dispatch({ changes, scrollIntoView: true, userEvent: "delete.dedent" });
+  if (changes.length > 0)
+    view.dispatch({ changes, scrollIntoView: true, userEvent: "delete.dedent" });
   return true;
 };
 
