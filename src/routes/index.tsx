@@ -30,7 +30,7 @@ function BoardView({
   // まま一度描画される。context の userId で key を作るとその瞬間に前の内容のまま作り直してしまい、
   // 新しい板が来ても key が変わらず表示が 1 回前のままになる (issue #52)。
   // loader の userId なら sections と必ず同じアカウントで、板の到着と同時に key が変わる
-  data: { sections, ttlDays, offline, cachedAt, userId },
+  data: { sections, revision, ttlDays, offline, cachedAt, userId },
 }: {
   data: Extract<TopPage, { kind: "board" }>;
 }) {
@@ -60,6 +60,7 @@ function BoardView({
       <Board
         key={`${userId}-${readOnly ? "offline" : "online"}`}
         sections={sections}
+        revision={revision}
         userId={userId}
         readOnly={readOnly}
         ttlDays={ttlDaysRef.current}

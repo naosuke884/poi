@@ -12,10 +12,22 @@ import type { BoardSection } from "@/lib/board";
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の
 // PUT までを通しで確かめる。レイアウトが無いので、スクロールや表示上の行の判定は対象外
 
-// 自動保存の PUT を横取りする (送った sections を記録し、id を振って返す)。
-// 送った userId がセッションのユーザー (sessionUserId) と違えば、サーバと同じく 409 を返す
+// 自動保存の PUT / 取り直しの GET を横取りする (保存できた sections を記録し、id を振って返す)。
+// 送った userId がセッションのユーザー (sessionUserId) と違えば、送った版がサーバの版 (server.revision) と
+// 違えば、サーバと同じく 409 を返す。別の端末での保存は server を書き換えて表す
+type ServerSection = {
+  id: string;
+  content: string;
+  position: number;
+  createdAt: string;
+  expiresAt: string;
+};
 const puts: { id: string | null; content: string }[][] = [];
 let sessionUserId = "u";
+let server: { revision: string | null; sections: ServerSection[] } = {
+  revision: null,
+  sections: [],
+};
 const invalidate = vi.fn(async () => {});
 vi.mock("@/lib/api", () => ({
   api: {
@@ -24,10 +36,17 @@ vi.mock("@/lib/api", () => ({
         async ({
           json,
         }: {
-          json: { userId: string; sections: { id: string | null; content: string }[] };
+          json: {
+            userId: string;
+            revision: string | null;
+            sections: { id: string | null; content: string }[];
+          };
         }) => {
           if (json.userId !== sessionUserId) {
             return { ok: false, status: 409, json: async () => ({ error: "UserMismatch" }) };
+          }
+          if (json.revision !== server.revision) {
+            return { ok: false, status: 409, json: async () => ({ error: "Stale" }) };
           }
           puts.push(json.sections);
           let n = 0;
@@ -38,9 +57,15 @@ vi.mock("@/lib/api", () => ({
             createdAt: "2026-01-01T00:00:00.000Z",
             expiresAt: "2099-01-01T00:00:00.000Z",
           }));
-          return { ok: true, status: 200, json: async () => ({ sections }) };
+          server = { revision: `r${puts.length}`, sections };
+          return { ok: true, status: 200, json: async () => ({ ...server }) };
         },
       ),
+      $get: vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ userId: sessionUserId, ...server, ttlDays: 30 }),
+      })),
     },
   },
 }));
@@ -108,6 +133,7 @@ async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
     ...s,
   })) as BoardSection[];
   initialSections = initial;
+  server = { revision: "r0", sections: initial };
   await render(ttlDays);
 }
 
@@ -117,7 +143,7 @@ async function render(ttlDays: number) {
     root.render(
       <MantineProvider>
         <ActionsProbe />
-        <Board sections={initialSections} userId="u" ttlDays={ttlDays} />
+        <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
       </MantineProvider>,
     );
   });
@@ -316,6 +342,51 @@ describe("Board", () => {
     expect(puts).toEqual([]);
     expect(invalidate).toHaveBeenCalled();
     expect(readCachedBoard("u")).toBeNull();
+  });
+
+  // 別の端末 / タブで保存された板 (issue #72)
+  const remote = (id: string, content: string, position: number): ServerSection => ({
+    id,
+    content,
+    position,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+  });
+
+  it("別の場所で保存されていたら、足されたセクションを消さずに手元の変更と合わせて保存し直す", async () => {
+    await mount([{ content: "- a" }]);
+    server = { revision: "elsewhere", sections: [remote("id-0", "- a", 0), remote("x", "- x", 1)] };
+    await act(async () => actions!.addSection());
+    await type("- b");
+    // 1 回目の保存は断られ、取り直した板に手元の変更を重ねる
+    await waitForSave();
+    expect(puts).toEqual([]);
+    expect(sectionTexts()).toEqual(["a", "x", "- b"]);
+    // 続けて、取り直した版で保存し直す
+    await waitForSave();
+    expect(puts).toEqual([
+      [
+        { id: "id-0", content: "- a" },
+        { id: "x", content: "- x" },
+        { id: null, content: "- b" },
+      ],
+    ]);
+  });
+
+  it("タブに戻ってきたら取り直し、別の場所で保存された内容を取り込む", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }]);
+    server = {
+      revision: "elsewhere",
+      sections: [remote("id-0", "- a2", 0), remote("c", "- c", 1)],
+    };
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(sectionTexts()).toEqual(["a2", "c"]);
+    // 手元の変更は無いので保存しない
+    await waitForSave();
+    expect(puts).toEqual([]);
   });
 });
 

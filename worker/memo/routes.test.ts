@@ -24,17 +24,35 @@ const app = new Hono<AppEnv>()
   })
   .route("/", boardRoutes);
 
-async function put(sections: { id: string | null; content: string }[]) {
+type Draft = { id: string | null; content: string }[];
+type PutResponse = { sections: Section[]; revision: string; error?: string };
+
+// 直前の保存で返ってきた版 (put はそれを付けて送り、成功すれば更新する。1 つの端末で保存し続けるのと同じ)
+let latestRevision: string | null;
+
+/** 版を指定して保存する (別の端末からの保存など) */
+async function putAt(revision: string | null, sections: Draft) {
   const res = await app.request(
     "/",
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: USER_ID, sections }),
+      body: JSON.stringify({ userId: USER_ID, revision, sections }),
     },
     { DB: db },
   );
-  return { status: res.status, body: (await res.json()) as { sections: Section[] } };
+  return { status: res.status, body: (await res.json()) as PutResponse };
+}
+
+async function put(sections: Draft) {
+  const res = await putAt(latestRevision, sections);
+  if (res.status === 200) latestRevision = res.body.revision;
+  return res;
+}
+
+async function get() {
+  const res = await app.request("/", {}, { DB: db });
+  return (await res.json()) as { sections: Section[]; revision: string | null };
 }
 
 async function rows() {
@@ -61,6 +79,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  latestRevision = null;
   await db.batch([
     db.prepare("delete from user"),
     db
@@ -120,5 +139,75 @@ describe("PUT /api/board", () => {
     expect(created.body.sections[0].content).toBe(content);
     const updated = await put([{ id: created.body.sections[0].id, content: `${content}!` }]);
     expect(updated.body.sections[0].content).toBe(`${content}!`);
+  });
+
+  it("取得した版が返り、保存のたびに変わる", async () => {
+    expect((await get()).revision).toBeNull();
+    const first = await put([{ id: null, content: "a" }]);
+    expect((await get()).revision).toBe(first.body.revision);
+    const second = await put([{ id: first.body.sections[0].id, content: "a2" }]);
+    expect(second.body.revision).not.toBe(first.body.revision);
+    expect((await get()).revision).toBe(second.body.revision);
+  });
+
+  it("古い版をもとにした保存は断り、別の場所で保存した内容を残す (issue #72)", async () => {
+    // 端末 1 と端末 2 が同じ板 (a) を開き、端末 1 がセクションを足して保存する
+    const opened = await put([{ id: null, content: "a" }]);
+    const [a] = opened.body.sections;
+    const added = await put([
+      { id: a.id, content: "a" },
+      { id: null, content: "from device 1" },
+    ]);
+    expect(added.status).toBe(200);
+
+    // 端末 2 は足されたセクションを知らないまま a を編集して保存しようとする
+    const stale = await putAt(opened.body.revision, [{ id: a.id, content: "a from device 2" }]);
+    expect(stale.status).toBe(409);
+    expect(stale.body.error).toBe("Stale");
+    expect(await rows()).toEqual([
+      { id: a.id, content: "a", position: 0 },
+      { id: added.body.sections[1].id, content: "from device 1", position: 1 },
+    ]);
+    expect((await get()).revision).toBe(added.body.revision);
+  });
+
+  it("まだ保存されていない板を前提にした保存も、先に誰かが保存していれば断る", async () => {
+    await put([{ id: null, content: "first" }]);
+    const stale = await putAt(null, [{ id: null, content: "second" }]);
+    expect(stale.status).toBe(409);
+    expect((await rows()).map((row) => row.content)).toEqual(["first"]);
+  });
+
+  it("版を送らない (版の導入前の) クライアントの保存は、確かめずに通して版を進める", async () => {
+    const first = await put([{ id: null, content: "a" }]);
+    const res = await app.request(
+      "/",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: USER_ID, sections: [{ id: null, content: "old client" }] }),
+      },
+      { DB: db },
+    );
+    expect(res.status).toBe(200);
+    expect((await rows()).map((row) => row.content)).toEqual(["old client"]);
+    const { revision } = await get();
+    expect(revision).not.toBeNull();
+    expect(revision).not.toBe(first.body.revision);
+  });
+
+  it("同じ版をもとにした保存が同時に来たら、片方だけ通る", async () => {
+    const opened = await put([{ id: null, content: "a" }]);
+    const [a] = opened.body.sections;
+    const results = await Promise.all([
+      putAt(opened.body.revision, [{ id: a.id, content: "x" }]),
+      putAt(opened.body.revision, [{ id: a.id, content: "y" }]),
+    ]);
+    expect(results.map((r) => r.status).toSorted()).toEqual([200, 409]);
+    const winner = results.find((r) => r.status === 200)!;
+    expect(await rows()).toEqual([
+      { id: a.id, content: winner.body.sections[0].content, position: 0 },
+    ]);
+    expect((await get()).revision).toBe(winner.body.revision);
   });
 });

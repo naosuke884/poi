@@ -131,13 +131,15 @@ export function toSaved(sections: { id: string | null; content: string }[]): Dra
 
 /**
  * PUT /api/board に送る payload (key など画面内だけの情報は落とす)。
- * userId は保存先として想定している板の持ち主。セッションのユーザーと違えばサーバは保存しない (409)
+ * userId は保存先として想定している板の持ち主。セッションのユーザーと違えばサーバは保存しない (409)。
+ * revision は draft の前提にした板の版。サーバの今の版と違えば (別の場所で保存されていれば) 保存しない (409)
  */
 export function toPutPayload(
   userId: string,
+  revision: string | null,
   draft: DraftSection[],
-): { userId: string; sections: DraftSection[] } {
-  return { userId, sections: toSaved(draft) };
+): { userId: string; revision: string | null; sections: DraftSection[] } {
+  return { userId, revision, sections: toSaved(draft) };
 }
 
 /**

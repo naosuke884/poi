@@ -30,10 +30,11 @@ describe("loadTopPage", () => {
   });
 
   it("取得できたら板を返し、キャッシュを最新にする", async () => {
-    $get.mockResolvedValue(response(200, { sections, ttlDays: 7 }));
+    $get.mockResolvedValue(response(200, { sections, revision: "r1", ttlDays: 7 }));
     expect(await loadTopPage(session)).toEqual({
       kind: "board",
       sections,
+      revision: "r1",
       ttlDays: 7,
       offline: false,
       cachedAt: null,
@@ -59,6 +60,7 @@ describe("loadTopPage", () => {
     expect(await loadTopPage(session)).toMatchObject({
       kind: "board",
       sections,
+      revision: null,
       ttlDays: undefined,
       offline: true,
       cachedAt: 123,

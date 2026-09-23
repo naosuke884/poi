@@ -10,11 +10,13 @@ import { useBoardAutosave } from "@/lib/use-board-autosave";
  */
 export function useBoardSections({
   initial,
+  initialRevision,
   userId,
   readOnly,
   ttlDays,
 }: {
   initial: BoardSection[];
+  initialRevision: string | null;
   userId: string;
   readOnly: boolean;
   ttlDays: number;
@@ -33,6 +35,7 @@ export function useBoardSections({
 
   const { update } = useBoardAutosave({
     initial,
+    initialRevision,
     userId,
     readOnly,
     ttlDays,

@@ -56,3 +56,15 @@ export const userSetting = sqliteTable("user_setting", {
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+// 板ごとの版 (1 行 = 1 ユーザー)。PUT /api/board のたびに新しい値にし、古い版をもとにした保存を断る
+// (別の端末 / タブで保存された板を、それを知らない古い内容で上書きしないため。worker/memo/routes.ts)。
+// 行が無いのは一度も保存していない板 (版は null として扱う)
+export const board = sqliteTable("board", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  // 保存ごとに発行する不透明な文字列 (UUID)。連番にしないのは、同時に来た 2 つの保存が
+  // 同じ次の版を名乗れないようにするため (自分が書いた版になっているかで、どちらが通ったかを判定する)
+  revision: text("revision").notNull(),
+});

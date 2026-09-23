@@ -38,6 +38,7 @@ import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
  * - 入力停止から 1 秒後に丸ごと保存する (自動保存。useBoardAutosave)。保存状態はヘッダーのアイコン
  *   (SaveStatusIcon) に出す
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
+ * revision は sections の時点の板の版 (保存時に送る。別の場所で保存されていたら取り込んでから保存し直す)。
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
  * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
  * ttlDays はそのユーザーの保存期間 (プレースホルダの「N 日で消えます」用。
@@ -45,11 +46,13 @@ import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
  */
 export function Board({
   sections: initial,
+  revision = null,
   userId,
   readOnly = false,
   ttlDays = MEMO_TTL_DAYS,
 }: {
   sections: BoardSection[];
+  revision?: string | null;
   userId: string;
   readOnly?: boolean;
   ttlDays?: number;
@@ -58,6 +61,7 @@ export function Board({
   // state (sections) は描画用で、ハンドラは常に latestRef (同じ内容) を読む
   const { sections, latestRef, update } = useBoardSections({
     initial,
+    initialRevision: revision,
     userId,
     readOnly,
     ttlDays,

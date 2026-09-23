@@ -10,6 +10,8 @@ export type TopPage =
   | {
       kind: "board";
       sections: BoardSection[];
+      /** sections の時点の板の版 (保存時に送る。一度も保存されていない / オフラインのキャッシュ表示では null) */
+      revision: string | null;
       /** 保存期間。オフラインのキャッシュ表示では不明 (Board は既定値の表示にする) */
       ttlDays: number | undefined;
       /** キャッシュから表示している (オンラインで取得できなかった) */
@@ -41,10 +43,11 @@ export async function loadTopPage(session: LoginContext["session"]): Promise<Top
         "オフラインのため、板を取得できません (まだ一度も取得していないためキャッシュもありません)。",
       );
     }
-    // 保存期間 (ttlDays) はキャッシュしていないので不明
+    // 保存期間 (ttlDays) はキャッシュしていないので不明。版も持たない (キャッシュ表示は閲覧のみで保存しない)
     return {
       kind: "board",
       sections: cached.sections,
+      revision: null,
       ttlDays: undefined,
       offline: true,
       cachedAt: cached.cachedAt,
@@ -56,7 +59,7 @@ export async function loadTopPage(session: LoginContext["session"]): Promise<Top
     return { kind: "landing" };
   }
   if (!res.ok) throw new Error("板の取得に失敗しました");
-  const { sections, ttlDays } = await res.json();
+  const { sections, revision, ttlDays } = await res.json();
   writeCachedBoard(userId, sections, requestedAt);
-  return { kind: "board", sections, ttlDays, offline: false, cachedAt: null, userId };
+  return { kind: "board", sections, revision, ttlDays, offline: false, cachedAt: null, userId };
 }

@@ -57,6 +57,13 @@
       "when": 1789833716087,
       "tag": "0007_add_user_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790162994800,
+      "tag": "0008_add_board_revision",
+      "breakpoints": true
     }
   ]
 }
