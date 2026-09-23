@@ -257,10 +257,11 @@ export const sectionMarkdownDecorations = ViewPlugin.fromClass(
 /**
  * URL ノードの文字列を開ける href にする。
  * GFM の Autolink は `www.example.com` やメールアドレスもスキーム無しで URL にするので補う
- * (micromark の gfm-autolink-literal と同じ: www. は http://、メールアドレスは mailto:)
+ * (micromark の gfm-autolink-literal と同じ: www. は http://、メールアドレスは mailto:)。
+ * スキーム付きは http(s): / mailto: だけ開く (javascript: などは null。表示側の react-markdown も href を空にする)
  */
-export function urlHref(text: string): string {
-  if (/^[a-z][-\w+.]*:/i.test(text)) return text;
+export function urlHref(text: string): string | null {
+  if (/^[a-z][-\w+.]*:/i.test(text)) return /^(https?|mailto):/i.test(text) ? text : null;
   if (text.includes("@")) return `mailto:${text}`;
   return `http://${text}`;
 }
@@ -292,7 +293,8 @@ export const sectionMarkdownLinkOpener = EditorView.domEventHandlers({
     const url = urlAt(view, view.posAtDOM(target));
     if (url === null) return false;
     event.preventDefault();
-    window.open(urlHref(url), "_blank", "noopener");
+    const href = urlHref(url);
+    if (href !== null) window.open(href, "_blank", "noopener");
     return true;
   },
 });
