@@ -20,10 +20,17 @@ export type AuthedEnv = {
   };
 };
 
-// リクエストごとに Better Auth インスタンスを生成し、セッションを解決する
+// リクエストごとに Better Auth インスタンスを生成し、セッションを解決する。
+// /api/auth/* は Better Auth のハンドラに渡すだけなので、セッションは解決しない (DB 参照を省く)
 export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const auth = createAuth(c.env, new URL(c.req.url).origin);
   c.set("auth", auth);
+  if (c.req.path.startsWith("/api/auth/")) {
+    c.set("user", null);
+    c.set("session", null);
+    await next();
+    return;
+  }
   const result = await auth.api.getSession({ headers: c.req.raw.headers });
   c.set("user", result?.user ?? null);
   c.set("session", result?.session ?? null);
