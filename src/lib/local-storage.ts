@@ -32,7 +32,7 @@ function keysWithPrefix(prefix: string): string[] {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key !== null && key.startsWith(prefix)) keys.push(key);
+      if (key?.startsWith(prefix)) keys.push(key);
     }
     return keys;
   } catch {

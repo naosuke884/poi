@@ -11,7 +11,8 @@ import type { Plugin } from "unified";
 export const remarkDisable: Plugin<[readonly string[]]> = function (names) {
   // micromarkExtensions は remark-parse が unified の Data に足すフィールド (型はここでは見えないのでキャスト)
   const data = this.data() as { micromarkExtensions?: unknown[] };
-  (data.micromarkExtensions ??= []).push({ disable: { null: [...names] } });
+  data.micromarkExtensions ??= [];
+  data.micromarkExtensions.push({ disable: { null: [...names] } });
 };
 
 /**

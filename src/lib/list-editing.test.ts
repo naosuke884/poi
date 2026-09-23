@@ -32,7 +32,7 @@ function editor(doc: string, extensions: Extension = []): EditorView {
 function text(view: EditorView): string {
   const doc = view.state.doc.toString();
   const head = view.state.selection.main.head;
-  return doc.slice(0, head) + "|" + doc.slice(head);
+  return `${doc.slice(0, head)}|${doc.slice(head)}`;
 }
 
 function run(command: Command, doc: string, extensions: Extension = []): string {
