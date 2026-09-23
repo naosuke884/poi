@@ -127,7 +127,8 @@ export function useBoardAutosave({
         }),
       );
       saved = true;
-      setStatus("saved");
+      // 保存中に入力があれば、まだ保存済みではない (下で続けて保存する。その間もタブを閉じる前に確認を出す)
+      setStatus(sameDraft(toDraft(latestRef.current), savedRef.current) ? "saved" : "dirty");
     } catch (e) {
       if (e instanceof UserMismatchError) {
         // 切り替え前のアカウントの下書きなので保存しない。読み込み直して切り替え先の板にする
@@ -170,7 +171,9 @@ export function useBoardAutosave({
     commit(next);
     if (sameDraft(toDraft(next), savedRef.current)) {
       cancelTimer();
-      setStatus("saved");
+      // 保存中なら、完了後に保存済みになるのは送った別の内容なので「保存中…」のまま
+      // (完了時に今の内容との差分を見て、続けて保存される)
+      if (!inFlightRef.current) setStatus("saved");
       return;
     }
     // 保存中は「保存中…」のまま (完了後に続けて保存されるので、その時点で状態が更新される)
