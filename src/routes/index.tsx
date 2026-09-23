@@ -42,6 +42,10 @@ function BoardView({
   const liveRef = useRef(false);
   if (!offline) liveRef.current = true;
   const readOnly = offline && !liveRef.current;
+  // 保持日数は最後にオンラインで取れた値を渡し続ける。オフラインの再取得 (キャッシュ) では不明 (undefined) に
+  // なるが、そこで既定値に戻すと Board が「保持日数が変わった」と見て期限を引き直してしまう
+  const ttlDaysRef = useRef(ttlDays);
+  if (ttlDays !== undefined) ttlDaysRef.current = ttlDays;
   return (
     <Stack style={{ flex: 1 }}>
       {readOnly && (
@@ -58,7 +62,7 @@ function BoardView({
         sections={sections}
         userId={userId}
         readOnly={readOnly}
-        ttlDays={ttlDays}
+        ttlDays={ttlDaysRef.current}
       />
     </Stack>
   );

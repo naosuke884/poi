@@ -7,7 +7,7 @@ import { cutRanges, type OrganizedGroup } from "@/lib/organized";
  * update (状態の更新 + 自動保存の予約) だけを行う。
  *
  * key と id の引き継ぎ規則: key (= 画面上のエディタの DOM) はフォーカスのある部分に、
- * id / expiresAt (= サーバ上の行と期限) は先頭の部分に付ける。分割 / 結合でフォーカスのある
+ * id / createdAt / expiresAt (= サーバ上の行と期限) は先頭の部分に付ける。分割 / 結合でフォーカスのある
  * エディタを作り直さずに済ませるため (作り直すとタッチ端末でキーボードが閉じる)
  */
 
@@ -51,6 +51,7 @@ export function changeSection(
     (content, j): EditableSection => ({
       key: j === split.focus.index ? orig.key : newKey(),
       id: j === 0 ? orig.id : null,
+      createdAt: j === 0 ? orig.createdAt : null,
       expiresAt: j === 0 ? orig.expiresAt : null,
       content,
     }),
@@ -77,6 +78,7 @@ export function mergeSections(
   const merged: EditableSection = {
     key: focusedKey,
     id: a.id,
+    createdAt: a.createdAt,
     expiresAt: a.expiresAt,
     content: a.content + b.content,
   };

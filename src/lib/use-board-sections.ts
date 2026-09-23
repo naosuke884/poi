@@ -12,10 +12,12 @@ export function useBoardSections({
   initial,
   userId,
   readOnly,
+  ttlDays,
 }: {
   initial: BoardSection[];
   userId: string;
   readOnly: boolean;
+  ttlDays: number;
 }) {
   const [sections, setSections] = useState<EditableSection[]>(() => {
     const s = toEditable(initial);
@@ -29,7 +31,14 @@ export function useBoardSections({
     setSections(next);
   }, []);
 
-  const { update } = useBoardAutosave({ initial, userId, readOnly, latestRef, commit });
+  const { update } = useBoardAutosave({
+    initial,
+    userId,
+    readOnly,
+    ttlDays,
+    latestRef,
+    commit,
+  });
 
   return { sections, latestRef, update };
 }

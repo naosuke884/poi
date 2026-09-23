@@ -56,7 +56,12 @@ export function Board({
 }) {
   // 画面上のセクションと編集の入口 (update = 状態の更新 + 自動保存の予約)。
   // state (sections) は描画用で、ハンドラは常に latestRef (同じ内容) を読む
-  const { sections, latestRef, update } = useBoardSections({ initial, userId, readOnly });
+  const { sections, latestRef, update } = useBoardSections({
+    initial,
+    userId,
+    readOnly,
+    ttlDays,
+  });
 
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
   // 開いた直後はどれも編集していない (全部 Markdown 表示。タップ / クリックでエディタに切り替わる)

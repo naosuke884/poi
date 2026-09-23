@@ -35,6 +35,7 @@ vi.mock("@/lib/api", () => ({
             id: s.id ?? `new-${puts.length}-${n++}`,
             content: s.content,
             position,
+            createdAt: "2026-01-01T00:00:00.000Z",
             expiresAt: "2099-01-01T00:00:00.000Z",
           }));
           return { ok: true, status: 200, json: async () => ({ sections }) };
@@ -90,7 +91,9 @@ function ActionsProbe() {
   return null;
 }
 
-async function mount(sections: Partial<BoardSection>[]) {
+let initialSections: BoardSection[] = [];
+
+async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -104,11 +107,17 @@ async function mount(sections: Partial<BoardSection>[]) {
     content: "",
     ...s,
   })) as BoardSection[];
+  initialSections = initial;
+  await render(ttlDays);
+}
+
+/** 同じ初期値のまま描画し直す (保持日数の変更後の読み込み直しなど。Board は作り直さない) */
+async function render(ttlDays: number) {
   await act(async () => {
     root.render(
       <MantineProvider>
         <ActionsProbe />
-        <Board sections={initial} userId="u" />
+        <Board sections={initialSections} userId="u" ttlDays={ttlDays} />
       </MantineProvider>,
     );
   });
@@ -307,5 +316,43 @@ describe("Board", () => {
     expect(puts).toEqual([]);
     expect(invalidate).toHaveBeenCalled();
     expect(readCachedBoard("u")).toBeNull();
+  });
+});
+
+describe("Board: 期限切れのセクション (issue #74)", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const iso = (ms: number) => new Date(ms).toISOString();
+
+  it("開いている間に期限を過ぎたセクションは、次の保存で送らず画面からも外す", async () => {
+    await mount([{ content: "- a", expiresAt: iso(Date.now() - 1000) }, { content: "- b" }]);
+    await act(async () => actions!.addSection());
+    await type("- c");
+    await waitForSave();
+    expect(puts.at(-1)).toEqual([
+      { id: "id-1", content: "- b" },
+      { id: null, content: "- c" },
+    ]);
+    expect(sectionTexts()).toEqual(["b", "- c"]);
+  });
+
+  it("保持日数を短くしたら期限を引き直し、過ぎたセクションを外す (送り返さない)", async () => {
+    const now = Date.now();
+    await mount([
+      { content: "- old", createdAt: iso(now - 10 * DAY), expiresAt: iso(now + 20 * DAY) },
+      { content: "- new", createdAt: iso(now - DAY), expiresAt: iso(now + 29 * DAY) },
+    ]);
+    // 設定の変更後の読み込み直し: Board は作り直さず、保持日数だけが変わる
+    await render(7);
+    expect(sectionTexts()).toEqual(["new"]);
+    await waitForSave();
+    // 外したものはサーバでも見えないので、それだけでは保存しない
+    expect(puts).toEqual([]);
+    await act(async () => actions!.addSection());
+    await type("- c");
+    await waitForSave();
+    expect(puts.at(-1)).toEqual([
+      { id: "id-1", content: "- new" },
+      { id: null, content: "- c" },
+    ]);
   });
 });

@@ -15,6 +15,7 @@ const saved = (key: string, content: string): EditableSection => ({
   key,
   id: `id-${key}`,
   content,
+  createdAt: `created-${key}`,
   expiresAt: `exp-${key}`,
 });
 const contents = (sections: EditableSection[]) => sections.map((s) => s.content);
@@ -31,9 +32,9 @@ describe("changeSection", () => {
     const r = changeSection([saved("a", "x"), saved("b", "y")], "a", "x\n\n\nz", 5)!;
     expect(contents(r.next)).toEqual(["x", "z", "y"]);
     const [first, second] = r.next;
-    expect(first).toMatchObject({ id: "id-a", expiresAt: "exp-a" });
+    expect(first).toMatchObject({ id: "id-a", createdAt: "created-a", expiresAt: "exp-a" });
     expect(first!.key).not.toBe("a");
-    expect(second).toMatchObject({ key: "a", id: null, expiresAt: null });
+    expect(second).toMatchObject({ key: "a", id: null, createdAt: null, expiresAt: null });
     expect(r.focus).toEqual({ key: "a", offset: 1 });
     expect(r.revealLast).toBe(false);
   });
@@ -60,7 +61,7 @@ describe("mergeSections", () => {
   it("前が id を、フォーカスのある方が key を保ち、カーソルはつなぎ目", () => {
     const r = mergeSections([saved("a", "x"), saved("b", "yz"), saved("c", "w")], 0, "b")!;
     expect(r.next).toEqual([
-      { key: "b", id: "id-a", expiresAt: "exp-a", content: "xyz" },
+      { key: "b", id: "id-a", createdAt: "created-a", expiresAt: "exp-a", content: "xyz" },
       saved("c", "w"),
     ]);
     expect(r.focus).toEqual({ key: "b", offset: 1 });

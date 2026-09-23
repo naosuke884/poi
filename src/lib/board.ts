@@ -2,6 +2,7 @@ import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
   boardLength,
+  memoExpiresAt,
   SECTION_SEPARATOR,
 } from "@worker/memo/constants";
 import type { InferResponseType } from "hono/client";
@@ -18,12 +19,13 @@ export type DraftSection = { id: string | null; content: string };
  * key は React の key とエディタの参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
  * 分割 / 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
  * (key はフォーカスのある部分に、id は先頭の部分に付く)。
- * id / expiresAt はサーバに保存済みのときだけ入る
+ * id / createdAt / expiresAt はサーバに保存済みのときだけ入る (createdAt は保持日数の変更で期限を引き直すため)
  */
 export type EditableSection = {
   key: string;
   id: string | null;
   content: string;
+  createdAt: string | null;
   expiresAt: string | null;
 };
 
@@ -32,7 +34,7 @@ export function newKey(): string {
   return `s${++seq}`;
 }
 export function newSection(content = ""): EditableSection {
-  return { key: newKey(), id: null, content, expiresAt: null };
+  return { key: newKey(), id: null, content, createdAt: null, expiresAt: null };
 }
 
 /** サーバから取得したセクションを画面用にする */
@@ -40,8 +42,56 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
   return sections.map((s) => ({
     ...newSection(s.content),
     id: s.id,
+    createdAt: s.createdAt,
     expiresAt: s.expiresAt,
   }));
+}
+
+/**
+ * 保持日数が変わったときの期限の引き直し (サーバの PUT /api/settings と同じ規則)。
+ * まだ期限の来ていない保存済みのセクションを createdAt + ttlDays にする。期限を過ぎたものは延ばさない
+ */
+export function applyTtlDays(
+  sections: EditableSection[],
+  ttlDays: number,
+  now: number,
+): EditableSection[] {
+  return sections.map((s) => {
+    if (s.createdAt === null || s.expiresAt === null) return s;
+    if (new Date(s.expiresAt).getTime() <= now) return s;
+    return { ...s, expiresAt: memoExpiresAt(new Date(s.createdAt), ttlDays).toISOString() };
+  });
+}
+
+/**
+ * 期限を過ぎたセクションを画面から外す。サーバはもう見せず (Cron で消える)、その id を送り返すと
+ * 「知らない id」として新しい期限で作り直されてしまうため (issue #74)。
+ * ただし最後の保存 (saved) の後に書き換えていたものは、入力を失わないよう消さずに id を外す
+ * (新しいセクションとして保存される)。
+ * expiredIds は期限切れだった id (保存済みの控えからも除くため)。期限切れが無ければ null
+ */
+export function pruneExpired(
+  sections: EditableSection[],
+  saved: DraftSection[],
+  now: number,
+): { next: EditableSection[]; expiredIds: Set<string> } | null {
+  const isExpired = (s: EditableSection) =>
+    s.id !== null && s.expiresAt !== null && new Date(s.expiresAt).getTime() <= now;
+  if (!sections.some(isExpired)) return null;
+  const savedContent = new Map(saved.map((s) => [s.id, s.content]));
+  const expiredIds = new Set<string>();
+  const next: EditableSection[] = [];
+  for (const s of sections) {
+    if (s.id === null || !isExpired(s)) {
+      next.push(s);
+      continue;
+    }
+    expiredIds.add(s.id);
+    if (savedContent.get(s.id) !== s.content) {
+      next.push({ ...s, id: null, createdAt: null, expiresAt: null });
+    }
+  }
+  return { next: next.length > 0 ? next : [newSection()], expiredIds };
 }
 
 /**

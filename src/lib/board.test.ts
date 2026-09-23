@@ -1,8 +1,11 @@
 import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS } from "@worker/memo/constants";
 import { describe, expect, it } from "vitest";
 import {
+  applyTtlDays,
+  type EditableSection,
   newSection,
   overLimitMessage,
+  pruneExpired,
   sameDraft,
   splitAtSeparator,
   toDraft,
@@ -116,5 +119,73 @@ describe("overLimitMessage", () => {
         { id: null, content: half },
       ]),
     ).toMatch(/文字数/);
+  });
+});
+
+describe("applyTtlDays", () => {
+  const now = Date.parse("2026-09-23T00:00:00.000Z");
+  const saved = (createdAt: string, expiresAt: string): EditableSection => ({
+    ...newSection("a"),
+    id: "1",
+    createdAt,
+    expiresAt,
+  });
+
+  it("期限前のセクションは createdAt + 日数に引き直す", () => {
+    const [s] = applyTtlDays(
+      [saved("2026-09-20T00:00:00.000Z", "2026-10-20T00:00:00.000Z")],
+      7,
+      now,
+    );
+    expect(s!.expiresAt).toBe("2026-09-27T00:00:00.000Z");
+  });
+
+  it("期限を過ぎたセクションと未保存のセクションはそのまま", () => {
+    const expired = saved("2026-08-01T00:00:00.000Z", "2026-08-31T00:00:00.000Z");
+    const fresh = newSection("b");
+    expect(applyTtlDays([expired, fresh], 90, now)).toEqual([expired, fresh]);
+  });
+});
+
+describe("pruneExpired", () => {
+  const now = Date.parse("2026-09-23T00:00:00.000Z");
+  const section = (id: string, content: string, expiresAt: string): EditableSection => ({
+    ...newSection(content),
+    id,
+    createdAt: "2026-08-01T00:00:00.000Z",
+    expiresAt,
+  });
+  const past = "2026-09-22T00:00:00.000Z";
+  const future = "2026-10-01T00:00:00.000Z";
+
+  it("期限切れが無ければ null", () => {
+    expect(pruneExpired([section("1", "a", future), newSection("b")], [], now)).toBeNull();
+  });
+
+  it("期限を過ぎた保存済みのセクションを外す", () => {
+    const keep = section("2", "b", future);
+    const r = pruneExpired(
+      [section("1", "a", past), keep],
+      [
+        { id: "1", content: "a" },
+        { id: "2", content: "b" },
+      ],
+      now,
+    )!;
+    expect(r.next).toEqual([keep]);
+    expect([...r.expiredIds]).toEqual(["1"]);
+  });
+
+  it("保存後に書き換えていたものは残し、id を外して新しいセクションにする", () => {
+    const r = pruneExpired([section("1", "a2", past)], [{ id: "1", content: "a" }], now)!;
+    expect(r.next).toEqual([
+      expect.objectContaining({ id: null, content: "a2", createdAt: null, expiresAt: null }),
+    ]);
+    expect([...r.expiredIds]).toEqual(["1"]);
+  });
+
+  it("全部外れたら空のセクションを 1 つ残す", () => {
+    const r = pruneExpired([section("1", "a", past)], [{ id: "1", content: "a" }], now)!;
+    expect(r.next).toEqual([expect.objectContaining({ id: null, content: "" })]);
   });
 });

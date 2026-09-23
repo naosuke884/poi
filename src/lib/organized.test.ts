@@ -6,6 +6,7 @@ const section = (key: string, content: string): EditableSection => ({
   key,
   id: null,
   content,
+  createdAt: null,
   expiresAt: null,
 });
 
