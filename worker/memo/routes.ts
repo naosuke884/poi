@@ -69,6 +69,10 @@ function selectBoard(db: Db, userId: string, now: Date) {
     .orderBy(asc(memo.position), asc(memo.createdAt));
 }
 
+// PUT で行の配列を json_each(?) に展開したときの別名と、その 1 行 (JSON オブジェクト)
+const jsonRows = sql.identifier("j");
+const jsonRow = sql`${jsonRows}.value`;
+
 /** そのユーザーのセクション保持日数 (設定していなければ既定値) */
 async function selectTtlDays(db: Db, userId: string): Promise<number> {
   const rows = await db
@@ -102,27 +106,52 @@ export const boardRoutes = new Hono<AppEnv>()
     const ttlDays = await selectTtlDays(db, userId);
     const plan = planBoardSync(await selectBoard(db, userId, now), sections);
 
-    const ops: BatchItem<"sqlite">[] = [
-      ...plan.updates.map(({ id, content, position }) =>
+    // セクションは最大 BOARD_MAX_SECTIONS (1,000) 個あるので、行ごとに文を分けたり id を 1 つずつ
+    // バインドしたりすると D1 の上限 (1 文あたりのバインド数 100、1 回の呼び出しあたりのクエリ数
+    // 50 (Free) / 1,000 (Paid)) に当たる。行は JSON 配列 1 つにまとめてバインドし、json_each で
+    // 展開して、更新 / 作成 / 削除をそれぞれ 1 文で済ませる (文の数もバインド数もセクション数によらない)
+    const ops: BatchItem<"sqlite">[] = [];
+    if (plan.updates.length > 0) {
+      ops.push(
         db
           .update(memo)
-          .set({ content, position })
-          .where(and(eq(memo.id, id), eq(memo.userId, userId))),
-      ),
-      ...plan.inserts.map(({ id, content, position }) =>
-        db.insert(memo).values({
-          id,
-          userId,
-          content,
-          position,
-          createdAt: now,
-          updatedAt: now,
-          expiresAt: memoExpiresAt(now, ttlDays),
-        }),
-      ),
-    ];
+          .set({
+            content: sql`${jsonRow}->>'content'`,
+            position: sql`${jsonRow}->>'position'`,
+          })
+          .from(sql`json_each(${JSON.stringify(plan.updates)}) as ${jsonRows}`)
+          .where(and(eq(memo.id, sql`${jsonRow}->>'id'`), eq(memo.userId, userId))),
+      );
+    }
+    if (plan.inserts.length > 0) {
+      // insert ... select は、select する列をテーブル定義と同じ順に並べる (drizzle の制約)
+      ops.push(
+        db.insert(memo).select((qb) =>
+          qb
+            .select({
+              id: sql<string>`${jsonRow}->>'id'`.as("id"),
+              userId: sql<string>`${userId}`.as("user_id"),
+              content: sql<string>`${jsonRow}->>'content'`.as("content"),
+              position: sql<number>`${jsonRow}->>'position'`.as("position"),
+              createdAt: sql<number>`${now.getTime()}`.as("created_at"),
+              updatedAt: sql<number>`${now.getTime()}`.as("updated_at"),
+              expiresAt: sql<number>`${memoExpiresAt(now, ttlDays).getTime()}`.as("expires_at"),
+            })
+            .from(sql`json_each(${JSON.stringify(plan.inserts)}) as ${jsonRows}`),
+        ),
+      );
+    }
     if (plan.deletes.length > 0) {
-      ops.push(db.delete(memo).where(and(eq(memo.userId, userId), inArray(memo.id, plan.deletes))));
+      ops.push(
+        db
+          .delete(memo)
+          .where(
+            and(
+              eq(memo.userId, userId),
+              inArray(memo.id, sql`(select value from json_each(${JSON.stringify(plan.deletes)}))`),
+            ),
+          ),
+      );
     }
     // D1 の batch は 1 トランザクションとして実行される (途中で失敗すれば全部ロールバック)。
     // 保存後の行の取り直しも同じ batch に入れ、間に別の PUT が割り込んだ内容を返さないようにする
