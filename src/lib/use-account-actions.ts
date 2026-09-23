@@ -121,8 +121,9 @@ export function useAccountActions() {
         } catch {
           // ここで失敗するなら signOut も失敗する (下でエラー表示になる)
         }
-        await authClient.signOut();
-        return null;
+        const { error } = await authClient.signOut();
+        // サーバ側で失敗したらセッションは有効なまま。キャッシュも消さずログイン状態のままにする
+        return error ? "ログアウトできませんでした。時間をおいてもう一度お試しください" : null;
       },
       () => clearCachesAndGoHome(cachedUserIds),
     );

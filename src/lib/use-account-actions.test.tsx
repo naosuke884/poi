@@ -88,6 +88,16 @@ describe("useAccountActions", () => {
     expect(actions.actionError).toMatch(/ログアウトできません/);
   });
 
+  it("サーバがログアウトに失敗したら、キャッシュを消さずエラーを出す", async () => {
+    auth.listDeviceSessions.mockResolvedValue({ data: [{ user: { id: "me" } }] });
+    auth.signOut.mockResolvedValue({ data: null, error: { status: 500 } });
+    await act(() => actions.logout("me"));
+    expect(clearOfflineCaches).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(actions.actionError).toMatch(/ログアウトできませんでした/);
+    expect(actions.runningAction).toBeNull();
+  });
+
   it("アカウント削除に成功したら自分のキャッシュを消す", async () => {
     auth.deleteUser.mockResolvedValue({ error: null });
     await act(() => actions.deleteAccount("me"));
