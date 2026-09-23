@@ -173,8 +173,8 @@ export function SectionEditor({
   const viewRef = useRef<EditorView | null>(null);
   // 最後に頼まれたフォーカス位置。StrictMode (開発時のみ) は新しくマウントした layout effect を破棄→再実行するので、
   // Board がフォーカスした直後に view を作り直すことになる (Textarea は DOM が残るので困らなかった)。
-  // 作り直した view にも同じフォーカスを引き継ぐ (blur で消す。作り直し時にしか使わない)
-  const wantFocusRef = useRef<number | null>(null);
+  // 作り直した view にも同じフォーカス (位置とスクロール先) を引き継ぐ (blur で消す。作り直し時にしか使わない)
+  const wantFocusRef = useRef<{ pos: number; place?: CursorPlace } | null>(null);
   // コールバックは最新の props を呼ぶ (拡張は一度作ったら作り直さない)
   const callbacks = {
     onChange,
@@ -207,9 +207,9 @@ export function SectionEditor({
   useImperativeHandle(
     ref,
     () => ({
-      focus(pos, anchorTop) {
-        wantFocusRef.current = pos;
-        if (viewRef.current) applyFocus(viewRef.current, pos, anchorTop);
+      focus(pos, place) {
+        wantFocusRef.current = { pos, place };
+        if (viewRef.current) applyFocus(viewRef.current, pos, place);
       },
     }),
     [],
@@ -278,7 +278,9 @@ export function SectionEditor({
     });
     viewRef.current = view;
     // StrictMode の作り直し (上記) でフォーカスが失われないように、頼まれていたフォーカスを新しい view に適用する
-    if (wantFocusRef.current !== null) applyFocus(view, wantFocusRef.current);
+    if (wantFocusRef.current !== null) {
+      applyFocus(view, wantFocusRef.current.pos, wantFocusRef.current.place);
+    }
     return () => {
       view.destroy();
       viewRef.current = null;
