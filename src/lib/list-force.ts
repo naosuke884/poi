@@ -42,7 +42,8 @@ export const forceListMarkers: Extension = [
     if (addToHistory !== undefined) annotations.push(Transaction.addToHistory.of(addToHistory));
     return {
       changes: tr.changes.compose(fixSet),
-      selection: tr.newSelection.map(fixSet),
+      // 記号を足した位置にあるカーソルは記号の後ろへ (記号ごと消した直後など。既定の assoc (-1) だと前に残る)
+      selection: tr.newSelection.map(fixSet, 1),
       effects: tr.effects,
       annotations,
       scrollIntoView: tr.scrollIntoView,
