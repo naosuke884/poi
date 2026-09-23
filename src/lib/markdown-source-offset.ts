@@ -1,5 +1,6 @@
 import type { Element, Root } from "hast";
 import type { Plugin } from "unified";
+import { LIST_MARKER_SOURCE } from "@/lib/markdown-syntax";
 
 /**
  * Markdown 表示のクリック位置から、元の Markdown テキストの位置 (エディタでカーソルを置く場所) を求める。
@@ -50,7 +51,7 @@ export function sourceOffsetAt(node: Node, offset: number, source: string): numb
   }
   if (isFormatting(node)) return null;
   const region = source.slice(start, end);
-  let cursor = 0;
+  let cursor = markerLength(owner, region);
   const walker = owner.ownerDocument.createTreeWalker(owner, NodeFilter.SHOW_TEXT);
   for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
     if (isFormatting(t)) continue;
@@ -60,6 +61,22 @@ export function sourceOffsetAt(node: Node, offset: number, source: string): numb
     cursor = i + t.data.length;
   }
   return null;
+}
+
+// 要素の元テキストの先頭にある記号 (項目の `- ` / `1. `、見出しの `# `)。表示テキストは記号の後ろから探す
+// (記号にも同じ文字が現れる `1. 1` などで、記号の中に当たらないように)
+const LIST_ITEM_MARKER_RE = new RegExp(String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]*`);
+const HEADING_MARKER_RE = /^[ \t]*#{1,6}[ \t]*/;
+
+/** 要素 el の元テキスト region の先頭にある記号の長さ (記号を持たない要素は 0) */
+function markerLength(el: HTMLElement, region: string): number {
+  const re =
+    el.tagName === "LI"
+      ? LIST_ITEM_MARKER_RE
+      : /^H[1-6]$/.test(el.tagName)
+        ? HEADING_MARKER_RE
+        : null;
+  return re?.exec(region)?.[0].length ?? 0;
 }
 
 // react-markdown がブロック要素の間に入れる整形用の改行 (元テキストの範囲の外にあることがある)
@@ -146,7 +163,7 @@ export function clientTopAtSourceOffset(
   const owner = ownerAtSourceOffset(root, pos);
   if (!owner) return null;
   const region = source.slice(owner.start, owner.end);
-  let cursor = 0;
+  let cursor = markerLength(owner.el, region);
   // pos に届かないまま終わったら、最後に見たテキストノードの末尾で代用する (範囲の末尾の位置など)
   let found: { node: Text; offset: number } | null = null;
   const walker = owner.el.ownerDocument.createTreeWalker(owner.el, NodeFilter.SHOW_TEXT);

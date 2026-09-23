@@ -31,6 +31,13 @@ describe("sourceOffsetAt", () => {
     expect(offsetOf(root, "項目", 2, source)).toBe(source.length);
   });
 
+  it("記号と同じ文字が本文にあっても、記号の中には当たらない", () => {
+    const ol = "1. 1";
+    expect(offsetOf(render(ol), "1", 0, ol)).toBe(3);
+    const ten = "10. 0";
+    expect(offsetOf(render(ten), "0", 1, ten)).toBe(5);
+  });
+
   it("同じ文字列が繰り返されていても、クリックした方に当たる", () => {
     const source = "- aa\n- aa";
     const root = render(source);
