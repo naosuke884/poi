@@ -18,11 +18,16 @@ describe("clearOfflineCaches", () => {
     writeCachedBoard("third", board("third"));
   });
 
-  it("省略するとキャッシュ済みユーザーの板とユーザー情報を消す", () => {
+  it("省略すると全ユーザーの板 (古い形式も) とユーザー情報を消す", () => {
+    localStorage.setItem("poi:board-cache:v1:me", "{}");
+    localStorage.setItem("poi:unrelated", "x");
     clearOfflineCaches();
     expect(readCachedUser()).toBeNull();
     expect(readCachedBoard("me")).toBeNull();
-    expect(readCachedBoard("other")).not.toBeNull();
+    expect(readCachedBoard("other")).toBeNull();
+    expect(readCachedBoard("third")).toBeNull();
+    expect(localStorage.getItem("poi:board-cache:v1:me")).toBeNull();
+    expect(localStorage.getItem("poi:unrelated")).toBe("x");
   });
 
   it("指定したユーザーの板をすべて消す", () => {

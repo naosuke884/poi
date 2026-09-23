@@ -71,27 +71,22 @@ describe("useAccountActions", () => {
   });
 
   it("ログアウトはこの端末の全アカウントのキャッシュを消してトップへ", async () => {
-    auth.listDeviceSessions.mockResolvedValue({
-      data: [{ user: { id: "me" } }, { user: { id: "b" } }],
-    });
-    auth.signOut.mockResolvedValue({});
-    await act(() => actions.logout("me"));
-    expect(clearOfflineCaches).toHaveBeenCalledWith(["me", "b"]);
+    auth.signOut.mockResolvedValue({ data: { success: true }, error: null });
+    await act(() => actions.logout());
+    expect(clearOfflineCaches).toHaveBeenCalledWith(undefined);
     expect(router.navigate).toHaveBeenCalledWith({ to: "/" });
   });
 
   it("ログアウトに失敗したらキャッシュは消さない", async () => {
-    auth.listDeviceSessions.mockRejectedValue(new TypeError());
     auth.signOut.mockRejectedValue(new TypeError());
-    await act(() => actions.logout("me"));
+    await act(() => actions.logout());
     expect(clearOfflineCaches).not.toHaveBeenCalled();
     expect(actions.actionError).toMatch(/ログアウトできません/);
   });
 
   it("サーバがログアウトに失敗したら、キャッシュを消さずエラーを出す", async () => {
-    auth.listDeviceSessions.mockResolvedValue({ data: [{ user: { id: "me" } }] });
     auth.signOut.mockResolvedValue({ data: null, error: { status: 500 } });
-    await act(() => actions.logout("me"));
+    await act(() => actions.logout());
     expect(clearOfflineCaches).not.toHaveBeenCalled();
     expect(router.navigate).not.toHaveBeenCalled();
     expect(actions.actionError).toMatch(/ログアウトできませんでした/);

@@ -50,7 +50,7 @@ export async function loadTopPage(session: LoginContext["session"]): Promise<Top
     };
   }
   if (res.status === 401) {
-    clearOfflineCaches([userId]);
+    clearOfflineCaches();
     return { kind: "landing" };
   }
   if (!res.ok) throw new Error("板の取得に失敗しました");

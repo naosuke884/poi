@@ -52,6 +52,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 const { Board } = await import("@/components/Board");
 const { readCachedBoard } = await import("@/lib/board-cache");
+const { writeCachedUser, clearCachedUser } = await import("@/lib/session-cache");
 const { useBoardActions } = await import("@/lib/board-actions");
 
 beforeAll(() => {
@@ -118,6 +119,8 @@ beforeEach(() => {
   sessionUserId = "u";
   invalidate.mockClear();
   localStorage.clear();
+  // ログイン中のユーザー (保存時にオフライン用キャッシュを書くのはこのユーザーのときだけ)
+  writeCachedUser({ id: "u", name: "U", email: "u@example.com" });
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -282,6 +285,17 @@ describe("Board", () => {
     expect(editor().state.doc.toString()).toBe("- abcde");
     await type("f");
     expect(editor().state.doc.toString()).toBe("- abcde");
+  });
+
+  it("ログアウト後に完了した保存では、オフライン用キャッシュを作り直さない", async () => {
+    await mount([{ content: "- a" }]);
+    await act(async () => actions!.addSection());
+    await type("- b");
+    // ログアウト (clearOfflineCaches) でキャッシュ済みユーザーが消えた後に保存が完了する
+    clearCachedUser();
+    await waitForSave();
+    expect(puts).toHaveLength(1);
+    expect(readCachedBoard("u")).toBeNull();
   });
 
   it("別のアカウントに切り替わっていたら保存せず、読み込み直す", async () => {

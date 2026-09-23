@@ -1,5 +1,5 @@
 import { authClient } from "@/lib/auth-client";
-import { clearBoardCache } from "@/lib/board-cache";
+import { clearAllBoardCaches, clearBoardCache } from "@/lib/board-cache";
 import { isNetworkError } from "@/lib/offline";
 import {
   type CachedUser,
@@ -15,12 +15,12 @@ export type LoginContext = { session: { user: CachedUser } | null };
 
 // この端末に残るオフライン閲覧用キャッシュ (ユーザー情報と、userIds の各ユーザーの板) を消す。
 // サーバが「未ログイン」と答えた (セッション切れを含む) とき、ログアウト / アカウント削除のときに、
-// 他人に見えないよう呼ぶ。userIds を省略すると、キャッシュ済みユーザーの板を消す
+// 他人に見えないよう呼ぶ。userIds を省略すると、この端末の全ユーザーの板を消す
+// (multiSession で他のアカウントの板もキャッシュしていることがあるため)
 export function clearOfflineCaches(userIds?: string[]): void {
-  const cached = readCachedUser()?.id;
-  const ids = userIds ?? (cached !== undefined ? [cached] : []);
   clearCachedUser();
-  for (const id of ids) clearBoardCache(id);
+  if (userIds === undefined) clearAllBoardCaches();
+  else for (const id of userIds) clearBoardCache(id);
 }
 
 // ログイン状態を調べる beforeLoad 用のガード。未ログインでも redirect しない

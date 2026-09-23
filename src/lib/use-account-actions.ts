@@ -60,10 +60,10 @@ export function useAccountActions() {
     setRunningAction(null);
   };
 
-  // ログアウト / アカウント削除の後始末: この端末に残るオフライン閲覧用のキャッシュを消し、
-  // 板 (loader) を取り直してランディングへ戻る
-  const clearCachesAndGoHome = async (cachedUserIds: string[]) => {
-    clearOfflineCaches(cachedUserIds);
+  // ログアウト / アカウント削除の後始末: この端末に残るオフライン閲覧用のキャッシュを消し
+  // (userIds を省略すると全ユーザーの分)、板 (loader) を取り直してランディングへ戻る
+  const clearCachesAndGoHome = async (userIds?: string[]) => {
+    clearOfflineCaches(userIds);
     await router.invalidate();
     await router.navigate({ to: "/" });
   };
@@ -106,28 +106,19 @@ export function useAccountActions() {
       },
     );
 
-  const logout = (userId: string) => {
-    // multiSession の signOut はこの端末の全アカウントを一括で外すので、消すべき
-    // 板キャッシュのユーザー一覧を先に取っておく (取れなければ今のアカウントの分だけ)
-    let cachedUserIds = [userId];
-    return run(
+  // multiSession の signOut はこの端末の全アカウントを一括で外すので、全ユーザーの板キャッシュを消す
+  const logout = () =>
+    run(
       "logout",
       // navigator.onLine が true でも実際には届かないことがある (Wi-Fi はあるが接続なし等)
       "オフラインのためログアウトできません",
       async () => {
-        try {
-          const { data: sessions } = await authClient.multiSession.listDeviceSessions();
-          if (sessions) cachedUserIds = [...new Set([userId, ...sessions.map((d) => d.user.id)])];
-        } catch {
-          // ここで失敗するなら signOut も失敗する (下でエラー表示になる)
-        }
         const { error } = await authClient.signOut();
         // サーバ側で失敗したらセッションは有効なまま。キャッシュも消さずログイン状態のままにする
         return error ? "ログアウトできませんでした。時間をおいてもう一度お試しください" : null;
       },
-      () => clearCachesAndGoHome(cachedUserIds),
+      () => clearCachesAndGoHome(),
     );
-  };
 
   // 確認は UserMenu の Modal で済ませてから呼ばれる
   const deleteAccount = (userId: string) =>

@@ -14,6 +14,7 @@ import {
 import { writeCachedBoard } from "@/lib/board-cache";
 import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
 import { publishSaveState, type SaveStatus } from "@/lib/save-status";
+import { readCachedUser } from "@/lib/session-cache";
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
@@ -32,7 +33,9 @@ async function putBoard(userId: string, draft: DraftSection[]): Promise<BoardSec
   }
   if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
   const { sections } = await res.json();
-  writeCachedBoard(userId, sections);
+  // ログアウト / セッション切れ (キャッシュ済みユーザーが消える) や切り替えの後に完了した保存では、
+  // 消したキャッシュを作り直さない
+  if (readCachedUser()?.id === userId) writeCachedBoard(userId, sections);
   return sections;
 }
 

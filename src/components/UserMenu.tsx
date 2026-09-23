@@ -138,7 +138,7 @@ export function UserMenu() {
           </Menu.Item>
           <Menu.Divider />
           {offline && <Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
-          <Menu.Item color="red" disabled={offline || busy} onClick={() => void logout(user.id)}>
+          <Menu.Item color="red" disabled={offline || busy} onClick={() => void logout()}>
             ログアウト
           </Menu.Item>
           <Menu.Item
