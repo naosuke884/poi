@@ -3,6 +3,7 @@
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { MantineProvider } from "@mantine/core";
+import { BOARD_MAX_LENGTH } from "@worker/memo/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -239,6 +240,21 @@ describe("Board", () => {
     expect(readCachedBoard("u")?.sections.map((s) => s.content)).toEqual(["- a", "- b"]);
     // afterEach の unmount 用に空の root を用意し直す
     root = createRoot(container);
+  });
+
+  it("板全体の文字数上限を超える入力は弾く (自動で足す記号も含めて)", async () => {
+    // 他のセクションと区切り (3 文字) で、残りは 7 文字
+    await mount([{ content: "x".repeat(BOARD_MAX_LENGTH - 3 - 7) }]);
+    await act(async () => actions!.addSection());
+    await type("- abc");
+    expect(editor().state.doc.toString()).toBe("- abc");
+    // 入力した 2 文字だけなら 7 文字に収まるが、記号 `- ` が足されて 9 文字になるので弾く
+    await type("\nd");
+    expect(editor().state.doc.toString()).toBe("- abc");
+    await type("de");
+    expect(editor().state.doc.toString()).toBe("- abcde");
+    await type("f");
+    expect(editor().state.doc.toString()).toBe("- abcde");
   });
 
   it("別のアカウントに切り替わっていたら保存せず、読み込み直す", async () => {

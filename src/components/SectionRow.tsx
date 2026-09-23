@@ -64,6 +64,7 @@ export function SectionRow({
   editing,
   readOnly,
   fillScreen,
+  maxLength,
   placeholder,
   handlers: h,
   refs,
@@ -74,6 +75,8 @@ export function SectionRow({
   readOnly: boolean;
   /** 画面 1 つ分の高さを確保する (最後のセクション) */
   fillScreen: boolean;
+  /** このセクションに書ける文字数 (SectionEditor の maxLength) */
+  maxLength: number;
   /** エディタのプレースホルダ (セクションが 1 つだけのとき) */
   placeholder: string | undefined;
   handlers: SectionHandlers;
@@ -148,6 +151,7 @@ export function SectionRow({
           onArrowUpAtFirstLine={() => h.arrowUpAtFirstLine(s.key)}
           onArrowDownAtLastLine={() => h.arrowDownAtLastLine(s.key)}
           onEscape={() => h.exitEditing(s.key)}
+          maxLength={maxLength}
           readOnly={readOnly}
           ref={register(refs.editors, s.key)}
         />

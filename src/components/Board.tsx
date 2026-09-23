@@ -1,5 +1,5 @@
 import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
-import { MEMO_TTL_DAYS } from "@worker/memo/constants";
+import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@worker/memo/constants";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { PlusIcon } from "@/components/AddSectionButton";
@@ -249,6 +249,16 @@ export function Board({
     "Markdown が使えます (# 見出し、- 箇条書き)",
     "Tab でインデント、Esc で編集をやめる",
   ].join("\n");
+  // 各セクションに書ける文字数: 板全体の上限 (保存するのは空でないセクションを区切りで連結したもの。boardLength) から、
+  // 他の空でないセクションの文字数と、それらとの区切りのぶんを引く
+  const filled = sections.filter((s) => s.content !== "");
+  const filledLength = filled.reduce((n, s) => n + s.content.length, 0);
+  const maxLengthOf = (s: (typeof sections)[number]) => {
+    const own = s.content !== "";
+    const others = filled.length - (own ? 1 : 0);
+    const othersLength = filledLength - s.content.length;
+    return BOARD_MAX_LENGTH - othersLength - others * SECTION_SEPARATOR.length;
+  };
 
   return (
     <Stack gap="xs" style={{ flex: 1 }}>
@@ -280,6 +290,7 @@ export function Board({
               editing={s.key === editingKey}
               readOnly={readOnly}
               fillScreen={i === sections.length - 1 && sections.length > 1}
+              maxLength={maxLengthOf(s)}
               placeholder={sections.length === 1 ? placeholder : undefined}
               handlers={handlers}
               refs={refs}
