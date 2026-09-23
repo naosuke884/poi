@@ -42,6 +42,17 @@ describe("loadTopPage", () => {
     expect(readCachedBoard("me")?.sections).toEqual(sections);
   });
 
+  it("取得中に保存されたキャッシュは、取得した (保存前の) 内容で上書きしない", async () => {
+    const saved = [{ ...sections[0]!, content: "- saved" }];
+    $get.mockImplementation(async () => {
+      // GET を送った後に PUT が完了してキャッシュを書いた
+      writeCachedBoard("me", saved, Date.now() + 1);
+      return response(200, { sections, ttlDays: 7 });
+    });
+    await loadTopPage(session);
+    expect(readCachedBoard("me")?.sections).toEqual(saved);
+  });
+
   it("オフラインならキャッシュを閲覧専用で返す", async () => {
     writeCachedBoard("me", sections, 123);
     $get.mockRejectedValue(new TypeError("fetch failed"));

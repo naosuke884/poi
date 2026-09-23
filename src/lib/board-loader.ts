@@ -28,6 +28,8 @@ export type TopPage =
 export async function loadTopPage(session: LoginContext["session"]): Promise<TopPage> {
   if (session === null) return { kind: "landing" };
   const userId = session.user.id;
+  // 取得した内容が最新だったと言える時刻 (キャッシュを古い内容で上書きしないため。writeCachedBoard)
+  const requestedAt = Date.now();
   let res;
   try {
     res = await fetchOrOffline(() => api.board.$get());
@@ -55,6 +57,6 @@ export async function loadTopPage(session: LoginContext["session"]): Promise<Top
   }
   if (!res.ok) throw new Error("板の取得に失敗しました");
   const { sections, ttlDays } = await res.json();
-  writeCachedBoard(userId, sections);
+  writeCachedBoard(userId, sections, requestedAt);
   return { kind: "board", sections, ttlDays, offline: false, cachedAt: null, userId };
 }
