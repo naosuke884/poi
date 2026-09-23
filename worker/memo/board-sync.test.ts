@@ -3,10 +3,13 @@ import { type ExistingSection, type IncomingSection, planBoardSync } from "./boa
 
 const row = (id: string, content: string, position: number) => ({ id, content, position });
 
+// createdAt がこれ以前のものは今の保持日数では期限切れ
+const EXPIRED_CREATED_AT = new Date("2026-09-01T00:00:00.000Z");
+
 // 新規の id を n1, n2, ... と決まった値で発行する
 const plan = (existing: ExistingSection[], sections: IncomingSection[]) => {
   let n = 0;
-  return planBoardSync(existing, sections, () => `n${++n}`);
+  return planBoardSync(existing, sections, EXPIRED_CREATED_AT, () => `n${++n}`);
 };
 
 describe("planBoardSync", () => {
@@ -60,6 +63,29 @@ describe("planBoardSync", () => {
       ],
       deletes: [],
       ids: ["a", "n1", "n2"],
+    });
+  });
+
+  it("知らない id で createdAt が今の保持日数で期限切れのものは作らず、position を詰める (issue #94)", () => {
+    expect(
+      plan(
+        [row("a", "x", 0), row("b", "y", 2)],
+        [
+          { id: "a", content: "x", createdAt: "2026-08-01T00:00:00.000Z" },
+          { id: "gone", content: "old", createdAt: "2026-09-01T00:00:00.000Z" },
+          { id: "b", content: "y", createdAt: "2026-09-10T00:00:00.000Z" },
+          { id: "deleted", content: "fresh", createdAt: "2026-09-10T00:00:00.000Z" },
+          { id: "legacy", content: "no createdAt" },
+        ],
+      ),
+    ).toEqual({
+      updates: [{ id: "b", content: "y", position: 1 }],
+      inserts: [
+        { id: "n1", content: "fresh", position: 2 },
+        { id: "n2", content: "no createdAt", position: 3 },
+      ],
+      deletes: [],
+      ids: ["a", null, "b", "n1", "n2"],
     });
   });
 

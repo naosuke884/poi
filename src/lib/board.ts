@@ -11,8 +11,9 @@ import type { api } from "@/lib/api";
 // GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる
 export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sections"][number];
 
-// PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける
-export type DraftSection = { id: string | null; content: string };
+// PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける。
+// createdAt はその行の作成日時 (保存済みのときだけ。サーバが今の保持日数で期限切れか判定する: issue #94)
+export type DraftSection = { id: string | null; content: string; createdAt?: string | null };
 
 /**
  * 画面上の 1 セクション (編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示)。
@@ -102,7 +103,7 @@ export function pruneExpired(
 export function toDraft(sections: EditableSection[]): (DraftSection & { key: string })[] {
   return sections
     .filter((s) => s.content !== "")
-    .map(({ key, id, content }) => ({ key, id, content }));
+    .map(({ key, id, content, createdAt }) => ({ key, id, content, createdAt }));
 }
 
 /** 保存対象が前回保存したものと同じか (id と内容と並び順) */
@@ -124,6 +125,37 @@ export function overLimitMessage(draft: DraftSection[]): string | null {
   return null;
 }
 
+/**
+ * 保存のレスポンスを画面上のセクションに戻す。draft は送ったもの、updated はその順の保存後の行、
+ * saved は送る前の保存済みの控え。
+ * - 送ったセクションにはサーバの id と期限を付ける (保存中の入力 (content) はそのまま残す)
+ * - 送っていない (空だった) セクションはサーバから消えているので id を外す
+ * - サーバが期限切れとして作らなかったセクション (null。別のタブで保持日数を短くしたときなど: issue #94) は
+ *   画面から外す。ただし前回の保存の後に書き換えていたものは、入力を失わないよう id を外して残す
+ *   (新しいセクションとして保存される。pruneExpired と同じ扱い)
+ */
+export function applySaved(
+  sections: EditableSection[],
+  draft: { key: string }[],
+  updated: (BoardSection | null)[],
+  saved: DraftSection[],
+): EditableSection[] {
+  const byKey = new Map(draft.map((d, i) => [d.key, updated[i]]));
+  const savedContent = new Map(saved.map((s) => [s.id, s.content]));
+  const next: EditableSection[] = [];
+  for (const s of sections) {
+    const u = byKey.get(s.key);
+    if (u) {
+      next.push({ ...s, id: u.id, createdAt: u.createdAt, expiresAt: u.expiresAt });
+    } else if (u === null && savedContent.get(s.id) === s.content) {
+      // 期限切れで作られず、書き換えてもいない: 外す
+    } else {
+      next.push(s.id === null ? s : { ...s, id: null, createdAt: null, expiresAt: null });
+    }
+  }
+  return next.length > 0 ? next : [newSection()];
+}
+
 /** 保存済みの控え (差分の有無の判定用) にする形: id と内容だけに絞る */
 export function toSaved(sections: { id: string | null; content: string }[]): DraftSection[] {
   return sections.map(({ id, content }) => ({ id, content }));
@@ -138,8 +170,18 @@ export function toPutPayload(
   userId: string,
   revision: string | null,
   draft: DraftSection[],
-): { userId: string; revision: string | null; sections: DraftSection[] } {
-  return { userId, revision, sections: toSaved(draft) };
+): {
+  userId: string;
+  revision: string | null;
+  sections: { id: string | null; content: string; createdAt?: string }[];
+} {
+  return {
+    userId,
+    revision,
+    sections: draft.map(({ id, content, createdAt }) =>
+      id !== null && createdAt ? { id, content, createdAt } : { id, content },
+    ),
+  };
 }
 
 /**

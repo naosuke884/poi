@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import type { AppEnv } from "../middleware";
-import { BOARD_MAX_SECTIONS } from "./constants";
+import { BOARD_MAX_SECTIONS, DAY_MS } from "./constants";
 import { boardRoutes } from "./routes";
 
 // PUT /api/board をローカルの D1 (wrangler の getPlatformProxy。workerd の SQLite で、
@@ -24,7 +24,7 @@ const app = new Hono<AppEnv>()
   })
   .route("/", boardRoutes);
 
-type Draft = { id: string | null; content: string }[];
+type Draft = { id: string | null; content: string; createdAt?: string }[];
 type PutResponse = { sections: Section[]; revision: string; error?: string };
 
 // 直前の保存で返ってきた版 (put はそれを付けて送り、成功すれば更新する。1 つの端末で保存し続けるのと同じ)
@@ -131,6 +131,31 @@ describe("PUT /api/board", () => {
       { id: a.id, content: "a2", position: 2 },
     ]);
     expect((await rows()).some((row) => row.id === b.id)).toBe(false);
+  });
+
+  it("知らない id で、今の保持日数ではもう期限切れのものは作り直さない (issue #94)", async () => {
+    // 別のタブで保持日数を 7 日に短くし、10 日前に作ったセクションが消えた後の保存
+    await db
+      .prepare("insert into user_setting (user_id, memo_ttl_days) values (?, ?)")
+      .bind(USER_ID, 7)
+      .run();
+    const now = Date.now();
+    const first = await put([{ id: null, content: "kept" }]);
+    const [kept] = first.body.sections;
+    const saved = await put([
+      { id: "gone", content: "old", createdAt: new Date(now - 10 * DAY_MS).toISOString() },
+      { id: kept.id, content: "kept2", createdAt: kept.createdAt },
+      { id: "deleted", content: "recent", createdAt: new Date(now - DAY_MS).toISOString() },
+    ]);
+    expect(saved.status).toBe(200);
+    const [gone, kept2, recent] = saved.body.sections;
+    expect(gone).toBeNull();
+    expect(kept2).toMatchObject({ id: kept.id, content: "kept2" });
+    expect(recent).toMatchObject({ content: "recent" });
+    expect(await rows()).toEqual([
+      { id: kept.id, content: "kept2", position: 0 },
+      { id: recent.id, content: "recent", position: 1 },
+    ]);
   });
 
   it("JSON 経由でも内容をそのまま保存する", async () => {

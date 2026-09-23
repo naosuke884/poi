@@ -2,6 +2,7 @@ import { useBlocker, useRouter } from "@tanstack/react-router";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import {
+  applySaved,
   applyTtlDays,
   type BoardSection,
   type DraftSection,
@@ -33,6 +34,7 @@ function cacheBoard(userId: string, sections: BoardSection[], asOf?: number) {
 
 /**
  * 板を保存し (PUT /api/board)、成功したらオフライン閲覧用のキャッシュも更新して、保存後のセクションと版を返す。
+ * セクションは送った順に並び、サーバが期限切れとして作らなかったものは null (issue #94)。
  * 通常の自動保存とアンマウント時の保存の両方がこれを通る (どちらの経路でもキャッシュが古いまま残らないように)。
  * 上限の確認は呼び出し側で済ませておく。
  * - ログイン中のアカウントが userId と違えば (別タブ / 別の操作で切り替わった) 保存されず、UserMismatchError
@@ -42,7 +44,7 @@ async function putBoard(
   userId: string,
   revision: string | null,
   draft: DraftSection[],
-): Promise<RemoteBoard> {
+): Promise<{ sections: (BoardSection | null)[]; revision: string }> {
   const res = await api.board.$put({ json: toPutPayload(userId, revision, draft) });
   if (res.status === 409) {
     const body = (await res.json()) as { error?: string };
@@ -51,7 +53,10 @@ async function putBoard(
   }
   if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
   const saved = await res.json();
-  cacheBoard(userId, saved.sections);
+  cacheBoard(
+    userId,
+    saved.sections.filter((s) => s !== null),
+  );
   return saved;
 }
 
@@ -197,19 +202,11 @@ export function useBoardAutosave({
     try {
       try {
         const updated = await fetchOrOffline(() => putBoard(userId, revisionRef.current, draft));
-        savedRef.current = toSaved(updated.sections);
-        revisionRef.current = updated.revision;
-        // レスポンスは送った順に並ぶ (サーバが送られた順に対応付けて返す) ので、送ったセクションにサーバの id と期限を戻す。
-        // 送っていない (空だった) セクションはサーバから消えているので id を外す。
+        // レスポンスは送った順に並ぶ (サーバが送られた順に対応付けて返す) ので、画面のセクションにサーバの id と期限を戻す。
         // 保存中の入力 (content) はそのまま残す (差分があれば続けて保存される)
-        const byKey = new Map(draft.map((d, i) => [d.key, updated.sections[i]]));
-        commit(
-          latestRef.current.map((s) => {
-            const u = byKey.get(s.key);
-            if (u) return { ...s, id: u.id, createdAt: u.createdAt, expiresAt: u.expiresAt };
-            return s.id === null ? s : { ...s, id: null, createdAt: null, expiresAt: null };
-          }),
-        );
+        commit(applySaved(latestRef.current, draft, updated.sections, savedRef.current));
+        savedRef.current = toSaved(updated.sections.filter((u) => u !== null));
+        revisionRef.current = updated.revision;
       } catch (e) {
         if (!(e instanceof StaleError)) throw e;
         // 別の場所で保存されていた (何も書かれていない)。取り直して手元の変更を重ね、下で保存し直す

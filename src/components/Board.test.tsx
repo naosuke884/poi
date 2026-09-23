@@ -12,9 +12,10 @@ import type { BoardSection } from "@/lib/board";
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の
 // PUT までを通しで確かめる。レイアウトが無いので、スクロールや表示上の行の判定は対象外
 
-// 自動保存の PUT / 取り直しの GET を横取りする (保存できた sections を記録し、id を振って返す)。
+// 自動保存の PUT / 取り直しの GET を横取りする (保存できた sections の id と内容を記録し、id を振って返す)。
 // 送った userId がセッションのユーザー (sessionUserId) と違えば、送った版がサーバの版 (server.revision) と
-// 違えば、サーバと同じく 409 を返す。別の端末での保存は server を書き換えて表す
+// 違えば、サーバと同じく 409 を返す。別の端末での保存は server を書き換えて表す。
+// expiredOnServer の id は、サーバで期限切れとして作らなかった (null を返す) ことにする
 type ServerSection = {
   id: string;
   content: string;
@@ -28,6 +29,7 @@ let server: { revision: string | null; sections: ServerSection[] } = {
   revision: null,
   sections: [],
 };
+const expiredOnServer = new Set<string>();
 const invalidate = vi.fn(async () => {});
 vi.mock("@/lib/api", () => ({
   api: {
@@ -48,17 +50,28 @@ vi.mock("@/lib/api", () => ({
           if (json.revision !== server.revision) {
             return { ok: false, status: 409, json: async () => ({ error: "Stale" }) };
           }
-          puts.push(json.sections);
+          puts.push(json.sections.map(({ id, content }) => ({ id, content })));
           let n = 0;
-          const sections = json.sections.map((s, position) => ({
-            id: s.id ?? `new-${puts.length}-${n++}`,
-            content: s.content,
-            position,
-            createdAt: "2026-01-01T00:00:00.000Z",
-            expiresAt: "2099-01-01T00:00:00.000Z",
-          }));
-          server = { revision: `r${puts.length}`, sections };
-          return { ok: true, status: 200, json: async () => ({ ...server }) };
+          const sections = json.sections.map((s) =>
+            s.id !== null && expiredOnServer.has(s.id)
+              ? null
+              : {
+                  id: s.id ?? `new-${puts.length}-${n++}`,
+                  content: s.content,
+                  position: 0,
+                  createdAt: "2026-01-01T00:00:00.000Z",
+                  expiresAt: "2099-01-01T00:00:00.000Z",
+                },
+          );
+          const kept = sections
+            .filter((s) => s !== null)
+            .map((s, position) => Object.assign(s, { position }));
+          server = { revision: `r${puts.length}`, sections: kept };
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ sections, revision: server.revision }),
+          };
         },
       ),
       $get: vi.fn(async () => ({
@@ -152,6 +165,7 @@ async function render(ttlDays: number) {
 beforeEach(() => {
   puts.length = 0;
   sessionUserId = "u";
+  expiredOnServer.clear();
   invalidate.mockClear();
   localStorage.clear();
   // ログイン中のユーザー (保存時にオフライン用キャッシュを書くのはこのユーザーのときだけ)
@@ -425,5 +439,27 @@ describe("Board: 期限切れのセクション (issue #74)", () => {
       { id: "id-1", content: "- new" },
       { id: null, content: "- c" },
     ]);
+  });
+});
+
+describe("Board: 別のタブで保持日数を短くした後の保存 (issue #94)", () => {
+  it("サーバが期限切れとして作らなかったセクションは画面から外し、書き換えていたものは新しいセクションとして残す", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
+    // 画面上の期限はまだ先だが、別のタブで保持日数が短くなり、サーバでは a と b がもう期限切れ
+    expiredOnServer.add("id-0");
+    expiredOnServer.add("id-1");
+    await act(async () => actions!.addSection());
+    await type("- d");
+    await waitForSave();
+    expect(puts.at(-1)).toEqual([
+      { id: "id-0", content: "- a" },
+      { id: "id-1", content: "- b" },
+      { id: "id-2", content: "- c" },
+      { id: null, content: "- d" },
+    ]);
+    expect(sectionTexts()).toEqual(["c", "- d"]);
+    // 外したものは保存済みの控えからも消えているので、続けて保存はしない
+    await waitForSave();
+    expect(puts).toHaveLength(1);
   });
 });

@@ -1,7 +1,9 @@
 import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS } from "@worker/memo/constants";
 import { describe, expect, it } from "vitest";
 import {
+  applySaved,
   applyTtlDays,
+  type BoardSection,
   type EditableSection,
   newSection,
   overLimitMessage,
@@ -10,6 +12,7 @@ import {
   splitAtSeparator,
   toDraft,
   toEditable,
+  toPutPayload,
 } from "@/lib/board";
 
 describe("splitAtSeparator", () => {
@@ -187,5 +190,86 @@ describe("pruneExpired", () => {
   it("全部外れたら空のセクションを 1 つ残す", () => {
     const r = pruneExpired([section("1", "a", past)], [{ id: "1", content: "a" }], now)!;
     expect(r.next).toEqual([expect.objectContaining({ id: null, content: "" })]);
+  });
+});
+
+describe("toPutPayload", () => {
+  it("保存済みのセクションには createdAt を付ける", () => {
+    expect(
+      toPutPayload("u", "r1", [
+        { id: "1", content: "a", createdAt: "2026-09-01T00:00:00.000Z" },
+        { id: null, content: "b", createdAt: null },
+      ]),
+    ).toEqual({
+      userId: "u",
+      revision: "r1",
+      sections: [
+        { id: "1", content: "a", createdAt: "2026-09-01T00:00:00.000Z" },
+        { id: null, content: "b" },
+      ],
+    });
+  });
+});
+
+describe("applySaved", () => {
+  const section = (key: string, id: string | null, content: string): EditableSection => ({
+    key,
+    id,
+    content,
+    createdAt: id && "2026-09-01T00:00:00.000Z",
+    expiresAt: id && "2026-10-01T00:00:00.000Z",
+  });
+  const row = (id: string, content: string) =>
+    ({
+      id,
+      content,
+      createdAt: "2026-09-20T00:00:00.000Z",
+      expiresAt: "2026-10-20T00:00:00.000Z",
+    }) as BoardSection;
+
+  it("送ったセクションにサーバの id と期限を付け、送っていないものは id を外す", () => {
+    const r = applySaved(
+      [section("a", null, "x"), section("b", "2", "")],
+      [{ key: "a" }],
+      [row("1", "x")],
+      [{ id: "2", content: "y" }],
+    );
+    expect(r).toEqual([
+      {
+        key: "a",
+        id: "1",
+        content: "x",
+        createdAt: "2026-09-20T00:00:00.000Z",
+        expiresAt: "2026-10-20T00:00:00.000Z",
+      },
+      { key: "b", id: null, content: "", createdAt: null, expiresAt: null },
+    ]);
+  });
+
+  it("期限切れで作られなかったものは外し、前回の保存の後に書き換えていたものは id を外して残す (issue #94)", () => {
+    const r = applySaved(
+      [section("a", "1", "x"), section("b", "2", "y2"), section("c", "3", "z")],
+      [{ key: "a" }, { key: "b" }, { key: "c" }],
+      [null, null, row("3", "z")],
+      [
+        { id: "1", content: "x" },
+        { id: "2", content: "y" },
+        { id: "3", content: "z" },
+      ],
+    );
+    expect(r.map((s) => [s.key, s.id, s.content])).toEqual([
+      ["b", null, "y2"],
+      ["c", "3", "z"],
+    ]);
+  });
+
+  it("全部外れたら空のセクションを 1 つ残す", () => {
+    const r = applySaved(
+      [section("a", "1", "x")],
+      [{ key: "a" }],
+      [null],
+      [{ id: "1", content: "x" }],
+    );
+    expect(r).toEqual([expect.objectContaining({ id: null, content: "" })]);
   });
 });

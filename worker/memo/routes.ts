@@ -22,6 +22,8 @@ import {
 // - セクションは板のテキストを空行 2 つ (SECTION_SEPARATOR = 改行 3 つ) で区切ったもの。中身に改行や空行 1 つは含んでよい
 // - id はサーバが発行する。クライアントは「前回保存したセクションの id」を付けて送り返すことで
 //   そのセクションの作成日 (= 期限) を引き継ぐ。id が null / 知らない id のものは新しいセクションとして作る
+// - id を付けるときは、クライアントが知っているその行の createdAt も付ける。知らない id で、今の保持日数では
+//   もう期限を過ぎている (別のタブで保持日数を短くして消えた行など) ものは作り直さない (issue #94)
 // - 期限は作成時に確定し、内容や並び順を変えても延びない
 // - 板には版 (board.revision) があり、保存のたびに変わる。PUT にはクライアントが知っている版を付けてもらい、
 //   今の版と違えば (別の端末 / タブが先に保存していれば) 保存せずに 409 Stale を返す。丸ごと置き換えなので、
@@ -29,6 +31,8 @@ import {
 //   クライアントは取り直した板に自分の変更を重ねて (src/lib/board-merge.ts) 保存し直す
 const sectionSchema = z.object({
   id: z.string().min(1).nullable(),
+  // 付けていない (古いクライアント) ときは、知らない id を従来どおり新しいセクションとして作る
+  createdAt: z.iso.datetime().optional(),
   content: z
     .string()
     .refine((s) => !s.includes("\r"), "セクションに CR は含められません")
@@ -139,7 +143,9 @@ export const boardRoutes = new Hono<AppEnv>()
     if (baseRevision !== undefined && (current[0]?.revision ?? null) !== baseRevision) {
       return c.json({ error: "Stale" }, 409);
     }
-    const plan = planBoardSync(existing, sections);
+    // createdAt がこれ以前のセクションは、今の保持日数ではもう期限切れ
+    const expiredCreatedAt = new Date(now.getTime() - ttlDays * DAY_MS);
+    const plan = planBoardSync(existing, sections, expiredCreatedAt);
 
     // 版を新しい値にし、以降の書き込みは「版がその値になっている (= この保存が版を進めた)」ときだけ行う。
     // 上で版を確かめてからこの batch までの間に別の保存が割り込んでいれば、版の更新が当たらず何も書かれない
@@ -219,15 +225,16 @@ export const boardRoutes = new Hono<AppEnv>()
       return c.json({ error: "Stale" }, 409);
     }
 
-    // 送られた順に、各セクションの保存後の行を返す (クライアントは添字で対応付ける)
+    // 送られた順に、各セクションの保存後の行を返す (クライアントは添字で対応付ける)。
+    // 期限切れとして作らなかったセクションは null
     const byId = new Map(rows.map((row) => [row.id, row]));
-    const saved = plan.ids.map((id) => byId.get(id));
+    const saved = plan.ids.map((id) => (id === null ? null : byId.get(id)));
     if (saved.some((row) => row === undefined)) {
       // 突き合わせた既存の行が、読んでから書くまでの間に消された (期限切れの物理削除。別の保存なら
       // 上の版の確認で断っている)。保存自体は済んで版も進んだので、取り直してもらう
       return c.json({ error: "Stale" }, 409);
     }
-    return c.json({ sections: saved as NonNullable<(typeof saved)[number]>[], revision });
+    return c.json({ sections: saved as Exclude<(typeof saved)[number], undefined>[], revision });
   });
 
 // ユーザー設定 (今はセクションの保持日数のみ)。
