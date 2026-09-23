@@ -101,7 +101,7 @@ export function useBoardAutosave({
     try {
       const updated = await fetchOrOffline(() => putBoard(userId, draft));
       savedRef.current = toSaved(updated);
-      // レスポンスは送った順に並ぶ (position 順) ので、送ったセクションにサーバの id と期限を戻す。
+      // レスポンスは送った順に並ぶ (サーバが送られた順に対応付けて返す) ので、送ったセクションにサーバの id と期限を戻す。
       // 送っていない (空だった) セクションはサーバから消えているので id を外す。
       // 保存中の入力 (content) はそのまま残す (差分があれば続けて保存される)
       const byKey = new Map(draft.map((d, i) => [d.key, updated[i]]));

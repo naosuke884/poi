@@ -103,8 +103,9 @@ export const boardRoutes = new Hono<AppEnv>()
           .set({ content, position })
           .where(and(eq(memo.id, id), eq(memo.userId, userId))),
       ),
-      ...plan.inserts.map(({ content, position }) =>
+      ...plan.inserts.map(({ id, content, position }) =>
         db.insert(memo).values({
+          id,
           userId,
           content,
           position,
@@ -117,13 +118,20 @@ export const boardRoutes = new Hono<AppEnv>()
     if (plan.deletes.length > 0) {
       ops.push(db.delete(memo).where(and(eq(memo.userId, userId), inArray(memo.id, plan.deletes))));
     }
-    // D1 の batch は 1 トランザクションとして実行される (途中で失敗すれば全部ロールバック)
-    if (ops.length > 0) {
-      await db.batch(ops as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
-    }
+    // D1 の batch は 1 トランザクションとして実行される (途中で失敗すれば全部ロールバック)。
+    // 保存後の行の取り直しも同じ batch に入れ、間に別の PUT が割り込んだ内容を返さないようにする
+    ops.push(selectBoard(db, userId, now));
+    const results = await db.batch(ops as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
+    const rows = results[results.length - 1] as Awaited<ReturnType<typeof selectBoard>>;
 
-    const saved = await selectBoard(db, userId, now);
-    return c.json({ sections: saved });
+    // 送られた順に、各セクションの保存後の行を返す (クライアントは添字で対応付ける)
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const saved = plan.ids.map((id) => byId.get(id));
+    if (saved.some((row) => row === undefined)) {
+      // 突き合わせた既存の行が、読んでから書くまでの間に別の保存で消された
+      return c.json({ error: "Conflict" }, 409);
+    }
+    return c.json({ sections: saved as NonNullable<(typeof saved)[number]>[] });
   });
 
 // ユーザー設定 (今はセクションの保持日数のみ)。
