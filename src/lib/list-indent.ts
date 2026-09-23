@@ -25,15 +25,19 @@ function indentColumns(indent: string, startCol = 0): number {
   return col;
 }
 
-/** 選択 (複数可) が触れている行を重複なく上から順に */
+/**
+ * 選択 (複数可) が触れている行を重複なく上から順に。
+ * 選択の終わりが行頭ちょうどなら、その行は含めない (行単位で選択したとき。CodeMirror の selectedLineBlocks と同じ)
+ */
 function coveredLines(view: EditorView): Line[] {
   const { doc } = view.state;
   const lines = new Map<number, Line>();
   for (const range of view.state.selection.ranges) {
+    const to = !range.empty && doc.lineAt(range.to).from === range.to ? range.to - 1 : range.to;
     for (let pos = range.from; ; ) {
       const line = doc.lineAt(pos);
       lines.set(line.number, line);
-      if (line.to >= range.to) break;
+      if (line.to >= to) break;
       pos = line.to + 1;
     }
   }

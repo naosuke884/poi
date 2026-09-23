@@ -104,6 +104,16 @@ describe("Tab / Shift+Tab (list-indent)", () => {
     expect(run(indentMoreOrInsertTab, "1. a\n\t1. b\n3. c|")).toBe("1. a\n\t1. b\n\t2. c|");
   });
 
+  it("選択の終わりが行頭ちょうどなら、その行はインデントしない", () => {
+    const view = editor("- a\n- b\n- c");
+    // 1〜2 行目を行単位で選択 (終わりは 3 行目の行頭)
+    view.dispatch({ selection: EditorSelection.range(0, 8) });
+    indentMoreOrInsertTab(view);
+    expect(view.state.doc.toString()).toBe("\t- a\n\t- b\n- c");
+    indentLess(view);
+    expect(view.state.doc.toString()).toBe("- a\n- b\n- c");
+  });
+
   it("Shift+Tab はタブ停止 1 つ分を消す", () => {
     expect(run(indentLess, "\t\t- a|")).toBe("\t- a|");
     expect(run(indentLess, "  - a|")).toBe("- a|");
@@ -123,6 +133,18 @@ describe("常に箇条書き (forceListMarkers)", () => {
     const view = editor("|", ext);
     type(view, "a");
     expect(text(view)).toBe("- a|");
+  });
+
+  it("記号を選択して消すと、付け直した記号の後ろにカーソルが来る", () => {
+    const view = editor("- foo", ext);
+    view.dispatch({
+      changes: { from: 0, to: 2 },
+      selection: EditorSelection.cursor(0),
+      userEvent: "delete.backward",
+    });
+    expect(text(view)).toBe("- |foo");
+    type(view, "x");
+    expect(text(view)).toBe("- x|foo");
   });
 
   it("見出しの行には足さない", () => {
