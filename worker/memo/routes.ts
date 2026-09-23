@@ -127,7 +127,7 @@ export const boardRoutes = new Hono<AppEnv>()
   });
 
 // ユーザー設定 (今はセクションの保持日数のみ)。
-// 保持日数を変えたら、いま保存されている全セクションの期限も createdAt + 新しい日数で引き直す
+// 保持日数を変えたら、いま見えている (期限切れでない) 全セクションの期限も createdAt + 新しい日数で引き直す
 // (短くしたときは、新しい期限を過ぎたセクションが即座に見えなくなり、次の Cron で物理削除される)
 const putSettingsSchema = z.object({
   memoTtlDays: z
@@ -161,7 +161,8 @@ export const settingsRoutes = new Hono<AppEnv>()
       db
         .update(memo)
         .set({ expiresAt: sql`${memo.createdAt} + ${memoTtlDays * DAY_MS}` })
-        .where(eq(memo.userId, userId)),
+        // 期限切れで Cron の物理削除待ちの行は引き直さない (延ばすと復活してしまう)
+        .where(visibleSections(userId, now)),
     ]);
     return c.json({ memoTtlDays });
   });
