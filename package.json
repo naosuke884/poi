@@ -21,6 +21,8 @@
     "deploy": "npm run build && wrangler deploy",
     "typecheck": "wrangler types && tsc --build",
     "test": "vitest run",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
     "cf-typegen": "wrangler types",
     "auth:schema": "npx auth@1.7.2 generate --config better-auth.config.ts --output worker/db/schema.ts -y",
     "db:generate": "drizzle-kit generate",
@@ -51,6 +53,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.14",
     "@cloudflare/vite-plugin": "^1.54.1",
     "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.35",
