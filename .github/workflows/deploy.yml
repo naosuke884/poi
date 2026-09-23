@@ -6,7 +6,10 @@
 # 有効にするには GitHub リポジトリの Settings > Secrets and variables > Actions で
 #   - Variables: ENABLE_DEPLOY = true
 #   - Secrets:   CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID
-# を登録する (手順は README の「本番デプロイ」を参照)。
+# を登録する。API トークンは Cloudflare ダッシュボード > My Profile > API Tokens で、テンプレート
+# 「Edit Cloudflare Workers」に D1 の Edit 権限を足して作る。
+# D1 の作成や Worker の Secrets の登録は先に手元で済ませておく (wrangler.jsonc の d1_databases のコメント)。
+# Worker の Secrets は wrangler secret put で登録済みのものがそのまま使われる (GitHub 側には不要)。
 name: Deploy
 
 on:

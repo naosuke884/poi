@@ -16,7 +16,10 @@
     {
       "binding": "DB",
       "database_name": "poi",
-      // メンテナの本番 D1 の id。セルフホストするときは `npx wrangler d1 create poi` で作った自分の id に置き換える (README 参照)
+      // メンテナの本番 D1 の id。セルフホストするときは `npx wrangler d1 create poi` で作った自分の id に置き換え、
+      // `npm run db:migrate:remote` でマイグレーションを適用する。Secrets (BETTER_AUTH_SECRET / GOOGLE_CLIENT_ID /
+      // GOOGLE_CLIENT_SECRET。.dev.vars.example と同じ名前) は `npx wrangler secret put <名前>` で登録し、
+      // Google の OAuth クライアントに `https://<ドメイン>/api/auth/callback/google` を redirect URI として追加する
       "database_id": "95b1e126-5ae4-418a-8b4f-0c9de8c4533d",
       "migrations_dir": "drizzle"
     }
@@ -26,7 +29,7 @@
     "crons": ["0 * * * *"]
   },
   // メンテナの本番ドメイン (ゾーンが同じアカウントにあること)。入口を 1 つにするため workers.dev の URL は無効化している。
-  // セルフホストするときは自分のドメインに置き換えるか、routes を消して workers_dev を true にする (README 参照)
+  // セルフホストするときは自分のドメインに置き換えるか、routes を消して workers_dev を true にする
   "routes": [{ "pattern": "poinote.app", "custom_domain": true }],
   "workers_dev": false,
   "observability": {
