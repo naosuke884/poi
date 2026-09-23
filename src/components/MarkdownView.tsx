@@ -7,6 +7,16 @@ import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "@/lib/markdown-disable";
 import { rehypeSourcePositions, sourceOffsetAtPoint } from "@/lib/markdown-source-offset";
 import classes from "./MarkdownView.module.css";
 
+/** 空でない選択範囲が el に掛かっているか */
+function selectionIntersects(el: Element): boolean {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return false;
+  for (let i = 0; i < sel.rangeCount; i++) {
+    if (sel.getRangeAt(i).intersectsNode(el)) return true;
+  }
+  return false;
+}
+
 /**
  * セクションの Markdown レンダリング表示 (編集していないセクション用)。
  * - GFM (チェックボックス・表・打ち消し線・自動リンク) 対応。BOARD_MARKDOWN_DISABLED の記法は無効 (文字のまま表示)。
@@ -17,7 +27,8 @@ import classes from "./MarkdownView.module.css";
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
  *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/lib/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。
- *   ドラッグで文字を選択しただけのときは切り替えない (選択が残っている click は無視)
+ *   ドラッグで文字を選択しただけのときは切り替えない (このセクションに掛かる選択が残っている click は無視。
+ *   編集中のエディタの選択は mousedown を止めるので残るが、それは別のセクションなので切り替える)
  * - onNavigate があれば、フォーカス中の ↑↓ で隣のセクションへ移れる (Esc で編集をやめた後のキーボード操作)。
  *   移れたとき (true) だけ既定の動き (ページのスクロール) を止める
  * - 他のセクションのエディタ (CodeMirror) が編集中のときは mousedown でそれを blur させない (blur で先に
@@ -53,7 +64,7 @@ export function MarkdownView({
           ? (e: MouseEvent<HTMLDivElement>) => {
               // リンクのクリックはリンクに任せる。文字を選択しただけなら編集に切り替えない
               if ((e.target as HTMLElement).closest("a")) return;
-              if (window.getSelection()?.toString()) return;
+              if (selectionIntersects(e.currentTarget)) return;
               onEdit(
                 sourceOffsetAtPoint(e.currentTarget, e.clientX, e.clientY, content) ??
                   content.length,

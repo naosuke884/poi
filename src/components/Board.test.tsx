@@ -242,6 +242,33 @@ describe("Board", () => {
     root = createRoot(container);
   });
 
+  it("別のセクションで文字を選択していても、クリックしたセクションの編集に切り替わる", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }]);
+    const view = (i: number) =>
+      container.querySelector<HTMLElement>(`[aria-label^="セクション ${i} ("]`)!;
+    await act(async () => view(1).click());
+    expect(editor().state.doc.toString()).toBe("- a");
+    // 編集中のエディタの中に選択を残したまま、セクション 2 の表示をクリックする
+    const range = document.createRange();
+    range.selectNodeContents(editor().contentDOM);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    await act(async () => view(2).click());
+    expect(editor().state.doc.toString()).toBe("- b");
+  });
+
+  it("選択がクリックしたセクションの中にあるときは編集に切り替えない", async () => {
+    await mount([{ content: "- a" }]);
+    const view = container.querySelector<HTMLElement>(`[aria-label^="セクション 1 ("]`)!;
+    const range = document.createRange();
+    range.selectNodeContents(view);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    await act(async () => view.click());
+    expect(container.querySelector(".cm-editor")).toBeNull();
+    window.getSelection()!.removeAllRanges();
+  });
+
   it("板全体の文字数上限を超える入力は弾く (自動で足す記号も含めて)", async () => {
     // 他のセクションと区切り (3 文字) で、残りは 7 文字
     await mount([{ content: "x".repeat(BOARD_MAX_LENGTH - 3 - 7) }]);
