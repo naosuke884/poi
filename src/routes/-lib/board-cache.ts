@@ -1,4 +1,4 @@
-import { readJson, removeByPrefix, removeItem, writeJson } from "@/lib/local-storage";
+import { readJson, removeByPrefix, removeItem, writeJson } from "@/local-storage";
 import type { BoardSection } from "./board";
 
 // オフライン閲覧用の板のキャッシュ (localStorage)。

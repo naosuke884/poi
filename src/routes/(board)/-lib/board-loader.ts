@@ -1,4 +1,4 @@
-import { fetchOrOffline, OfflineError } from "@/lib/offline";
+import { fetchOrOffline, OfflineError } from "@/offline";
 import { api } from "@/routes/-lib/api";
 import type { BoardSection } from "@/routes/-lib/board";
 import { readCachedBoard, writeCachedBoard } from "@/routes/-lib/board-cache";

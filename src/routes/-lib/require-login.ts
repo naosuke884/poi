@@ -1,4 +1,4 @@
-import { isNetworkError } from "@/lib/offline";
+import { isNetworkError } from "@/offline";
 import { authClient } from "./auth-client";
 import { clearAllBoardCaches, clearBoardCache } from "./board-cache";
 import { type CachedUser, clearCachedUser, readCachedUser, writeCachedUser } from "./session-cache";

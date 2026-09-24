@@ -1,6 +1,6 @@
 import { Alert, Anchor, Button, Group, Stack } from "@mantine/core";
 import { type ErrorComponentProps, Link, useRouter } from "@tanstack/react-router";
-import { OfflineError } from "@/lib/offline";
+import { OfflineError } from "./offline";
 
 /**
  * ルートの loader / beforeLoad が throw したときの表示 (createRouter の defaultErrorComponent)。

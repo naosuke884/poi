@@ -1,6 +1,6 @@
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
+import { fetchOrOffline, isOffline, OfflineError } from "@/offline";
 import { api } from "@/routes/-lib/api";
 import {
   applySaved,

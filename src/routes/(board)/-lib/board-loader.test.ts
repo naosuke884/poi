@@ -6,7 +6,7 @@ vi.mock("@/routes/-lib/api", () => ({ api: { board: { $get } } }));
 
 const { loadTopPage } = await import("./board-loader");
 const { readCachedBoard, writeCachedBoard } = await import("@/routes/-lib/board-cache");
-const { OfflineError } = await import("@/lib/offline");
+const { OfflineError } = await import("@/offline");
 
 const session = { user: { id: "me", name: "Me", email: "me@example.com", image: null } };
 const sections = [{ id: "1", content: "- a", expiresAt: "2099-01-01T00:00:00.000Z" }] as Parameters<

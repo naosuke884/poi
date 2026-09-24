@@ -15,7 +15,7 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 | 1 つのルートだけ | そのルートの `-components/` (UI) / `-lib/` (フック・ロジック・テスト) |
 | 同じ親ルートの下の複数のルート | その親ルートの `-components/` / `-lib/` |
 | 兄弟関係にあるトップレベルのルート同士 (`__root` のヘッダーと `(board)` など) | `routes/-components/` / `routes/-lib/` (`__root` の階層) |
-| `main.tsx` (ルートの外) | `src/components/` / `src/lib/` (`main.tsx` の階層) |
+| `main.tsx` (ルートの外) | `src/` 直下 (`main.tsx` の隣。フォルダは作らない) |
 
 - 使う側が増えたり減ったりしたら、そのつど共通の祖先へ上げる / 下げる。
   例: `(board)/-lib/x.ts` を `__root` のヘッダーでも使うことになったら `routes/-lib/x.ts` へ移す
@@ -28,7 +28,8 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 ```
 src/
   main.tsx            ルーターの作成と描画
-  components/, lib/   main.tsx の階層 (RouteErrorFallback, install-prompt, local-storage, offline)
+  RouteErrorFallback.tsx, install-prompt.ts, local-storage.ts, offline.ts
+                      main.tsx の階層 (main.tsx から使うもの)
   routes/
     __root.tsx        全ページ共通のレイアウト (ヘッダー・本文の枠)
     -components/      __root の階層: header/, SkipLink, NotFound, バナー, 複数ルートで使う UI (TablerIcon など)
@@ -57,8 +58,8 @@ src/
 
 ## import の書き方
 
-- 同じルートの中 (そのルートのファイルと、その `-components/` / `-lib/`) は相対パス (`./`, `../`)
-- 祖先の階層のものは `@/` で参照する (`@/routes/-lib/board`, `@/lib/offline`)。深い `../../../../` を書かない
+- 同じルートの中 (そのルートのファイルと、その `-components/` / `-lib/`) は相対パス (`./`, `../`)。`src/` 直下どうしも `./`
+- 祖先の階層のものは `@/` で参照する (`@/routes/-lib/board`, `@/offline`)。深い `../../../../` を書かない
 - CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む
 
 ## ファイルを移動・追加したあと

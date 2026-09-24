@@ -1,4 +1,4 @@
-import { readJson, removeItem, writeJson } from "@/lib/local-storage";
+import { readJson, removeItem, writeJson } from "@/local-storage";
 
 // オフライン起動時に「誰としてログインしていたか」を復元するためのキャッシュ。
 // requireLogin が getSession に成功するたびに上書きし、未ログイン判定 / ログアウトで消す。
