@@ -133,7 +133,7 @@ export function UserMenu() {
           <Menu.Item component={Link} to="/privacy">
             プライバシーポリシー
           </Menu.Item>
-          <Menu.Item component="a" href={CONTACT_URL} target="_blank" rel="noopener noreferrer">
+          <Menu.Item component="a" href={CONTACT_URL}>
             問い合わせ
           </Menu.Item>
           <Menu.Divider />
