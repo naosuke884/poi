@@ -4,14 +4,20 @@
 # アップロードには gh でログイン済みのユーザーのトークンが必要
 # (Actions の GITHUB_TOKEN ではこのエンドポイントが 404 になるため CI では実行できない)。
 # 差し替え後の README.md のコミットは手動で行う。
+# --check を付けると差し替えはせず、一致していなければエラーで終わる (CI 用)。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+check=false
+if [[ "${1:-}" == --check ]]; then
+  check=true
+fi
+
 url_pattern='https://github\.com/user-attachments/assets/[0-9a-f-]+'
 old_url=$(grep -oE "$url_pattern" README.md | head -n1 || true)
 if [[ -z "$old_url" ]]; then
-  echo "README.md に https://github.com/user-attachments/assets/... 形式の動画 URL が見つかりません" >&2
+  echo "::error file=README.md::README.md に https://github.com/user-attachments/assets/... 形式の動画 URL が見つかりません" >&2
   exit 1
 fi
 
@@ -30,6 +36,11 @@ local_hash=$(sha256sum public/demo.mp4 | cut -d' ' -f1)
 if curl -sSfL --retry 3 -o "$tmp" "$old_url" 2>/dev/null && [[ "$(sha256sum "$tmp" | cut -d' ' -f1)" == "$local_hash" ]]; then
   echo "OK: README の埋め込み動画と public/demo.mp4 は既に一致しています (sha256: $local_hash)"
   exit 0
+fi
+
+if $check; then
+  echo "::error file=README.md::public/demo.mp4 と README の埋め込み動画が一致しません。手元で (gh にログインした状態で) ./scripts/sync-demo-video.sh を実行し、差し替わった README.md をコミットしてください" >&2
+  exit 1
 fi
 
 # gh issue comment --attach が内部で使うのと同じエンドポイント

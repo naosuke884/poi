@@ -1,7 +1,6 @@
 # README.md に埋め込んだデモ動画 (GitHub user-attachments) と public/demo.mp4 の内容が
-# 一致していることを検証する。user-attachments へのアップロードは
-# GITHUB_TOKEN では行えないため CI では同期せず、ズレたらこの CI が落ちて
-# 手元での scripts/sync-demo-video.sh の実行を促す。
+# 一致していることを検証する。user-attachments へのアップロードは GITHUB_TOKEN では
+# 行えないため CI では同期せず、ズレたら落として手元での scripts/sync-demo-video.sh の実行を促す。
 name: Demo video sync
 
 on:
@@ -9,11 +8,13 @@ on:
     paths:
       - public/demo.mp4
       - README.md
+      - scripts/sync-demo-video.sh
   push:
     branches: [main]
     paths:
       - public/demo.mp4
       - README.md
+      - scripts/sync-demo-video.sh
   workflow_dispatch:
 
 permissions:
@@ -26,4 +27,4 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - run: ./scripts/check-demo-video.sh
+      - run: ./scripts/sync-demo-video.sh --check
