@@ -8,13 +8,13 @@ on:
     paths:
       - public/demo.mp4
       - README.md
-      - scripts/sync-demo-video.sh
+      - scripts/check-demo-video.sh
   push:
     branches: [main]
     paths:
       - public/demo.mp4
       - README.md
-      - scripts/sync-demo-video.sh
+      - scripts/check-demo-video.sh
   workflow_dispatch:
 
 permissions:
@@ -27,4 +27,4 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - run: ./scripts/sync-demo-video.sh --check
+      - run: ./scripts/check-demo-video.sh
