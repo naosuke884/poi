@@ -1,8 +1,9 @@
 import { api } from "@/lib/api";
-import type { BoardSection } from "@/lib/board";
-import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
 import { fetchOrOffline, OfflineError } from "@/lib/offline";
-import { clearOfflineCaches, type LoginContext } from "@/lib/require-login";
+import { clearOfflineCaches } from "@/lib/offline-caches";
+import type { BoardSection } from "./board";
+import { readCachedBoard, writeCachedBoard } from "./board-cache";
+import type { LoginContext } from "./optional-login";
 
 /** トップ (/) に出すもの: 未ログインならランディング、ログイン済みなら板 */
 export type TopPage =

@@ -1,10 +1,10 @@
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { EditableSection } from "@/lib/board";
 import type {
   CursorPlace,
   EditAnchor,
   SectionEditorHandle,
 } from "../../-components/board/section/SectionEditor";
+import type { EditableSection } from "../board";
 import { clientTopAtSourceOffset } from "../markdown/markdown-source-offset";
 
 /**

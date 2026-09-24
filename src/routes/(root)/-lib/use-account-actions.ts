@@ -1,7 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { authClient, startGoogleLogin } from "@/lib/auth-client";
-import { clearOfflineCaches } from "@/lib/require-login";
+import { clearOfflineCaches } from "@/lib/offline-caches";
 
 // listDeviceSessions の戻り (この端末でログイン中のアカウント一覧) のうち使う部分。
 // クライアントの推論が any になるので、表示と setActive に必要な形だけ自前で書く

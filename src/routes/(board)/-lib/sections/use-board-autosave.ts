@@ -1,6 +1,8 @@
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
+import { readCachedUser } from "@/lib/session-cache";
 import {
   applySaved,
   applyTtlDays,
@@ -13,10 +15,8 @@ import {
   toDraft,
   toPutPayload,
   toSaved,
-} from "@/lib/board";
-import { writeCachedBoard } from "@/lib/board-cache";
-import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
-import { readCachedUser } from "@/lib/session-cache";
+} from "../board";
+import { writeCachedBoard } from "../board-cache";
 import { mergeBoard } from "./board-merge";
 import type { SaveState, SaveStatus } from "./save-status";
 

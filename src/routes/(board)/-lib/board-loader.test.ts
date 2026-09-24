@@ -5,7 +5,7 @@ const $get = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api", () => ({ api: { board: { $get } } }));
 
 const { loadTopPage } = await import("./board-loader");
-const { readCachedBoard, writeCachedBoard } = await import("@/lib/board-cache");
+const { readCachedBoard, writeCachedBoard } = await import("./board-cache");
 const { OfflineError } = await import("@/lib/offline");
 
 const session = { user: { id: "me", name: "Me", email: "me@example.com", image: null } };

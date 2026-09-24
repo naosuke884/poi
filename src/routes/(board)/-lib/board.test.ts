@@ -13,7 +13,7 @@ import {
   toDraft,
   toEditable,
   toPutPayload,
-} from "@/lib/board";
+} from "./board";
 
 describe("splitAtSeparator", () => {
   it("区切りが無ければ null", () => {

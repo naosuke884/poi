@@ -1,34 +1,19 @@
 import { authClient } from "@/lib/auth-client";
-import { clearAllBoardCaches, clearBoardCache } from "@/lib/board-cache";
 import { isNetworkError } from "@/lib/offline";
-import {
-  type CachedUser,
-  clearCachedUser,
-  readCachedUser,
-  writeCachedUser,
-} from "@/lib/session-cache";
+import { clearOfflineCaches } from "@/lib/offline-caches";
+import { type CachedUser, readCachedUser, writeCachedUser } from "@/lib/session-cache";
 
 // beforeLoad の戻り値 (ルートの context にマージされる)。
 // オンラインなら Better Auth のセッション、オフラインなら前回キャッシュしたユーザー情報 (未ログインなら null)。
 // どちらも user.id / name / email / image を持つので、loader や画面はこの形だけを見ればよい。
 export type LoginContext = { session: { user: CachedUser } | null };
 
-// この端末に残るオフライン閲覧用キャッシュ (ユーザー情報と、userIds の各ユーザーの板) を消す。
-// サーバが「未ログイン」と答えた (セッション切れを含む) とき、ログアウト / アカウント削除のときに、
-// 他人に見えないよう呼ぶ。userIds を省略すると、この端末の全ユーザーの板を消す
-// (multiSession で他のアカウントの板もキャッシュしていることがあるため)
-export function clearOfflineCaches(userIds?: string[]): void {
-  clearCachedUser();
-  if (userIds === undefined) clearAllBoardCaches();
-  else for (const id of userIds) clearBoardCache(id);
-}
-
 // ログイン状態を調べる beforeLoad 用のガード。未ログインでも redirect しない
 // (トップはログインしていなければランディングページを見せる。issue #24)。
 // 戻り値はルートの context にマージされる (Route.useRouteContext() で session を参照できる)。
 //
 // オフライン (getSession の fetch 自体が失敗) のときは、前回ログイン時にキャッシュした
-// ユーザー情報で通す。loader 側はキャッシュ済みの板を表示する (src/lib/board-cache.ts)。
+// ユーザー情報で通す。loader 側はキャッシュ済みの板を表示する (board-cache.ts)。
 // サーバが「未ログイン」と答えた場合とは区別する (その場合は端末のキャッシュを消して未ログイン扱い)
 export async function optionalLogin(): Promise<LoginContext> {
   let result: Awaited<ReturnType<typeof authClient.getSession>>;

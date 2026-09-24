@@ -1,6 +1,6 @@
 import { Alert, Stack } from "@mantine/core";
 import { useRef } from "react";
-import { formatDateTime } from "@/lib/board";
+import { formatDateTime } from "../-lib/board";
 import type { TopPage } from "../-lib/board-loader";
 import { Board } from "./board/Board";
 

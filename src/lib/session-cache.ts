@@ -1,7 +1,7 @@
 import { readJson, removeItem, writeJson } from "@/lib/local-storage";
 
 // オフライン起動時に「誰としてログインしていたか」を復元するためのキャッシュ。
-// requireLogin が getSession に成功するたびに上書きし、未ログイン判定 / ログアウトで消す。
+// optionalLogin ((board)/-lib/optional-login.ts) が getSession に成功するたびに上書きし、未ログイン判定 / ログアウトで消す。
 // セッショントークン自体は Cookie にあるので、ここには表示用のユーザー情報だけを置く。
 
 const KEY = "poi:session:v1";

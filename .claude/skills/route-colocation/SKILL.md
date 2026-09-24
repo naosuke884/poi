@@ -25,6 +25,9 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
   `src/components` / `src/lib` から `src/routes` の中も import しない。
   前者は Biome の GritQL プラグイン (`biome-plugins/route-colocation.grit`)、後者は `noRestrictedImports` (`biome.json`) で `npm run lint` のエラーになる
 - `src/lib` の中で完結するもの (`src/lib` のファイルからしか使わないもの) も `src/lib` に置く
+- 1 つのルートのものの一部だけを別のルートでも使うときは、丸ごと `src/lib` へ移す前に、その一部だけを切り出せないか考える。
+  例: 板のキャッシュはヘッダーのログアウトからも消すが、消すのに要るのはキーだけなので、キーと消去 (`src/lib/offline-caches.ts`) だけを
+  `src/lib` に置き、板の型に依存する読み書き (`(board)/-lib/board-cache.ts`) と板の型 (`board.ts`) は `(board)` に残している
 - `-components/` / `-lib/` の中はさらにフォルダで入れ子にしてよい (`board/section/` のように、使う側の親子関係に合わせる)。
   入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)。
   `-lib/` はファイルが増えたら話題ごとにまとめる (`(board)/-lib/markdown/`, `editor/`, `sections/` など)
@@ -44,7 +47,7 @@ src/
   main.tsx                ルーターの作成と描画
   RouteErrorFallback.tsx  main.tsx だけで使う
   components/             複数のルートで使う UI (HeaderSlot, BottomLeftNotice, ContactLink)
-  lib/                    複数のルートで使うもの (板の型, API, 認証, キャッシュ, オフライン判定など)
+  lib/                    複数のルートで使うもの (API, 認証, オフライン判定, キャッシュのキーと消去など)
   routes/
     __root.tsx            全ページ共通のレイアウト (ヘッダー・本文の枠)
     (root)/               __root 専用 (ルートのないグループ)
@@ -53,7 +56,7 @@ src/
     (board)/
       index.tsx           → "/"
       -components/        board/ (header/, section/), landing/, BoardView
-      -lib/               board-loader など + markdown/ (記法の判定), editor/ (エディタの編集操作),
+      -lib/               board (板の型), board-cache, optional-login, board-loader など + markdown/ (記法の判定), editor/ (エディタの編集操作),
                           sections/ (セクションの状態・保存・操作)
     (legal)/
       privacy.tsx         → "/privacy"
@@ -76,7 +79,7 @@ src/
 ## import の書き方
 
 - 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `(root)/` も `./(root)/...`
-- `src/components` / `src/lib` は `@/` で参照する (`@/lib/board`, `@/components/HeaderSlot`)
+- `src/components` / `src/lib` は `@/` で参照する (`@/lib/api`, `@/components/HeaderSlot`)
 - src と worker の両方で使うもの (定数・検証の上限など) はリポジトリ直下の `shared/` に置き、`@shared/` で参照する (`@shared/constants`)。
   `shared/` からは `src` / `worker` を import しない (`biome.json` の overrides で lint エラーになる)
 - CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む

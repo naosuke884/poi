@@ -1,4 +1,4 @@
-import type { EditableSection } from "@/lib/board";
+import type { EditableSection } from "../board";
 import { parseHeading } from "../markdown/markdown-syntax";
 
 /**

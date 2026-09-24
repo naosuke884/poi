@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { optionalLogin } from "@/lib/require-login";
 import { BoardView } from "./-components/BoardView";
 import { Landing } from "./-components/landing/Landing";
 import { loadTopPage } from "./-lib/board-loader";
+import { optionalLogin } from "./-lib/optional-login";
 
 // メイン画面: ログイン済みなら自分の板、未ログインならランディング (何ができるか + ログイン導線)
 export const Route = createFileRoute("/(board)/")({

@@ -7,7 +7,7 @@ import { BOARD_MAX_LENGTH } from "@shared/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BoardSection } from "@/lib/board";
+import type { BoardSection } from "../../-lib/board";
 
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の
 // PUT までを通しで確かめる。レイアウトが無いので、スクロールや表示上の行の判定は対象外
@@ -90,7 +90,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const { Board } = await import("./Board");
-const { readCachedBoard } = await import("@/lib/board-cache");
+const { readCachedBoard } = await import("../../-lib/board-cache");
 const { writeCachedUser, clearCachedUser } = await import("@/lib/session-cache");
 const { HeaderSlotProvider, HeaderSlotTarget } = await import("@/components/HeaderSlot");
 

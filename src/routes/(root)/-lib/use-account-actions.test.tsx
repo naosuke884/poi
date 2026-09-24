@@ -25,7 +25,7 @@ vi.mock("@/lib/auth-client", () => ({
   startGoogleLogin: auth.startGoogleLogin,
 }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => router }));
-vi.mock("@/lib/require-login", () => ({ clearOfflineCaches }));
+vi.mock("@/lib/offline-caches", () => ({ clearOfflineCaches }));
 
 const { useAccountActions } = await import("./use-account-actions");
 

@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { HeaderSlot } from "@/components/HeaderSlot";
 import { affixInset } from "@/lib/affix";
-import type { BoardSection } from "@/lib/board";
+import type { BoardSection } from "../../-lib/board";
 import { keepEditorFocus } from "../../-lib/keep-editor-focus";
 import { deliverImage, renderSectionImage } from "../../-lib/section-export";
 import { appendSection, changeSection, mergeSections } from "../../-lib/sections/board-ops";
