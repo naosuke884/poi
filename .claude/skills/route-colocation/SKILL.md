@@ -23,7 +23,7 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
   逆に `src/lib` のものを 1 つのルートでしか使わなくなったら、そのルートの `-lib/` へ戻す
 - 別のルートのディレクトリの `-components/` / `-lib/` を直接 import しない (必要になった時点で `src/components` / `src/lib` へ移す)。
   `src/components` / `src/lib` から `src/routes` の中も import しない。
-  どちらも Biome の `noRestrictedImports` (`biome.json`) で `npm run lint` のエラーになる
+  前者は Biome の GritQL プラグイン (`biome-plugins/route-colocation.grit`)、後者は `noRestrictedImports` (`biome.json`) で `npm run lint` のエラーになる
 - `src/lib` の中で完結するもの (`src/lib` のファイルからしか使わないもの) も `src/lib` に置く
 - `-components/` / `-lib/` の中はさらにフォルダで入れ子にしてよい (`board/section/` のように、使う側の親子関係に合わせる)。
   入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)。

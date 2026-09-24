@@ -1,0 +1,25 @@
+// 別のルートのディレクトリの -components / -lib を import させない (route-colocation skill)。
+// 使えるのは自分か祖先のルートのものだけで、複数のルートで使うなら src/components / src/lib へ移す。
+// パスの書き方で判定する (import 先の解決はしない):
+// - ../ だけをさかのぼった先の -components / -lib (祖先のルートのもの) は OK。
+//   さかのぼった後に別のディレクトリ ((board)/ や -root/ など) へ入ってから届くものは NG
+// - ./ から子のディレクトリへ入って届くものは NG (__root.tsx から ./-root/ は OK)
+language js
+
+pattern cross_route_source() {
+  or {
+    and { r"^['\"](?:\.\./)+.*/-(?:components|lib)(?:/.*)?['\"]$",
+    not r"^['\"](?:\.\./)+-(?:components|lib)(?:/.*)?['\"]$" },
+    and { r"^['\"]\./.*/-(?:components|lib)(?:/.*)?['\"]$",
+    not r"^['\"]\./(?:-root/)?-(?:components|lib)(?:/.*)?['\"]$" }
+  }
+}
+
+or {
+  // import / export ... from
+  JsModuleSource() as $source where { $source <: cross_route_source() },
+  // import("...") (vi.mock のパスは対象外)
+  `import($source)` where { $source <: cross_route_source() }
+} where {
+  register_diagnostic(span=$source, message="別のルートのディレクトリの -components / -lib を import しない (自分か祖先のルートのものだけ使える)。複数のルートで使うなら src/components / src/lib へ移す (route-colocation skill)", severity="error")
+}
