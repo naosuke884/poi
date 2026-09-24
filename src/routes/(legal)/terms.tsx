@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ContactLink } from "@/routes/-components/ContactLink";
+import { ContactLink } from "@/components/ContactLink";
 import { LegalPage } from "./-components/LegalPage";
 
 // 利用規約 (ログイン不要)

@@ -1,7 +1,7 @@
 import { ActionIcon, Box, ThemeIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import type { ReactNode } from "react";
-import { useSaveState } from "../../-lib/save-status";
-import { Svg } from "../TablerIcon";
+import { Svg } from "@/components/TablerIcon";
+import { useSaveState } from "@/lib/save-status";
 
 const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
 

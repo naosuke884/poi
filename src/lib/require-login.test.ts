@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { readCachedBoard, writeCachedBoard } from "./board-cache";
-import { clearOfflineCaches } from "./require-login";
-import { readCachedUser, writeCachedUser } from "./session-cache";
+import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
+import { clearOfflineCaches } from "@/lib/require-login";
+import { readCachedUser, writeCachedUser } from "@/lib/session-cache";
 
 const board = (content: string) =>
   [{ id: "1", content, expiresAt: "2099-01-01T00:00:00.000Z" }] as Parameters<

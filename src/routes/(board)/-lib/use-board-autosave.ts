@@ -1,7 +1,6 @@
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { fetchOrOffline, isOffline, OfflineError } from "@/offline";
-import { api } from "@/routes/-lib/api";
+import { api } from "@/lib/api";
 import {
   applySaved,
   applyTtlDays,
@@ -14,10 +13,11 @@ import {
   toDraft,
   toPutPayload,
   toSaved,
-} from "@/routes/-lib/board";
-import { writeCachedBoard } from "@/routes/-lib/board-cache";
-import { publishSaveState, type SaveStatus } from "@/routes/-lib/save-status";
-import { readCachedUser } from "@/routes/-lib/session-cache";
+} from "@/lib/board";
+import { writeCachedBoard } from "@/lib/board-cache";
+import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
+import { publishSaveState, type SaveStatus } from "@/lib/save-status";
+import { readCachedUser } from "@/lib/session-cache";
 import { mergeBoard } from "./board-merge";
 
 // 入力停止からこの時間だけ待ってから保存する

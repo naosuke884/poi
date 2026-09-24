@@ -28,7 +28,7 @@ export default defineConfig({
       // autoUpdate (skipWaiting + clientsClaim) だと旧 precache が即座に消え、開いたままの旧ページの
       // 遅延チャンク読み込みが失敗しうるため。PwaUpdateBanner が needRefresh を見てバナーを出す
       registerType: "prompt",
-      // SW の登録は src/routes/-components/PwaUpdateBanner.tsx の useRegisterSW で行うので、登録スクリプトは注入しない
+      // SW の登録は src/routes/-root/-components/PwaUpdateBanner.tsx の useRegisterSW で行うので、登録スクリプトは注入しない
       injectRegister: null,
       manifest: {
         name: "poi",

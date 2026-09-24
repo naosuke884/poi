@@ -1,5 +1,5 @@
 import { Affix, Notification, type NotificationProps } from "@mantine/core";
-import { affixInset } from "../-lib/affix";
+import { affixInset } from "@/lib/affix";
 
 /**
  * 画面の左下 (広い画面では板の左端) に固定で出す通知 (削除の取り消し・操作のエラー・更新のお知らせ)。

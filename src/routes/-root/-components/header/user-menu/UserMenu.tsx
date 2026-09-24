@@ -12,12 +12,12 @@ import {
 } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { authClient } from "../../../-lib/auth-client";
-import { readCachedUser } from "../../../-lib/session-cache";
+import { BottomLeftNotice } from "@/components/BottomLeftNotice";
+import { CONTACT_URL } from "@/components/ContactLink";
+import { authClient } from "@/lib/auth-client";
+import { readCachedUser } from "@/lib/session-cache";
 import { RUNNING_LABELS, useAccountActions } from "../../../-lib/use-account-actions";
 import { useOnBackOnline, useOnline } from "../../../-lib/use-online";
-import { BottomLeftNotice } from "../../BottomLeftNotice";
-import { CONTACT_URL } from "../../ContactLink";
 import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
 import { TtlSettingModal } from "./TtlSettingModal";
 

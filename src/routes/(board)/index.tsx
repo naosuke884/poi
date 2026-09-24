@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { optionalLogin } from "@/routes/-lib/require-login";
+import { optionalLogin } from "@/lib/require-login";
 import { BoardView } from "./-components/BoardView";
 import { Landing } from "./-components/landing/Landing";
 import { loadTopPage } from "./-lib/board-loader";

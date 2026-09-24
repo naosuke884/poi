@@ -1,8 +1,8 @@
-import { fetchOrOffline, OfflineError } from "@/offline";
-import { api } from "@/routes/-lib/api";
-import type { BoardSection } from "@/routes/-lib/board";
-import { readCachedBoard, writeCachedBoard } from "@/routes/-lib/board-cache";
-import { clearOfflineCaches, type LoginContext } from "@/routes/-lib/require-login";
+import { api } from "@/lib/api";
+import type { BoardSection } from "@/lib/board";
+import { readCachedBoard, writeCachedBoard } from "@/lib/board-cache";
+import { fetchOrOffline, OfflineError } from "@/lib/offline";
+import { clearOfflineCaches, type LoginContext } from "@/lib/require-login";
 
 /** トップ (/) に出すもの: 未ログインならランディング、ログイン済みなら板 */
 export type TopPage =

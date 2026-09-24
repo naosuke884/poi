@@ -1,5 +1,5 @@
-import { readJson, removeByPrefix, removeItem, writeJson } from "@/local-storage";
-import type { BoardSection } from "./board";
+import type { BoardSection } from "@/lib/board";
+import { readJson, removeByPrefix, removeItem, writeJson } from "@/lib/local-storage";
 
 // オフライン閲覧用の板のキャッシュ (localStorage)。
 // - 取得 / 保存が成功するたびに上書きし、loader が fetch に失敗したときだけ読む。

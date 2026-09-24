@@ -1,25 +1,28 @@
 ---
 name: route-colocation
-description: poi のフロントエンド (src/) で、コンポーネント・フック・ロジックをどこに置くかの規則 (TanStack Router のルートに沿ったコロケーション)。新しいコンポーネントやフックを作るとき、ルートを追加・分割するとき、ファイルを移動するとき、置き場所 (どのルートの -components / -lib か) に迷ったときに使う。
+description: poi のフロントエンド (src/) で、コンポーネント・フック・ロジックをどこに置くかの規則 (TanStack Router のルートに沿ったコロケーション)。新しいコンポーネントやフックを作るとき、ルートを追加・分割するとき、ファイルを移動するとき、置き場所 (どのルートの -components / -lib か、src/components・src/lib か) に迷ったときに使う。
 ---
 
 # ルートに沿ったコロケーション
 
-部品 (コンポーネント・フック・ロジック) は、**それを使うファイルすべての最も近い共通の祖先**に置く。
-祖先の単位はルート (`__root` → `(board)` / `(legal)` / … → さらに下のルート) で、その上に `main.tsx` がある。
+部品 (コンポーネント・フック・ロジック) は、**それを使うルートのディレクトリ**に置く。
+ルートのディレクトリをまたいで使うものだけを `src/components` / `src/lib` に置く。
+`__root` もルートの 1 つとして扱い、その部品は `routes/-root/` に置く。
 
 ## 置き場所の決め方
 
 | 使う場所 | 置き場所 |
 |---|---|
-| 1 つのルートだけ | そのルートの `-components/` (UI) / `-lib/` (フック・ロジック・テスト) |
-| 同じ親ルートの下の複数のルート | その親ルートの `-components/` / `-lib/` |
-| 兄弟関係にあるトップレベルのルート同士 (`__root` のヘッダーと `(board)` など) | `routes/-components/` / `routes/-lib/` (`__root` の階層) |
-| `main.tsx` (ルートの外) | `src/` 直下 (`main.tsx` の隣。フォルダは作らない) |
+| `__root` (レイアウト・ヘッダー) だけ | `routes/-root/-components/` (UI) / `routes/-root/-lib/` (フック・ロジック・テスト) |
+| 1 つのルートのディレクトリだけ (その下にネストしたルートも含む) | そのディレクトリの `-components/` / `-lib/`。ネストした子ルートどうしで共有するなら、親ディレクトリの `-components/` / `-lib/` |
+| 複数のルートのディレクトリ (`__root` のヘッダーと `(board)` など) | `src/components/` (UI) / `src/lib/` (フック・ロジック・テスト) |
+| `main.tsx` だけ | `src/` 直下 (`main.tsx` の隣) |
 
-- 使う側が増えたり減ったりしたら、そのつど共通の祖先へ上げる / 下げる。
-  例: `(board)/-lib/x.ts` を `__root` のヘッダーでも使うことになったら `routes/-lib/x.ts` へ移す
-- 兄弟のルートの `-components/` / `-lib/` を直接 import しない (必要になった時点で共通の祖先へ上げる)
+- 使う側が増えたり減ったりしたら、そのつど置き場所を移す。
+  例: `(board)/-lib/x.ts` を `__root` のヘッダーでも使うことになったら `src/lib/x.ts` へ移す。
+  逆に `src/lib` のものを 1 つのルートでしか使わなくなったら、そのルートの `-lib/` へ戻す
+- 別のルートのディレクトリの `-components/` / `-lib/` を直接 import しない (必要になった時点で `src/components` / `src/lib` へ移す)
+- `src/lib` の中で完結するもの (`src/lib` のファイルからしか使わないもの) も `src/lib` に置く
 - `-components/` / `-lib/` の中はさらにフォルダで入れ子にしてよい (`board/section/` のように、使う側の親子関係に合わせる)。
   入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)
 
@@ -27,22 +30,24 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 
 ```
 src/
-  main.tsx            ルーターの作成と描画
-  RouteErrorFallback.tsx, install-prompt.ts, local-storage.ts, offline.ts
-                      main.tsx の階層 (main.tsx から使うもの)
+  main.tsx                ルーターの作成と描画
+  RouteErrorFallback.tsx  main.tsx だけで使う
+  components/             複数のルートで使う UI (TablerIcon, PlusIcon, BottomLeftNotice, ContactLink)
+  lib/                    複数のルートで使うもの (板の状態, API, 認証, キャッシュ, オフライン判定など)
   routes/
-    __root.tsx        全ページ共通のレイアウト (ヘッダー・本文の枠)
-    -components/      __root の階層: header/, SkipLink, NotFound, バナー, 複数ルートで使う UI (TablerIcon など)
-    -lib/             __root の階層: 板の状態 (board, save-status, view-mode など), API, 認証, キャッシュ
+    __root.tsx            全ページ共通のレイアウト (ヘッダー・本文の枠)
+    -root/                __root 専用
+      -components/        header/, SkipLink, NotFound, バナー
+      -lib/               use-online, use-account-actions
     (board)/
-      index.tsx       → "/"
-      -components/    board/, landing/, BoardView
-      -lib/           板の編集・保存・Markdown 処理など (/ だけで使うもの)
+      index.tsx           → "/"
+      -components/        board/, landing/, BoardView
+      -lib/               板の編集・保存・Markdown 処理など
     (legal)/
-      privacy.tsx     → "/privacy"
-      terms.tsx       → "/terms"
-      -components/    LegalPage
-    login.tsx         → "/login" (/ への転送のみ)
+      privacy.tsx         → "/privacy"
+      terms.tsx           → "/terms"
+      -components/        LegalPage
+    login.tsx             → "/login" (/ への転送のみ)
 ```
 
 ## TanStack Router の命名規則 (ここで使うもの)
@@ -58,14 +63,14 @@ src/
 
 ## import の書き方
 
-- 同じルートの中 (そのルートのファイルと、その `-components/` / `-lib/`) は相対パス (`./`, `../`)。`src/` 直下どうしも `./`
-- 祖先の階層のものは `@/` で参照する (`@/routes/-lib/board`, `@/offline`)。深い `../../../../` を書かない
+- 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `-root/` も `./-root/...`
+- `src/components` / `src/lib` は `@/` で参照する (`@/lib/board`, `@/components/TablerIcon`)
 - CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む
 
 ## ファイルを移動・追加したあと
 
 1. `vi.mock("...")` と `await import("...")` のパスも忘れずに直す (テストが古いパスをモックしたまま通ることがある)
-2. コメントに書かれたファイルパス (`src/routes/-lib/...` など) も直す。`vite.config.ts` や `worker/` からも参照されている
+2. コメントに書かれたファイルパス (`src/lib/...` など) も直す。`vite.config.ts` や `worker/` からも参照されている
 3. `npm run typecheck && npm run lint && npm test && npm run build` を通す
 4. `src/routeTree.gen.ts` は自動生成なので手で編集しない。変更されていればそのままコミットする。
    生成されたルートに `-components` などが紛れ込んでいないか (= URL が増えていないか) を確認する

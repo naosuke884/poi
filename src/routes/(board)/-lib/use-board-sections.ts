@@ -1,10 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  type BoardSection,
-  type EditableSection,
-  newSection,
-  toEditable,
-} from "@/routes/-lib/board";
+import { type BoardSection, type EditableSection, newSection, toEditable } from "@/lib/board";
 import { useBoardAutosave } from "./use-board-autosave";
 
 /**

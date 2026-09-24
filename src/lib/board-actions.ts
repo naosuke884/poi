@@ -1,4 +1,4 @@
-import { createExternalStore } from "./external-store";
+import { createExternalStore } from "@/lib/external-store";
 
 export type BoardActions = {
   /** 末尾に空のセクションを足してカーソルを置く */

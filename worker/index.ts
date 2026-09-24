@@ -12,7 +12,7 @@ app.use("/api/*", authMiddleware);
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)
 app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
 
-// RPC クライアント (src/routes/-lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
+// RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
 const api = new Hono<AppEnv>().route("/board", boardRoutes).route("/settings", settingsRoutes);
 
 app.route("/api", api);

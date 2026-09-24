@@ -4,7 +4,7 @@ import {
   type EditableSection,
   newSection,
   toEditable,
-} from "@/routes/-lib/board";
+} from "@/lib/board";
 
 /**
  * 画面の板 (local) に、別の端末 / タブで保存された板 (remote) を取り込む (issue #72)。

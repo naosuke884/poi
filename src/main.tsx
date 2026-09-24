@@ -7,8 +7,8 @@ import { createRoot } from "react-dom/client";
 import { RouteErrorFallback } from "./RouteErrorFallback";
 // ホーム画面への追加 (beforeinstallprompt) は React のマウントより先に飛んでくることがあるので、
 // 受け取り口をここで先に用意しておく (副作用だけの import)
-import "./install-prompt";
-import { removeByPrefix } from "./local-storage";
+import "@/lib/install-prompt";
+import { removeByPrefix } from "@/lib/local-storage";
 import { routeTree } from "./routeTree.gen";
 
 // セクションの折り畳み機能は 2026-09 に廃止した (#51)。端末ごとに localStorage へ

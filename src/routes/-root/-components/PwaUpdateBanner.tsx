@@ -1,6 +1,6 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "@mantine/core";
-import { BottomLeftNotice } from "./BottomLeftNotice";
+import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 
 /**
  * Service Worker を登録し、新バージョンが待機状態になったら「更新があります」のバナーを出す。

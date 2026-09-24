@@ -1,9 +1,9 @@
 import { Center, SegmentedControl, Tooltip, VisuallyHidden } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { keepEditorFocus } from "../../-lib/keep-editor-focus";
-import { type BoardViewMode, setViewMode, useViewMode } from "../../-lib/view-mode";
-import { Svg } from "../TablerIcon";
+import { Svg } from "@/components/TablerIcon";
+import { keepEditorFocus } from "@/lib/keep-editor-focus";
+import { type BoardViewMode, setViewMode, useViewMode } from "@/lib/view-mode";
 
 /**
  * ヘッダーの表示切替 (タイムライン / 見出しごとのまとめ #37)。

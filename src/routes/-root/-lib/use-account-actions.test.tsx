@@ -16,7 +16,7 @@ const router = vi.hoisted(() => ({
 }));
 const clearOfflineCaches = vi.hoisted(() => vi.fn());
 
-vi.mock("./auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   authClient: {
     multiSession: { setActive: auth.setActive, listDeviceSessions: auth.listDeviceSessions },
     signOut: auth.signOut,
@@ -25,7 +25,7 @@ vi.mock("./auth-client", () => ({
   startGoogleLogin: auth.startGoogleLogin,
 }));
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => router }));
-vi.mock("./require-login", () => ({ clearOfflineCaches }));
+vi.mock("@/lib/require-login", () => ({ clearOfflineCaches }));
 
 const { useAccountActions } = await import("./use-account-actions");
 
