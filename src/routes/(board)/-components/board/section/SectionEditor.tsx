@@ -20,17 +20,21 @@ import {
   placeholder as placeholderExt,
 } from "@codemirror/view";
 import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
-import { cursorOf, insertNewlineContinueList } from "../../../-lib/list-continue";
+import { cursorOf, insertNewlineContinueList } from "../../../-lib/editor/list-continue";
 import {
   deleteListMarkerBackward,
   deleteListMarkerForward,
   forceListMarkers,
   hashStartsHeading,
   spaceAfterHashStartsHeading,
-} from "../../../-lib/list-force";
-import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "../../../-lib/list-indent";
-import { minimalChange } from "../../../-lib/minimal-change";
-import { sectionMarkdown } from "../../../-lib/section-markdown";
+} from "../../../-lib/editor/list-force";
+import {
+  indentLess,
+  indentMoreOrInsertTab,
+  spaceIndentsListItem,
+} from "../../../-lib/editor/list-indent";
+import { minimalChange } from "../../../-lib/editor/minimal-change";
+import { sectionMarkdown } from "../../../-lib/editor/section-markdown";
 import { viewportInsets } from "../../../-lib/use-keyboard-inset";
 import classes from "./SectionEditor.module.css";
 
@@ -148,12 +152,12 @@ function visibleBand(view: EditorView): { top: number; bottom: number } {
 
 /**
  * 編集中セクションのエディタ (CodeMirror 6)。Board が編集中の 1 セクションだけこれで表示する。
- * テキストは常に Markdown ソースそのもので、見出し・記号・URL は装飾するだけ (src/routes/(board)/-lib/section-markdown.ts)。
- * 本文は常に箇条書き: Enter は項目を続け、編集で触れた行には記号を自動で足す (src/routes/(board)/-lib/list-force.ts)。
+ * テキストは常に Markdown ソースそのもので、見出し・記号・URL は装飾するだけ (src/routes/(board)/-lib/editor/section-markdown.ts)。
+ * 本文は常に箇条書き: Enter は項目を続け、編集で触れた行には記号を自動で足す (src/routes/(board)/-lib/editor/list-force.ts)。
  * Textarea 譲りの使い勝手も保つ: 散文向けの spellcheck / 自動大文字化、文字数上限、複数行のプレースホルダ。
  * セクションの境界 (先頭で Backspace / 末尾で Delete / 最初の行で ↑ / 最後の行で ↓) はキー処理を横取りして
  * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。
- * Tab / Shift+Tab はインデント操作 (src/routes/(board)/-lib/list-indent.ts)、Esc は編集をやめる (blur)
+ * Tab / Shift+Tab はインデント操作 (src/routes/(board)/-lib/editor/list-indent.ts)、Esc は編集をやめる (blur)
  */
 export function SectionEditor({
   value,
@@ -231,9 +235,9 @@ export function SectionEditor({
           history(),
           Prec.highest(keymap.of(boundaryKeymap(callbacksRef))),
           keymap.of([...standardKeymap, ...historyKeymap]),
-          // 記号の直後のスペースはインデントにする (モバイルの Tab 代わり。src/routes/(board)/-lib/list-indent.ts)
+          // 記号の直後のスペースはインデントにする (モバイルの Tab 代わり。src/routes/(board)/-lib/editor/list-indent.ts)
           spaceIndentsListItem,
-          // 本文は常に箇条書き: 編集で触れた行に `- ` を自動で足す (src/routes/(board)/-lib/list-force.ts)
+          // 本文は常に箇条書き: 編集で触れた行に `- ` を自動で足す (src/routes/(board)/-lib/editor/list-force.ts)
           forceListMarkers,
           // 空の項目で `#` を打ったら記号を消して見出しにする (箇条書きの途中に見出しを書く入り口)
           hashStartsHeading,
@@ -379,7 +383,7 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
       callbacks.current.onBackspaceAtStart();
       return true;
     }
-    // 記号より左では記号やインデントをまとめて扱う (src/routes/(board)/-lib/list-force.ts)。
+    // 記号より左では記号やインデントをまとめて扱う (src/routes/(board)/-lib/editor/list-force.ts)。
     // それ以外は 1 文字ずつ (行頭の空白をインデント単位でまとめて消さない。Textarea と同じ)
     return deleteListMarkerBackward(view) || deleteCharBackwardStrict(view);
   };
@@ -394,7 +398,7 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
           callbacks.current.onDeleteAtEnd();
           return true;
         }
-        // 行末では次の行の記号ごと結合する (src/routes/(board)/-lib/list-force.ts)。それ以外は通常の削除
+        // 行末では次の行の記号ごと結合する (src/routes/(board)/-lib/editor/list-force.ts)。それ以外は通常の削除
         return deleteListMarkerForward(view);
       },
     },
@@ -423,7 +427,7 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
     // Enter は箇条書きを同じ階層で続ける (本文は常に箇条書きなので Shift+Enter も同じ。
     // 逃げ道の単純な改行を残しても、次に書いた行へ forceListMarkers が記号を足すので意味が無い)
     { key: "Enter", run: insertNewlineContinueList, shift: insertNewlineContinueList },
-    // Tab はインデント (リストの階層下げ / タブ挿入)、Shift+Tab は戻し (src/routes/(board)/-lib/list-indent.ts)
+    // Tab はインデント (リストの階層下げ / タブ挿入)、Shift+Tab は戻し (src/routes/(board)/-lib/editor/list-indent.ts)
     { key: "Tab", run: indentMoreOrInsertTab, shift: indentLess },
     // Esc で編集をやめる (blur して onEscape → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
     // 選択があれば 1 回目の Esc は選択の解除だけ (多くのエディタと同じ。いきなり抜けると選択とカーソル位置を失う)。

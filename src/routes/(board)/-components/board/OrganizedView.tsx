@@ -1,16 +1,20 @@
 import { Box, CloseButton, Divider, Group, Text, Tooltip } from "@mantine/core";
 import { useMemo, useRef } from "react";
 import type { EditableSection } from "@/lib/board";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
-import { locateInSection, type OrganizedGroup, organizeSections } from "../../-lib/organized";
+import { keepEditorFocus } from "../../-lib/keep-editor-focus";
 import { copySectionText, deliverImage, renderSectionImage } from "../../-lib/section-export";
+import {
+  locateInSection,
+  type OrganizedGroup,
+  organizeSections,
+} from "../../-lib/sections/organized";
 import classes from "./OrganizedView.module.css";
 import { MarkdownView } from "./section/MarkdownView";
 import { SectionActions } from "./section/SectionActions";
 
 /**
  * 見出しごとにまとめた表示 (#37)。タイムライン (通常の板) と切り替えて使う閲覧用のビュー。
- * - 同じ見出しのチャンクを 1 つの Markdown に連結して表示する (まとめ方は src/routes/(board)/-lib/organized.ts)。
+ * - 同じ見出しのチャンクを 1 つの Markdown に連結して表示する (まとめ方は src/routes/(board)/-lib/sections/organized.ts)。
  *   同じ見出しの箇条書きは 1 つのリストに見えるよう、連結でできた項目間の余白は詰める (CSS)
  * - 区切り線はタイムラインと同じ見た目で、右にコピー / スクショ。
  *   期限は出さない (チャンクごとに違うのでまとめでは意味が薄い。タイムラインで見られる)

@@ -1,8 +1,8 @@
 import { insertNewline } from "@codemirror/commands";
 import { EditorSelection } from "@codemirror/state";
 import type { Command, EditorView } from "@codemirror/view";
+import { LIST_ITEM_RE } from "../markdown/markdown-syntax";
 import { dedentChange } from "./list-indent";
-import { LIST_ITEM_RE } from "./markdown-syntax";
 
 /** 選択が無い (カーソルだけ) なら head。IME 変換中・選択あり・複数カーソルは null */
 export function cursorOf(view: EditorView): number | null {

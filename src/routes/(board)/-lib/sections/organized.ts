@@ -1,5 +1,5 @@
 import type { EditableSection } from "@/lib/board";
-import { parseHeading } from "./markdown-syntax";
+import { parseHeading } from "../markdown/markdown-syntax";
 
 /**
  * まとめ表示 (OrganizedView) 用に、板のセクションを見出しごとにまとめ直す (#37)。

@@ -33,7 +33,7 @@ export function useBoardSections({
     setSections(next);
   }, []);
 
-  const { update } = useBoardAutosave({
+  const { update, saveState } = useBoardAutosave({
     initial,
     initialRevision,
     userId,
@@ -43,5 +43,5 @@ export function useBoardSections({
     commit,
   });
 
-  return { sections, latestRef, update };
+  return { sections, latestRef, update, saveState };
 }

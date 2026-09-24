@@ -1,9 +1,7 @@
 import { Anchor, AppShell, Container, Group } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
-import { AddSectionButton } from "./AddSectionButton";
-import { SaveStatusIcon } from "./SaveStatusIcon";
+import { HeaderSlotTarget } from "@/components/HeaderSlot";
 import { UserMenu } from "./user-menu/UserMenu";
-import { ViewToggle } from "./ViewToggle";
 
 // ノッチのある端末 (viewport-fit=cover) を横向きにしたとき、左右の内容が隠れないようにする
 const safeAreaX = {
@@ -11,7 +9,7 @@ const safeAreaX = {
   paddingRight: "env(safe-area-inset-right)",
 };
 
-/** 上部固定のヘッダー: 左にロゴ (トップへのリンク)、右に板の操作とユーザーメニュー */
+/** 上部固定のヘッダー: 左にロゴ (トップへのリンク)、右にページごとの操作 (HeaderSlot) とユーザーメニュー */
 export function AppHeader() {
   return (
     <AppShell.Header style={safeAreaX}>
@@ -25,9 +23,7 @@ export function AppHeader() {
           </Anchor>
           {/* 折り返し禁止: 折り返すと 2 行目が 56px のヘッダーからはみ出して本文に重なる */}
           <Group gap="md" wrap="nowrap">
-            <ViewToggle />
-            <AddSectionButton />
-            <SaveStatusIcon />
+            <HeaderSlotTarget />
             <UserMenu />
           </Group>
         </Group>

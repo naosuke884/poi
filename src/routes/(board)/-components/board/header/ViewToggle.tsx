@@ -1,20 +1,24 @@
 import { Center, SegmentedControl, Tooltip, VisuallyHidden } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { Svg } from "@/components/TablerIcon";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
-import { type BoardViewMode, setViewMode, useViewMode } from "@/lib/view-mode";
+import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
+import type { BoardViewMode } from "../../../-lib/view-mode";
+import { Svg } from "../TablerIcon";
 
 /**
  * ヘッダーの表示切替 (タイムライン / 見出しごとのまとめ #37)。
- * 板を表示している間 (Board が publishViewToggle している間) だけ出す。
- * まとめは閲覧にも役立つので、オフラインの閲覧のみ (readOnly) でも出す (AddSectionButton とは別のストア)
+ * Board が HeaderSlot に出す (板を表示している間だけ)。
+ * まとめは閲覧にも役立つので、オフラインの閲覧のみ (readOnly) でも出す
  */
-export function ViewToggle() {
-  const { active, mode } = useViewMode();
+export function ViewToggle({
+  mode,
+  onChange,
+}: {
+  mode: BoardViewMode;
+  onChange: (mode: BoardViewMode) => void;
+}) {
   // ホバーの無い端末 (スマホ) では、タップで出たツールチップが残って邪魔なだけなので出さない
   const noHover = useMediaQuery("(hover: none)");
-  if (!active) return null;
   const item = (tooltip: string, label: string, icon: ReactNode) => (
     <Tooltip label={tooltip} withArrow disabled={noHover}>
       <Center h="100%">
@@ -28,7 +32,7 @@ export function ViewToggle() {
       size="xs"
       aria-label="板の表示方法"
       value={mode}
-      onChange={(value) => setViewMode(value as BoardViewMode)}
+      onChange={(value) => onChange(value as BoardViewMode)}
       onMouseDown={keepEditorFocus}
       data={[
         {

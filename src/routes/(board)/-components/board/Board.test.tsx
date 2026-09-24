@@ -92,7 +92,7 @@ vi.mock("@tanstack/react-router", () => ({
 const { Board } = await import("./Board");
 const { readCachedBoard } = await import("@/lib/board-cache");
 const { writeCachedUser, clearCachedUser } = await import("@/lib/session-cache");
-const { useBoardActions } = await import("@/lib/board-actions");
+const { HeaderSlotProvider, HeaderSlotTarget } = await import("@/components/HeaderSlot");
 
 beforeAll(() => {
   // jsdom に無い API の最小限のスタブ
@@ -122,11 +122,13 @@ beforeAll(() => {
 
 let container: HTMLElement;
 let root: Root;
-let actions: ReturnType<typeof useBoardActions> = null;
-
-function ActionsProbe() {
-  actions = useBoardActions();
-  return null;
+/** ヘッダー (HeaderSlot) に出た「セクションを追加」ボタンを押す */
+async function addSection() {
+  const button = [...container.querySelectorAll("[data-header-slot] button")].find(
+    (b) => b.textContent === "セクションを追加",
+  );
+  if (!(button instanceof HTMLElement)) throw new Error("追加ボタンがありません");
+  await act(async () => button.click());
 }
 
 let initialSections: BoardSection[] = [];
@@ -155,8 +157,10 @@ async function render(ttlDays: number) {
   await act(async () => {
     root.render(
       <MantineProvider>
-        <ActionsProbe />
-        <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
+        <HeaderSlotProvider>
+          <HeaderSlotTarget />
+          <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
+        </HeaderSlotProvider>
       </MantineProvider>,
     );
   });
@@ -232,7 +236,7 @@ describe("Board", () => {
 
   it("追加したセクションに書くと、自動保存で新しいセクションとして送る", async () => {
     await mount([{ content: "- a" }]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- b");
     expect(sectionTexts()).toEqual(["a", "- b"]);
     await waitForSave();
@@ -244,7 +248,7 @@ describe("Board", () => {
 
   it("空行 2 つでセクションが分かれ、先頭で Backspace すると元に戻る", async () => {
     await mount([{ content: "- a" }]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- x\n\n\n- y");
     expect(container.querySelectorAll("[data-section]")).toHaveLength(3);
     // カーソルは分けた後の「- y」の末尾 → 先頭へ移して Backspace で前と結合
@@ -277,7 +281,7 @@ describe("Board", () => {
 
   it("自動保存を待たずに離れても、保存してオフライン用キャッシュも更新する", async () => {
     await mount([{ content: "- a" }]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- b");
     await act(async () => root.unmount());
     await act(async () => {
@@ -324,7 +328,7 @@ describe("Board", () => {
   it("板全体の文字数上限を超える入力は弾く (自動で足す記号も含めて)", async () => {
     // 他のセクションと区切り (3 文字) で、残りは 7 文字
     await mount([{ content: "x".repeat(BOARD_MAX_LENGTH - 3 - 7) }]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- abc");
     expect(editor().state.doc.toString()).toBe("- abc");
     // 入力した 2 文字だけなら 7 文字に収まるが、記号 `- ` が足されて 9 文字になるので弾く
@@ -338,7 +342,7 @@ describe("Board", () => {
 
   it("ログアウト後に完了した保存では、オフライン用キャッシュを作り直さない", async () => {
     await mount([{ content: "- a" }]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- b");
     // ログアウト (clearOfflineCaches) でキャッシュ済みユーザーが消えた後に保存が完了する
     clearCachedUser();
@@ -350,7 +354,7 @@ describe("Board", () => {
   it("別のアカウントに切り替わっていたら保存せず、読み込み直す", async () => {
     await mount([{ content: "- a" }]);
     sessionUserId = "other";
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- b");
     await waitForSave();
     expect(puts).toEqual([]);
@@ -370,7 +374,7 @@ describe("Board", () => {
   it("別の場所で保存されていたら、足されたセクションを消さずに手元の変更と合わせて保存し直す", async () => {
     await mount([{ content: "- a" }]);
     server = { revision: "elsewhere", sections: [remote("id-0", "- a", 0), remote("x", "- x", 1)] };
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- b");
     // 1 回目の保存は断られ、取り直した板に手元の変更を重ねる
     await waitForSave();
@@ -410,7 +414,7 @@ describe("Board: 期限切れのセクション (issue #74)", () => {
 
   it("開いている間に期限を過ぎたセクションは、次の保存で送らず画面からも外す", async () => {
     await mount([{ content: "- a", expiresAt: iso(Date.now() - 1000) }, { content: "- b" }]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- c");
     await waitForSave();
     expect(puts.at(-1)).toEqual([
@@ -432,7 +436,7 @@ describe("Board: 期限切れのセクション (issue #74)", () => {
     await waitForSave();
     // 外したものはサーバでも見えないので、それだけでは保存しない
     expect(puts).toEqual([]);
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- c");
     await waitForSave();
     expect(puts.at(-1)).toEqual([
@@ -448,7 +452,7 @@ describe("Board: 別のタブで保持日数を短くした後の保存 (issue #
     // 画面上の期限はまだ先だが、別のタブで保持日数が短くなり、サーバでは a と b がもう期限切れ
     expiredOnServer.add("id-0");
     expiredOnServer.add("id-1");
-    await act(async () => actions!.addSection());
+    await addSection();
     await type("- d");
     await waitForSave();
     expect(puts.at(-1)).toEqual([

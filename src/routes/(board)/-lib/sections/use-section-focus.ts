@@ -4,8 +4,8 @@ import type {
   CursorPlace,
   EditAnchor,
   SectionEditorHandle,
-} from "../-components/board/section/SectionEditor";
-import { clientTopAtSourceOffset } from "./markdown-source-offset";
+} from "../../-components/board/section/SectionEditor";
+import { clientTopAtSourceOffset } from "../markdown/markdown-source-offset";
 
 /**
  * Board のフォーカスとスクロールの調整。

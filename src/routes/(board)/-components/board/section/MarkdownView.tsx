@@ -3,8 +3,11 @@ import type { KeyboardEvent, MouseEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "../../../-lib/markdown-disable";
-import { rehypeSourcePositions, sourceOffsetAtPoint } from "../../../-lib/markdown-source-offset";
+import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "../../../-lib/markdown/markdown-disable";
+import {
+  rehypeSourcePositions,
+  sourceOffsetAtPoint,
+} from "../../../-lib/markdown/markdown-source-offset";
 import classes from "./MarkdownView.module.css";
 
 /** 空でない選択範囲が el に掛かっているか */
@@ -25,7 +28,7 @@ function selectionIntersects(el: Element): boolean {
  * - リンクは別タブで開く (同じタブで開くと編集中の板から離れてしまうため)
  * - 表は横スクロールする箱で包む (幅広の表でページ全体が横に伸びないように)
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
- *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/(board)/-lib/markdown-source-offset.ts。
+ *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/(board)/-lib/markdown/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。
  *   ドラッグで文字を選択しただけのときは切り替えない (このセクションに掛かる選択が残っている click は無視。
  *   編集中のエディタの選択は mousedown を止めるので残るが、それは別のセクションなので切り替える)

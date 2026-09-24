@@ -16,9 +16,9 @@ import {
 } from "@/lib/board";
 import { writeCachedBoard } from "@/lib/board-cache";
 import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
-import { publishSaveState, type SaveStatus } from "@/lib/save-status";
 import { readCachedUser } from "@/lib/session-cache";
 import { mergeBoard } from "./board-merge";
+import type { SaveState, SaveStatus } from "./save-status";
 
 // 入力停止からこの時間だけ待ってから保存する
 const AUTOSAVE_DELAY_MS = 1000;
@@ -356,12 +356,10 @@ export function useBoardAutosave({
     return () => window.removeEventListener("online", onOnline);
   }, [readOnly, save]);
 
-  // 保存状態をヘッダーのアイコンに出す (編集中のときだけ。離れたら消す)
-  useEffect(() => {
-    if (readOnly) return;
-    publishSaveState({ status, errorMessage, retry: () => void save() });
-  }, [readOnly, status, errorMessage, save]);
-  useEffect(() => () => publishSaveState(null), []);
+  // ヘッダーのアイコン (SaveStatusIcon) に出す保存状態 (編集中のときだけ。閲覧のみなら null)
+  const saveState: SaveState | null = readOnly
+    ? null
+    : { status, errorMessage, retry: () => void save() };
 
   // 未保存の内容がある間はタブを閉じる / リロード前に確認を出す
   const unsaved = status !== "saved";
@@ -389,5 +387,5 @@ export function useBoardAutosave({
     enableBeforeUnload: false,
   });
 
-  return { update };
+  return { update, saveState };
 }

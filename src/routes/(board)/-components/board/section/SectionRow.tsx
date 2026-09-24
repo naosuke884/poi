@@ -1,7 +1,7 @@
 import { Box, CloseButton, Divider, Group, Tooltip } from "@mantine/core";
 import type { RefObject } from "react";
 import type { EditableSection } from "@/lib/board";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
+import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { copySectionText } from "../../../-lib/section-export";
 import { MarkdownView } from "./MarkdownView";
 import { SectionActions } from "./SectionActions";

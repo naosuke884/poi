@@ -1,19 +1,18 @@
 import { ActionIcon, Box, ThemeIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import type { ReactNode } from "react";
-import { Svg } from "@/components/TablerIcon";
-import { useSaveState } from "@/lib/save-status";
+import type { SaveState } from "../../../-lib/sections/save-status";
+import { Svg } from "../TablerIcon";
 
 const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
 
 /**
  * ヘッダーに出す板の保存状態 (雲のアイコンのみ、説明は Tooltip)。
  * 雲+チェック = 保存済み、雲 = 未保存、雲+↑ = 保存中、雲に斜線 = オフライン、雲+! = 失敗。
- * 板を編集していないときは何も描画しない。offline / error はクリックで再試行。
+ * 閲覧のみ (state が null) のときはアイコンを出さない。offline / error はクリックで再試行。
  * 読み上げ用に、状態の文言を常在のライブリージョン (role="status") の中に隠しテキストで置く
  * (リージョン自体は状態が無いときも残しておく: 後から中身が変わったときに読み上げられるように)
  */
-export function SaveStatusIcon() {
-  const state = useSaveState();
+export function SaveStatusIcon({ state }: { state: SaveState | null }) {
   return (
     <Box component="span" role="status" style={{ display: "inline-flex", alignItems: "center" }}>
       {state && <Inner state={state} />}
@@ -21,7 +20,7 @@ export function SaveStatusIcon() {
   );
 }
 
-function Inner({ state }: { state: NonNullable<ReturnType<typeof useSaveState>> }) {
+function Inner({ state }: { state: SaveState }) {
   switch (state.status) {
     case "saved":
       return (

@@ -10,9 +10,9 @@ import {
   Transaction,
 } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
+import { HEADING_RE, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "../markdown/markdown-syntax";
 import { cursorOf } from "./list-continue";
 import { dedentChange } from "./list-indent";
-import { HEADING_RE, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "./markdown-syntax";
 
 /**
  * 本文を常に箇条書きに保つ (#40)。

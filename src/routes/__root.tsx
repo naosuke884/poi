@@ -1,6 +1,7 @@
 import { AppShell, Container } from "@mantine/core";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { HeaderSlotProvider } from "@/components/HeaderSlot";
 import { AppHeader } from "./-root/-components/header/AppHeader";
 import { NotFound } from "./-root/-components/NotFound";
 import { OfflineBanner } from "./-root/-components/OfflineBanner";
@@ -22,22 +23,29 @@ const mainPadding = {
 
 function RootLayout() {
   return (
-    <AppShell header={{ height: 56 }} padding="md">
-      <SkipLink />
-      <AppHeader />
-      {/* Main → Container → ページ を縦の flex にして、板が画面の下端まで広がれるようにする */}
-      <AppShell.Main
-        id="main"
-        tabIndex={-1}
-        style={{ display: "flex", flexDirection: "column", ...mainPadding }}
-      >
-        <Container size="md" w="100%" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <OfflineBanner />
-          <Outlet />
-        </Container>
-      </AppShell.Main>
-      <PwaUpdateBanner />
-      {import.meta.env.DEV && <TanStackRouterDevtools />}
-    </AppShell>
+    // ページがヘッダーに自分用の操作を出せるようにする (HeaderSlot)
+    <HeaderSlotProvider>
+      <AppShell header={{ height: 56 }} padding="md">
+        <SkipLink />
+        <AppHeader />
+        {/* Main → Container → ページ を縦の flex にして、板が画面の下端まで広がれるようにする */}
+        <AppShell.Main
+          id="main"
+          tabIndex={-1}
+          style={{ display: "flex", flexDirection: "column", ...mainPadding }}
+        >
+          <Container
+            size="md"
+            w="100%"
+            style={{ flex: 1, display: "flex", flexDirection: "column" }}
+          >
+            <OfflineBanner />
+            <Outlet />
+          </Container>
+        </AppShell.Main>
+        <PwaUpdateBanner />
+        {import.meta.env.DEV && <TanStackRouterDevtools />}
+      </AppShell>
+    </HeaderSlotProvider>
   );
 }

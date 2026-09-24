@@ -1,21 +1,24 @@
 import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
 import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@worker/app/constants";
-import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
-import { PlusIcon } from "@/components/PlusIcon";
+import { HeaderSlot } from "@/components/HeaderSlot";
 import { affixInset } from "@/lib/affix";
 import type { BoardSection } from "@/lib/board";
-import { publishBoardActions } from "@/lib/board-actions";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
-import { publishViewToggle, setViewMode, useViewMode } from "@/lib/view-mode";
-import { appendSection, changeSection, mergeSections } from "../../-lib/board-ops";
+import { keepEditorFocus } from "../../-lib/keep-editor-focus";
 import { deliverImage, renderSectionImage } from "../../-lib/section-export";
-import { useBoardSections } from "../../-lib/use-board-sections";
+import { appendSection, changeSection, mergeSections } from "../../-lib/sections/board-ops";
+import { useBoardSections } from "../../-lib/sections/use-board-sections";
+import { useSectionFocus } from "../../-lib/sections/use-section-focus";
+import { useUndoableDelete } from "../../-lib/sections/use-undoable-delete";
 import { useKeyboardInset } from "../../-lib/use-keyboard-inset";
-import { useSectionFocus } from "../../-lib/use-section-focus";
-import { useUndoableDelete } from "../../-lib/use-undoable-delete";
+import { useViewMode } from "../../-lib/view-mode";
+import { AddSectionButton } from "./header/AddSectionButton";
+import { SaveStatusIcon } from "./header/SaveStatusIcon";
+import { ViewToggle } from "./header/ViewToggle";
 import { OrganizedView } from "./OrganizedView";
+import { PlusIcon } from "./PlusIcon";
 import type { EditAnchor } from "./section/SectionEditor";
 import { type SectionHandlers, type SectionRefs, SectionRow } from "./section/SectionRow";
 
@@ -59,7 +62,7 @@ export function Board({
 }) {
   // 画面上のセクションと編集の入口 (update = 状態の更新 + 自動保存の予約)。
   // state (sections) は描画用で、ハンドラは常に latestRef (同じ内容) を読む
-  const { sections, latestRef, update } = useBoardSections({
+  const { sections, latestRef, update, saveState } = useBoardSections({
     initial,
     initialRevision: revision,
     userId,
@@ -74,8 +77,8 @@ export function Board({
   editingKeyRef.current = editingKey;
 
   // 表示モード (#37): タイムライン (通常の板) / 見出しごとのまとめ (OrganizedView。閲覧のみ)。
-  // 切替はヘッダーの ViewToggle が行い、モードはストア (view-mode) が持つ (Board が作り直されても保つ)
-  const { mode } = useViewMode();
+  // 切替はヘッダーの ViewToggle で行う。モードは Board が作り直されても保つ (view-mode)
+  const [mode, setViewMode] = useViewMode();
   const organized = mode === "organized";
 
   const {
@@ -181,22 +184,6 @@ export function Board({
     revealLast();
   };
 
-  // ヘッダーの「セクションを追加」ボタン (AddSectionButton) に操作を渡す (編集できるときだけ。離れたら消す)。
-  // addSection は毎描画作り直されるが、ref と安定な setter しか触らないので初回のもので足りる
-  useEffect(() => {
-    if (readOnly) return;
-    publishBoardActions({ addSection });
-    return () => publishBoardActions(null);
-    // readOnly はマウント後に変わらない (変わるときは key で作り直される)
-  }, [readOnly]);
-
-  // ヘッダーの表示切替 (ViewToggle) を出す (板を表示している間だけ)。
-  // まとめは閲覧にも役立つので、閲覧のみ (readOnly) でも出す
-  useEffect(() => {
-    publishViewToggle(true);
-    return () => publishViewToggle(false);
-  }, []);
-
   // 最後のセクションより下の空き領域 (やセクションの外枠の余白) をクリックしたら末尾にカーソルを置く
   // (画面全体が書ける場所に見えるように)。
   // mousedown を止めて、編集中のエディタがクリックの途中で blur (→ Markdown 表示) しないようにする
@@ -271,6 +258,14 @@ export function Board({
 
   return (
     <Stack gap="xs" style={{ flex: 1 }}>
+      {/* ヘッダーに出す板の操作 (板を表示している間だけ)。表示切替はまとめが閲覧にも役立つので
+          閲覧のみ (readOnly) でも出す。追加ボタンは編集できるときだけ */}
+      <HeaderSlot>
+        <ViewToggle mode={mode} onChange={setViewMode} />
+        {!readOnly && <AddSectionButton onClick={addSection} />}
+        <SaveStatusIcon state={saveState} />
+      </HeaderSlot>
+
       {organized ? (
         /* まとめ表示 (#37): 見出しごとに連結した閲覧用ビュー。クリックでその場所の編集へ
            (タイムラインに切り替えてカーソルを置く) */

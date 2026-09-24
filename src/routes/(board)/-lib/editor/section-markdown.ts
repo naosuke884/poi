@@ -15,7 +15,7 @@ import {
   type Line,
   parser as markdownParser,
 } from "@lezer/markdown";
-import { HEADING_RE } from "./markdown-syntax";
+import { HEADING_RE } from "../markdown/markdown-syntax";
 
 /**
  * 編集中セクション (CodeMirror) の Markdown 言語と装飾。
@@ -101,7 +101,7 @@ class DeepIndentBreak implements LeafBlockParser {
 }
 
 /**
- * 有効な記法を MarkdownView (micromark の disable = src/routes/(board)/-lib/markdown-disable.ts) と揃えた parser。
+ * 有効な記法を MarkdownView (micromark の disable = src/routes/(board)/-lib/markdown/markdown-disable.ts) と揃えた parser。
  * `remove` で外すのは「ブロックを飲み込む構文」と「インライン装飾」。ここで外さないと、例えば ``` の後の
  * `# 見出し` が表示では見出しなのに編集中はコードとして見える (逆も) といった食い違いが起きる。
  * 名前は @lezer/markdown の DefaultBlockParsers / DefaultInline のキー (存在しない名前は黙って無視されるので注意)。
@@ -113,7 +113,7 @@ class DeepIndentBreak implements LeafBlockParser {
  * - `#<タブ>見出し` は micromark では見出しだが lezer は `#` の後にスペースしか認めない (Tab キーはリスト外では
  *   タブを挿すので `#` の直後に入れれば作れるが、まず書かない形)
  * - 段落 (項目の本文) の直後の `2.` などで始まる番号付き項目は、micromark では段落の続き (1 始まりしか段落を
- *   中断できない) だが lezer は入れ子のリストにする。Tab のインデント (src/routes/(board)/-lib/list-indent.ts) は番号を
+ *   中断できない) だが lezer は入れ子のリストにする。Tab のインデント (src/routes/(board)/-lib/editor/list-indent.ts) は番号を
  *   振り直してこの形を作らないので、手でインデントを書いたときだけ食い違う
  * - 裸 URL の境界は remark-gfm と「ほぼ同じ」: `HTTPS://` (大文字) や `_https://`、ドット無しのホスト、
  *   `<!-- -->` / `<a>` の中の URL は編集中はリンクにならず、末尾の `]` や `」` の含め方が 1 文字ずれることがある

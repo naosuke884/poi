@@ -1,7 +1,7 @@
 import type { Line, Text } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
+import { LIST_ITEM_RE } from "../markdown/markdown-syntax";
 import { cursorOf } from "./list-continue";
-import { LIST_ITEM_RE } from "./markdown-syntax";
 
 /**
  * Tab / Shift+Tab のインデント操作。

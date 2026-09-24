@@ -26,7 +26,39 @@
         "useExhaustiveDependencies": "off"
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["**/routes/**", "@/routes/**"],
+                "message": "src/routes の外 (src/components, src/lib など) からルートの部品を import しない。共有するなら src/components / src/lib へ移す (route-colocation skill)"
+              },
+              {
+                "group": [
+                  "**/-components/**",
+                  "!./-components/**",
+                  "!../-components/**",
+                  "!../../-components/**",
+                  "!../../../-components/**",
+                  "!../../../../-components/**",
+                  "!../../../../../-components/**",
+                  "!./-root/-components/**",
+                  "**/-lib/**",
+                  "!./-lib/**",
+                  "!../-lib/**",
+                  "!../../-lib/**",
+                  "!../../../-lib/**",
+                  "!../../../../-lib/**",
+                  "!../../../../../-lib/**",
+                  "!./-root/-lib/**"
+                ],
+                "message": "別のルートのディレクトリの -components / -lib を import しない (自分か祖先のルートのものだけ使える)。複数のルートで使うなら src/components / src/lib へ移す (route-colocation skill)"
+              }
+            ]
+          }
+        }
       },
       "suspicious": {
         "noImplicitAnyLet": "off"

@@ -76,7 +76,7 @@
 
 /* 箇条書き: レイアウト (インデント幅・記号の位置) は変えず、色でネストの深さを示す。
    記号は深さの色、行頭のインデント (空白) は同じ色の薄い帯 (幅はそのまま。スペース 2 つの字下げは細くて見えにくい)。
-   深さ 1 → primary、2 → teal、3 → grape、4 → orange で一巡 (src/routes/(board)/-lib/section-markdown.ts の LIST_COLORS と同じ数)。
+   深さ 1 → primary、2 → teal、3 → grape、4 → orange で一巡 (src/routes/(board)/-lib/editor/section-markdown.ts の LIST_COLORS と同じ数)。
    色は Mantine の変数 (filled / light) なのでダークモードでもそのまま使える */
 .root :global(.cm-editor .md-li-c1) {
   --md-li-color: var(--mantine-primary-color-filled);

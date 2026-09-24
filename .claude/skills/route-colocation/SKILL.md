@@ -21,10 +21,21 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 - 使う側が増えたり減ったりしたら、そのつど置き場所を移す。
   例: `(board)/-lib/x.ts` を `__root` のヘッダーでも使うことになったら `src/lib/x.ts` へ移す。
   逆に `src/lib` のものを 1 つのルートでしか使わなくなったら、そのルートの `-lib/` へ戻す
-- 別のルートのディレクトリの `-components/` / `-lib/` を直接 import しない (必要になった時点で `src/components` / `src/lib` へ移す)
+- 別のルートのディレクトリの `-components/` / `-lib/` を直接 import しない (必要になった時点で `src/components` / `src/lib` へ移す)。
+  `src/components` / `src/lib` から `src/routes` の中も import しない。
+  どちらも Biome の `noRestrictedImports` (`biome.json`) で `npm run lint` のエラーになる
 - `src/lib` の中で完結するもの (`src/lib` のファイルからしか使わないもの) も `src/lib` に置く
 - `-components/` / `-lib/` の中はさらにフォルダで入れ子にしてよい (`board/section/` のように、使う側の親子関係に合わせる)。
-  入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)
+  入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)。
+  `-lib/` はファイルが増えたら話題ごとにまとめる (`(board)/-lib/markdown/`, `editor/`, `sections/` など)
+
+## ヘッダーにページの操作を出す (HeaderSlot)
+
+ヘッダーは `__root` の部品だが、ページ専用のボタンや状態表示をヘッダーの部品として作らない
+(作るとページの状態が「複数のルートで使うもの」になり、`src/lib` に押し出される)。
+ページ側で作り、`@/components/HeaderSlot` の `<HeaderSlot>` で包んで描画すると、ヘッダーの差し込み位置に portal で出る。
+状態はページの中で props として渡せばよい (例: `(board)/-components/board/Board.tsx` が `board/header/` の
+`ViewToggle` / `AddSectionButton` / `SaveStatusIcon` を出している)
 
 ## 現在の構成
 
@@ -32,8 +43,8 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 src/
   main.tsx                ルーターの作成と描画
   RouteErrorFallback.tsx  main.tsx だけで使う
-  components/             複数のルートで使う UI (TablerIcon, PlusIcon, BottomLeftNotice, ContactLink)
-  lib/                    複数のルートで使うもの (板の状態, API, 認証, キャッシュ, オフライン判定など)
+  components/             複数のルートで使う UI (HeaderSlot, BottomLeftNotice, ContactLink)
+  lib/                    複数のルートで使うもの (板の型, API, 認証, キャッシュ, オフライン判定など)
   routes/
     __root.tsx            全ページ共通のレイアウト (ヘッダー・本文の枠)
     -root/                __root 専用
@@ -41,8 +52,9 @@ src/
       -lib/               use-online, use-account-actions
     (board)/
       index.tsx           → "/"
-      -components/        board/, landing/, BoardView
-      -lib/               板の編集・保存・Markdown 処理など
+      -components/        board/ (header/, section/), landing/, BoardView
+      -lib/               board-loader など + markdown/ (記法の判定), editor/ (エディタの編集操作),
+                          sections/ (セクションの状態・保存・操作)
     (legal)/
       privacy.tsx         → "/privacy"
       terms.tsx           → "/terms"
@@ -64,7 +76,7 @@ src/
 ## import の書き方
 
 - 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `-root/` も `./-root/...`
-- `src/components` / `src/lib` は `@/` で参照する (`@/lib/board`, `@/components/TablerIcon`)
+- `src/components` / `src/lib` は `@/` で参照する (`@/lib/board`, `@/components/HeaderSlot`)
 - CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む
 
 ## ファイルを移動・追加したあと
