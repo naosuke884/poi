@@ -1,7 +1,7 @@
 import { Anchor, Box, Button, Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { useReducedMotion } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
-import { MEMO_TTL_DAYS } from "@worker/memo/constants";
+import { MEMO_TTL_DAYS } from "@worker/app/constants";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { startGoogleLogin } from "@/lib/auth-client";
 import classes from "./Landing.module.css";

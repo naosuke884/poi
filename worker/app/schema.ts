@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { MEMO_TTL_DAYS, memoExpiresAt } from "../memo/constants";
-import { user } from "./schema";
+import { user } from "../auth/schema";
+import { MEMO_TTL_DAYS, memoExpiresAt } from "./constants";
 
-// schema.ts は Better Auth CLI (npm run auth:schema) が上書きするため、
+// auth/schema.ts は Better Auth CLI (npm run auth:schema) が上書きするため、
 // アプリ独自のテーブルはこのファイルに定義する。
 //
 // 1 行 = 板 (ユーザーごとに 1 枚のテキスト) の 1 セクション (空行 2 つで区切られたまとまり)。
@@ -58,7 +58,7 @@ export const userSetting = sqliteTable("user_setting", {
 });
 
 // 板ごとの版 (1 行 = 1 ユーザー)。PUT /api/board のたびに新しい値にし、古い版をもとにした保存を断る
-// (別の端末 / タブで保存された板を、それを知らない古い内容で上書きしないため。worker/memo/routes.ts)。
+// (別の端末 / タブで保存された板を、それを知らない古い内容で上書きしないため。worker/app/routes.ts)。
 // 行が無いのは一度も保存していない板 (版は null として扱う)
 export const board = sqliteTable("board", {
   userId: text("user_id")

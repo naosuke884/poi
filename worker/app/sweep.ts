@@ -1,6 +1,6 @@
 import { lte } from "drizzle-orm";
 import type { Db } from "../db";
-import { memo } from "../db/memo";
+import { memo } from "./schema";
 
 // 期限切れのセクション (memo テーブルの 1 行 = 板の 1 セクション) の物理削除。
 // API 側は expiresAt > now のフィルタで期限切れを即時に見えなくしているが (routes.ts の visibleSections)、

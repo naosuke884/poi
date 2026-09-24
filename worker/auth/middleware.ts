@@ -1,15 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { createMiddleware } from "hono/factory";
-import { type Auth, createAuth, type Session } from "./auth";
-
-export type AppEnv = {
-  Bindings: Env;
-  Variables: {
-    auth: Auth;
-    user: Session["user"] | null;
-    session: Session["session"] | null;
-  };
-};
+import type { AppEnv } from "../types";
+import { createAuth, type Session } from ".";
 
 // requireAuth を通った後の Env。user / session は必ずある
 // (`.use(requireAuth)` したルートでは AppEnv と合わさって c.get("user") が non-null になる)

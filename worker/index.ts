@@ -1,8 +1,9 @@
 import { Hono } from "hono";
+import { boardRoutes, settingsRoutes } from "./app/routes";
+import { deleteExpiredMemos } from "./app/sweep";
+import { authMiddleware } from "./auth/middleware";
 import { createDb } from "./db";
-import { boardRoutes, settingsRoutes } from "./memo/routes";
-import { deleteExpiredMemos } from "./memo/sweep";
-import { type AppEnv, authMiddleware } from "./middleware";
+import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
 

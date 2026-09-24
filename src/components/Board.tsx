@@ -1,5 +1,5 @@
 import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
-import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@worker/memo/constants";
+import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@worker/app/constants";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { PlusIcon } from "@/components/AddSectionButton";

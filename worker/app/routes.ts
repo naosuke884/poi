@@ -3,9 +3,9 @@ import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type ValidationTargets } from "hono";
 import { z } from "zod";
+import { requireAuth } from "../auth/middleware";
 import { createDb, type Db } from "../db";
-import { board, memo, userSetting } from "../db/memo";
-import { type AppEnv, requireAuth } from "../middleware";
+import type { AppEnv } from "../types";
 import { planBoardSync } from "./board-sync";
 import {
   BOARD_MAX_LENGTH,
@@ -17,6 +17,7 @@ import {
   memoExpiresAt,
   SECTION_SEPARATOR,
 } from "./constants";
+import { board, memo, userSetting } from "./schema";
 
 // 板 (ユーザーごとに 1 枚) をセクションの配列としてやり取りする。
 // - セクションは板のテキストを空行 2 つ (SECTION_SEPARATOR = 改行 3 つ) で区切ったもの。中身に改行や空行 1 つは含んでよい

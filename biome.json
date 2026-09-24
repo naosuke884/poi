@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!src/routeTree.gen.ts", "!worker/db/schema.ts", "!drizzle", "!public"]
+    "includes": ["**", "!src/routeTree.gen.ts", "!worker/auth/schema.ts", "!drizzle", "!public"]
   },
   "formatter": {
     "indentStyle": "space",

@@ -1,5 +1,5 @@
 // X などアプリに埋め込まれたブラウザ (WebView) かを User-Agent から推定する。
-// OAuth の state cookie 照合をこれらのブラウザでだけ省くのに使う (worker/auth.ts)。
+// OAuth の state cookie 照合をこれらのブラウザでだけ省くのに使う (worker/auth/index.ts)。
 // 判定を外すと普通のブラウザでは照合が効き、アプリ内ブラウザではログインが state_mismatch で失敗する
 const APP_TOKENS = /\b(Twitter|TwitterAndroid|Instagram|FBAN|FBAV|Line)\//;
 
