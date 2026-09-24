@@ -1,11 +1,11 @@
 import { AppShell, Container } from "@mantine/core";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { AppHeader } from "./-root/header/AppHeader";
-import { NotFound } from "./-root/NotFound";
-import { OfflineBanner } from "./-root/OfflineBanner";
-import { PwaUpdateBanner } from "./-root/PwaUpdateBanner";
-import { SkipLink } from "./-root/SkipLink";
+import { AppHeader } from "./-components/header/AppHeader";
+import { NotFound } from "./-components/NotFound";
+import { OfflineBanner } from "./-components/OfflineBanner";
+import { PwaUpdateBanner } from "./-components/PwaUpdateBanner";
+import { SkipLink } from "./-components/SkipLink";
 
 export const Route = createRootRoute({
   component: RootLayout,

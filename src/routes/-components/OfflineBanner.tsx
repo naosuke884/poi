@@ -1,6 +1,6 @@
 import { Alert } from "@mantine/core";
 import { useRouter } from "@tanstack/react-router";
-import { useOnBackOnline, useOnline } from "./use-online";
+import { useOnBackOnline, useOnline } from "../-lib/use-online";
 
 /**
  * navigator.onLine が false の間、ヘッダー下に「オフラインです」バナーを出す。

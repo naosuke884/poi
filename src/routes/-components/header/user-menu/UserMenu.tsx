@@ -16,10 +16,10 @@ import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { CONTACT_URL } from "@/components/ContactLink";
 import { authClient } from "@/lib/auth-client";
 import { readCachedUser } from "@/lib/session-cache";
-import { useOnBackOnline, useOnline } from "../../use-online";
+import { RUNNING_LABELS, useAccountActions } from "../../../-lib/use-account-actions";
+import { useOnBackOnline, useOnline } from "../../../-lib/use-online";
 import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
 import { TtlSettingModal } from "./TtlSettingModal";
-import { RUNNING_LABELS, useAccountActions } from "./use-account-actions";
 
 export function UserMenu() {
   const { data, isPending, error, refetch } = authClient.useSession();
