@@ -21,11 +21,17 @@ responding() {
   curl -s -o /dev/null --max-time 3 "http://localhost:${PORT}/"
 }
 
-# このスクリプトで起動した常駐ループ (プロセスグループのリーダー) の pid。無ければ空
+# 常駐ループの $0。PIDFILE の pid が本当にこのループかを確かめる目印にする
+SUPERVISOR_NAME=poi-dev-server
+
+# このスクリプトで起動した常駐ループ (プロセスグループのリーダー) の pid。無ければ空。
+# コンテナを再起動すると /tmp の PIDFILE は残ったまま pid だけ別のプロセスに再利用されうるので、生存だけでなく中身も見る
 supervisor_pid() {
   local pid
   pid=$(cat "$PIDFILE" 2>/dev/null || true)
-  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then echo "$pid"; fi
+  if [[ -n "$pid" ]] && tr '\0' '\n' <"/proc/${pid}/cmdline" 2>/dev/null | grep -qx "$SUPERVISOR_NAME"; then
+    echo "$pid"
+  fi
 }
 
 start() {
@@ -47,10 +53,11 @@ start() {
     while :; do
       echo "[dev-server] $(date -Is) starting npm run dev"
       npm run dev
-      echo "[dev-server] $(date -Is) exited ($?); restarting in 2s"
+      rc=$?
+      echo "[dev-server] $(date -Is) exited (${rc}); restarting in 2s"
       sleep 2
     done
-  ' >>"$LOG" 2>&1 </dev/null &
+  ' "$SUPERVISOR_NAME" >>"$LOG" 2>&1 </dev/null &
   echo $! >"$PIDFILE"
   for _ in $(seq 1 60); do
     if responding; then
@@ -71,10 +78,15 @@ stop() {
     rm -f "$PIDFILE"
     return 0
   fi
-  # グループごと止める (ループ本体・npm・vite・workerd)。他の node / workerd には触らない
-  kill -TERM -- "-${pid}" 2>/dev/null || true
+  # グループごと止める (ループ本体・npm・vite・workerd)。他の node / workerd には触らない。
+  # 別ユーザー (コンテナ起動時の root など) が起動したものは止められないので、黙って成功扱いにしない
+  if ! kill -TERM -- "-${pid}"; then
+    echo "failed to stop dev server (pid ${pid}); it may have been started by another user" >&2
+    return 1
+  fi
+  # ループ本体は TERM ですぐ死ぬので、vite / workerd の終了はグループ全体が消えたかで待つ
   for _ in $(seq 1 10); do
-    kill -0 "$pid" 2>/dev/null || break
+    kill -0 -- "-${pid}" 2>/dev/null || break
     sleep 1
   done
   kill -KILL -- "-${pid}" 2>/dev/null || true
@@ -101,7 +113,7 @@ case "${1:-}" in
   stop) stop ;;
   restart) stop; start ;;
   status) status ;;
-  logs) exec tail -n 50 -f "$LOG" ;;
+  logs) exec tail -n 50 -F "$LOG" ;;
   *)
     echo "usage: $0 {start|stop|restart|status|logs}" >&2
     exit 2
