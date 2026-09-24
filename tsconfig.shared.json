@@ -1,10 +1,11 @@
 {
+  // src (ブラウザ) と worker (Workers) の両方で使うコード。どちらでも動くよう、DOM や Workers の型を入れない
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023"],
+    "types": [],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["./worker-configuration.d.ts"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -16,10 +17,8 @@
     "composite": true,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "outDir": "./node_modules/.tmp/worker-types",
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
-    "paths": { "@shared/*": ["./shared/*"] }
+    "outDir": "./node_modules/.tmp/shared-types",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.shared.tsbuildinfo"
   },
-  "include": ["worker", "worker-configuration.d.ts", "better-auth.config.ts"],
-  "references": [{ "path": "./tsconfig.shared.json" }]
+  "include": ["shared"]
 }

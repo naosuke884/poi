@@ -1,7 +1,7 @@
+import { MEMO_TTL_DAYS, memoExpiresAt } from "@shared/constants";
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { user } from "../auth/schema";
-import { MEMO_TTL_DAYS, memoExpiresAt } from "./constants";
 
 // auth/schema.ts は Better Auth CLI (npm run auth:schema) が上書きするため、
 // アプリ独自のテーブルはこのファイルに定義する。

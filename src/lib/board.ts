@@ -4,7 +4,7 @@ import {
   boardLength,
   memoExpiresAt,
   SECTION_SEPARATOR,
-} from "@worker/app/constants";
+} from "@shared/constants";
 import type { InferResponseType } from "hono/client";
 import type { api } from "@/lib/api";
 

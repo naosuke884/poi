@@ -77,6 +77,8 @@ src/
 
 - 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `(root)/` も `./(root)/...`
 - `src/components` / `src/lib` は `@/` で参照する (`@/lib/board`, `@/components/HeaderSlot`)
+- src と worker の両方で使うもの (定数・検証の上限など) はリポジトリ直下の `shared/` に置き、`@shared/` で参照する (`@shared/constants`)。
+  `shared/` からは `src` / `worker` を import しない (`biome.json` の overrides で lint エラーになる)
 - CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む
 
 ## ファイルを移動・追加したあと

@@ -3,7 +3,7 @@
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { MantineProvider } from "@mantine/core";
-import { BOARD_MAX_LENGTH } from "@worker/app/constants";
+import { BOARD_MAX_LENGTH } from "@shared/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";

@@ -1,6 +1,6 @@
 import { Anchor, Button, Stack, Text, Title } from "@mantine/core";
+import { MEMO_TTL_DAYS } from "@shared/constants";
 import { Link } from "@tanstack/react-router";
-import { MEMO_TTL_DAYS } from "@worker/app/constants";
 import { useEffect, useState } from "react";
 import { startGoogleLogin } from "@/lib/auth-client";
 import classes from "./Landing.module.css";

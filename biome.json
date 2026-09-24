@@ -45,6 +45,28 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["shared/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/**", "@worker/**", "**/src/**", "**/worker/**"],
+                    "message": "shared/ は src (ブラウザ) と worker (Workers) の両方から使うので、どちらにも依存しない"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "assist": {
     "actions": {
       "source": {

@@ -1,12 +1,4 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
-import type { BatchItem } from "drizzle-orm/batch";
-import { Hono, type ValidationTargets } from "hono";
-import { z } from "zod";
-import { requireAuth } from "../auth/middleware";
-import { createDb, type Db } from "../db";
-import type { AppEnv } from "../types";
-import { planBoardSync } from "./board-sync";
 import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
@@ -16,7 +8,15 @@ import {
   MEMO_TTL_DAYS,
   memoExpiresAt,
   SECTION_SEPARATOR,
-} from "./constants";
+} from "@shared/constants";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
+import { Hono, type ValidationTargets } from "hono";
+import { z } from "zod";
+import { requireAuth } from "../auth/middleware";
+import { createDb, type Db } from "../db";
+import type { AppEnv } from "../types";
+import { planBoardSync } from "./board-sync";
 import { board, memo, userSetting } from "./schema";
 
 // 板 (ユーザーごとに 1 枚) をセクションの配列としてやり取りする。

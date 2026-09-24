@@ -1,5 +1,5 @@
 import { Paper, SimpleGrid, Stack, Text, Title } from "@mantine/core";
-import { MEMO_TTL_DAYS } from "@worker/app/constants";
+import { MEMO_TTL_DAYS } from "@shared/constants";
 
 // 特徴カード。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
 const FEATURES: { title: string; body: string }[] = [

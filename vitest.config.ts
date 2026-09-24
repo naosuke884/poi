@@ -5,10 +5,10 @@ import { defineConfig } from "vitest/config";
 // `// @vitest-environment jsdom` で切り替える
 export default defineConfig({
   resolve: {
-    // tsconfig.app.json の "paths" ("@/*" -> "./src/*", "@worker/*" -> "./worker/*") を解決する
+    // tsconfig.app.json の "paths" ("@/*" -> "./src/*", "@worker/*" -> "./worker/*", "@shared/*" -> "./shared/*") を解決する
     tsconfigPaths: true,
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}", "worker/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "worker/**/*.test.ts", "shared/**/*.test.ts"],
   },
 });

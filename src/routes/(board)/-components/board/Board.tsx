@@ -1,5 +1,5 @@
 import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
-import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@worker/app/constants";
+import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@shared/constants";
 import { type MouseEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";

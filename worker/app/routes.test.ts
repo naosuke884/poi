@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { BOARD_MAX_SECTIONS, DAY_MS } from "@shared/constants";
 import { Hono } from "hono";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import type { AppEnv } from "../types";
-import { BOARD_MAX_SECTIONS, DAY_MS } from "./constants";
 import { boardRoutes } from "./routes";
 
 // PUT /api/board をローカルの D1 (wrangler の getPlatformProxy。workerd の SQLite で、
