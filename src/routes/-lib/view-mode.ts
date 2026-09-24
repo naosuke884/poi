@@ -1,4 +1,4 @@
-import { createExternalStore } from "@/lib/external-store";
+import { createExternalStore } from "./external-store";
 
 /** 板の表示モード。timeline は通常の板 (編集可)、organized は見出しごとにまとめた表示 (閲覧のみ) */
 export type BoardViewMode = "timeline" | "organized";

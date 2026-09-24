@@ -1,7 +1,7 @@
 import { Box, CloseButton, Divider, Group, Text, Tooltip } from "@mantine/core";
 import { useMemo, useRef } from "react";
-import type { EditableSection } from "@/lib/board";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
+import type { EditableSection } from "@/routes/-lib/board";
+import { keepEditorFocus } from "@/routes/-lib/keep-editor-focus";
 import { locateInSection, type OrganizedGroup, organizeSections } from "../../-lib/organized";
 import { copySectionText, deliverImage, renderSectionImage } from "../../-lib/section-export";
 import classes from "./OrganizedView.module.css";

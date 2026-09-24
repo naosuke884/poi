@@ -1,4 +1,4 @@
-import { type EditableSection, newKey, newSection, splitAtSeparator } from "@/lib/board";
+import { type EditableSection, newKey, newSection, splitAtSeparator } from "@/routes/-lib/board";
 import { cutRanges, type OrganizedGroup } from "./organized";
 
 /**

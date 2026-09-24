@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EditableSection } from "@/lib/board";
+import type { EditableSection } from "@/routes/-lib/board";
 import {
   appendSection,
   canRestore,

@@ -6,7 +6,7 @@ import {
   SECTION_SEPARATOR,
 } from "@worker/app/constants";
 import type { InferResponseType } from "hono/client";
-import type { api } from "@/lib/api";
+import type { api } from "./api";
 
 // GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる
 export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sections"][number];

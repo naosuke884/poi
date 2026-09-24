@@ -1,4 +1,4 @@
-import { createExternalStore } from "@/lib/external-store";
+import { createExternalStore } from "./external-store";
 
 export type SaveStatus =
   | "dirty" // 未保存の変更がある (debounce 待ち)

@@ -7,7 +7,7 @@ import { BOARD_MAX_LENGTH } from "@worker/app/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BoardSection } from "@/lib/board";
+import type { BoardSection } from "@/routes/-lib/board";
 
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の
 // PUT までを通しで確かめる。レイアウトが無いので、スクロールや表示上の行の判定は対象外
@@ -31,7 +31,7 @@ let server: { revision: string | null; sections: ServerSection[] } = {
 };
 const expiredOnServer = new Set<string>();
 const invalidate = vi.fn(async () => {});
-vi.mock("@/lib/api", () => ({
+vi.mock("@/routes/-lib/api", () => ({
   api: {
     board: {
       $put: vi.fn(
@@ -90,9 +90,9 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const { Board } = await import("./Board");
-const { readCachedBoard } = await import("@/lib/board-cache");
-const { writeCachedUser, clearCachedUser } = await import("@/lib/session-cache");
-const { useBoardActions } = await import("@/lib/board-actions");
+const { readCachedBoard } = await import("@/routes/-lib/board-cache");
+const { writeCachedUser, clearCachedUser } = await import("@/routes/-lib/session-cache");
+const { useBoardActions } = await import("@/routes/-lib/board-actions");
 
 beforeAll(() => {
   // jsdom に無い API の最小限のスタブ

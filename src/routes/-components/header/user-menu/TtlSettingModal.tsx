@@ -1,7 +1,7 @@
 import { Button, Group, Modal, Select, Skeleton, Stack, Text } from "@mantine/core";
 import { MEMO_TTL_CHOICES } from "@worker/app/constants";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api } from "../../../-lib/api";
 
 /**
  * セクションの保存期間 (書いてから削除されるまでの日数) の設定モーダル (UserMenu から開く)。

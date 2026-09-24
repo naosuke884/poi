@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ContactLink } from "@/components/ContactLink";
+import { ContactLink } from "@/routes/-components/ContactLink";
 import { LegalPage } from "./-components/LegalPage";
 
 // プライバシーポリシー (ログイン不要)。Google OAuth 同意画面に登録する URL でもある

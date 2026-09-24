@@ -2,7 +2,7 @@ import { Anchor, Button, Stack, Text, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import { MEMO_TTL_DAYS } from "@worker/app/constants";
 import { useEffect, useState } from "react";
-import { startGoogleLogin } from "@/lib/auth-client";
+import { startGoogleLogin } from "@/routes/-lib/auth-client";
 import classes from "./Landing.module.css";
 
 /** 見出し + ログインの CTA + 規約への同意文 */

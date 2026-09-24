@@ -1,7 +1,7 @@
 import { ActionIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Svg } from "@/components/TablerIcon";
-import { keepEditorFocus } from "@/lib/keep-editor-focus";
+import { Svg } from "@/routes/-components/TablerIcon";
+import { keepEditorFocus } from "@/routes/-lib/keep-editor-focus";
 
 // 結果の表示 (チェック / ×) を出しておく時間
 const FEEDBACK_MS = 1500;
