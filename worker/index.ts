@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { boardRoutes, settingsRoutes } from "./app/routes";
-import { deleteExpiredMemos } from "./app/sweep";
 import { authMiddleware } from "./auth/middleware";
+import { boardRoutes, settingsRoutes } from "./board/routes";
+import { deleteExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
 import type { AppEnv } from "./types";
 

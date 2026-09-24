@@ -2,7 +2,7 @@
 // 設定していなければ MEMO_TTL_DAYS (30 日)。「1 ヶ月」は 30 日固定とし、暦月は扱わない。
 // UI 側 (src/) からもこのファイルを参照して既定値や選択肢を表示する。
 export const MEMO_TTL_DAYS = 30;
-// 設定で選べる日数。API (worker/app/routes.ts のバリデーション) と UI (設定モーダルの選択肢) で共有する
+// 設定で選べる日数。API (worker/board/routes.ts のバリデーション) と UI (設定モーダルの選択肢) で共有する
 export const MEMO_TTL_CHOICES = [1, 3, 7, 14, 30, 60, 90] as const;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -11,7 +11,7 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 // UI はエディタにこれが入力されたらそこでセクションを分け、API はセクションの内容にこれが含まれないことを検証する
 export const SECTION_SEPARATOR = "\n\n\n";
 
-// バリデーション上限。API (worker/app/routes.ts) と UI (文字数カウンタ / 保存前チェック) で共有する
+// バリデーション上限。API (worker/board/routes.ts) と UI (文字数カウンタ / 保存前チェック) で共有する
 // 板全体の文字数 (セクションを区切りで連結したときの長さ)
 export const BOARD_MAX_LENGTH = 20_000;
 // 板のセクション数

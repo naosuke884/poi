@@ -58,7 +58,7 @@ export const userSetting = sqliteTable("user_setting", {
 });
 
 // 板ごとの版 (1 行 = 1 ユーザー)。PUT /api/board のたびに新しい値にし、古い版をもとにした保存を断る
-// (別の端末 / タブで保存された板を、それを知らない古い内容で上書きしないため。worker/app/routes.ts)。
+// (別の端末 / タブで保存された板を、それを知らない古い内容で上書きしないため。worker/board/routes.ts)。
 // 行が無いのは一度も保存していない板 (版は null として扱う)
 export const board = sqliteTable("board", {
   userId: text("user_id")
