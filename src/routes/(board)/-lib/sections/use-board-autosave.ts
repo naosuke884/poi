@@ -15,8 +15,8 @@ import {
   toDraft,
   toPutPayload,
   toSaved,
-} from "../board";
-import { writeCachedBoard } from "../board-cache";
+} from "../data/board";
+import { writeCachedBoard } from "../data/board-cache";
 import { mergeBoard } from "./board-merge";
 import type { SaveState, SaveStatus } from "./save-status";
 

@@ -1,7 +1,7 @@
 import { Alert, Stack } from "@mantine/core";
 import { useRef } from "react";
-import { formatDateTime } from "../-lib/board";
-import type { TopPage } from "../-lib/board-loader";
+import { formatDateTime } from "../-lib/data/board";
+import type { TopPage } from "../-lib/data/board-loader";
 import { Board } from "./board/Board";
 
 /** ログイン済みのときの板 (オフラインでキャッシュしか無ければ閲覧専用の注意書きを添える) */

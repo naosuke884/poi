@@ -1,4 +1,4 @@
-import { type EditableSection, newKey, newSection, splitAtSeparator } from "../board";
+import { type EditableSection, newKey, newSection, splitAtSeparator } from "../data/board";
 import { cutRanges, type OrganizedGroup } from "./organized";
 
 /**

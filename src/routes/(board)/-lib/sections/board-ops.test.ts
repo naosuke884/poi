@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EditableSection } from "../board";
+import type { EditableSection } from "../data/board";
 import {
   appendSection,
   canRestore,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EditableSection } from "../board";
+import type { EditableSection } from "../data/board";
 import { cutRanges, locateInSection, organizeSections } from "./organized";
 
 const section = (key: string, content: string): EditableSection => ({

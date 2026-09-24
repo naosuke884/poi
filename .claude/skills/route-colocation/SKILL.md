@@ -27,10 +27,10 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 - `src/lib` の中で完結するもの (`src/lib` のファイルからしか使わないもの) も `src/lib` に置く
 - 1 つのルートのものの一部だけを別のルートでも使うときは、丸ごと `src/lib` へ移す前に、その一部だけを切り出せないか考える。
   例: 板のキャッシュはヘッダーのログアウトからも消すが、消すのに要るのはキーだけなので、キーと消去 (`src/lib/offline-caches.ts`) だけを
-  `src/lib` に置き、板の型に依存する読み書き (`(board)/-lib/board-cache.ts`) と板の型 (`board.ts`) は `(board)` に残している
+  `src/lib` に置き、板の型に依存する読み書き (`(board)/-lib/data/board-cache.ts`) と板の型 (`data/board.ts`) は `(board)` に残している
 - `-components/` / `-lib/` の中はさらにフォルダで入れ子にしてよい (`board/section/` のように、使う側の親子関係に合わせる)。
   入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)。
-  `-lib/` はファイルが増えたら話題ごとにまとめる (`(board)/-lib/markdown/`, `editor/`, `sections/` など)
+  `-lib/` はファイルが増えたら話題ごとにまとめる (`(board)/-lib/data/`, `markdown/`, `editor/`, `sections/` など)
 
 ## ヘッダーにページの操作を出す (HeaderSlot)
 
@@ -56,8 +56,8 @@ src/
     (board)/
       index.tsx           → "/"
       -components/        board/ (header/, section/), landing/, BoardView
-      -lib/               board (板の型), board-cache, optional-login, board-loader など + markdown/ (記法の判定), editor/ (エディタの編集操作),
-                          sections/ (セクションの状態・保存・操作)
+      -lib/               data/ (板の型, キャッシュ, ルートの beforeLoad / loader), markdown/ (記法の判定), editor/ (エディタの編集操作),
+                          sections/ (セクションの状態・保存・操作) + 直下に UI 補助 (view-mode, use-keyboard-inset など)
     (legal)/
       privacy.tsx         → "/privacy"
       terms.tsx           → "/terms"

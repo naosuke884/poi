@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
-import type { EditableSection } from "../board";
+import type { EditableSection } from "../data/board";
 import {
   canRestore,
   type RemovedSection,

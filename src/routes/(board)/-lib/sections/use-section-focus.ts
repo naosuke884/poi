@@ -4,7 +4,7 @@ import type {
   EditAnchor,
   SectionEditorHandle,
 } from "../../-components/board/section/SectionEditor";
-import type { EditableSection } from "../board";
+import type { EditableSection } from "../data/board";
 import { clientTopAtSourceOffset } from "../markdown/markdown-source-offset";
 
 /**
