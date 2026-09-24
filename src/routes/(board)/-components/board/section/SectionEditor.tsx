@@ -1,0 +1,442 @@
+import {
+  deleteCharBackwardStrict,
+  history,
+  historyKeymap,
+  simplifySelection,
+  standardKeymap,
+} from "@codemirror/commands";
+import {
+  Annotation,
+  Compartment,
+  EditorSelection,
+  EditorState,
+  Prec,
+  Transaction,
+} from "@codemirror/state";
+import {
+  EditorView,
+  type KeyBinding,
+  keymap,
+  placeholder as placeholderExt,
+} from "@codemirror/view";
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { cursorOf, insertNewlineContinueList } from "../../../-lib/list-continue";
+import {
+  deleteListMarkerBackward,
+  deleteListMarkerForward,
+  forceListMarkers,
+  hashStartsHeading,
+  spaceAfterHashStartsHeading,
+} from "../../../-lib/list-force";
+import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "../../../-lib/list-indent";
+import { minimalChange } from "../../../-lib/minimal-change";
+import { sectionMarkdown } from "../../../-lib/section-markdown";
+import { viewportInsets } from "../../../-lib/use-keyboard-inset";
+import classes from "./SectionEditor.module.css";
+
+export type SectionEditorHandle = {
+  /**
+   * フォーカスしてカーソルを pos に置く (doc の長さで clamp)。カーソルが見えるように同期的にスクロールする。
+   * place でカーソルを画面のどこに置くか指定する
+   */
+  focus(pos: number, place?: CursorPlace): void;
+};
+
+/**
+ * カーソルを画面のどこに置くか。
+ * 数値 = 画面上のその高さ (client 座標。切り替える前の高さを渡すと、見ていた場所がその場に留まる)、
+ * "top" = 画面の上のほう (まとめ表示から飛んでくるときなど、切り替え前の高さに意味が無いとき)、
+ * null / 省略 = CodeMirror の最小スクロールに任せる
+ */
+export type CursorPlace = number | "top" | null;
+
+/** 編集をやめる直前のカーソル: 元テキストの位置と、それが描かれていた画面上の高さ (client 座標の上端) */
+export type EditAnchor = { pos: number; top: number };
+
+type Props = {
+  value: string;
+  /** 入力。cursor は selection.main.head (Board が分割位置の判定に使う) */
+  onChange(value: string, cursor: number): void;
+  onFocus(): void;
+  /** フォーカスが外れた。anchor はそのときのカーソルの位置と画面上の高さ (座標が取れなければ null)。
+   * Board は Markdown 表示に戻したあと、同じ場所が同じ高さに来るようスクロールを合わせる */
+  onBlur(anchor: EditAnchor | null): void;
+  /** 先頭で Backspace (選択なし)。Board が前のセクションと結合する */
+  onBackspaceAtStart(): void;
+  /** 末尾で Delete (選択なし)。Board が次のセクションと結合する */
+  onDeleteAtEnd(): void;
+  /** 最初の (表示上の) 行で ↑。false を返せば通常の動き (移動先が無いとき) */
+  onArrowUpAtFirstLine(): boolean;
+  /** 最後の (表示上の) 行で ↓。false を返せば通常の動き */
+  onArrowDownAtLastLine(): boolean;
+  /** Esc で編集をやめた (blur 済み)。Board は Markdown 表示に切り替えてそこへフォーカスを移す */
+  onEscape(): void;
+  /** このセクションに書ける文字数 (板全体の上限から、他のセクションと区切りのぶんを引いたもの) */
+  maxLength: number;
+  /** 複数行なら \n 区切り */
+  placeholder?: string;
+  readOnly?: boolean;
+  "aria-label": string;
+  ref?: Ref<SectionEditorHandle>;
+};
+
+// Board からの value の同期 (分割 / 結合 / 取り消し) で入れた変更の印。onChange で Board に戻さない・履歴に積まない・
+// 文字数上限で弾かない (弾くと Board の state と doc が食い違う)
+const externalSync = Annotation.define<boolean>();
+
+// 表示上の同じ行かどうかの判定で許す top の誤差 (px)。同じ行の文字は同じ top になるが、サブピクセルの丸めを見込む
+const SAME_ROW_TOLERANCE = 1;
+
+// カーソルの下に残しておく余白 (行の高さの何行ぶんか)。画面やソフトキーボードの下端にカーソルが張り付くと
+// 次に書く行が見えないので、そのぶん上に置く
+const CURSOR_ROOM_LINES = 3;
+
+/** フォーカスしてカーソルを pos (doc の長さで clamp) に置き、見えるようにスクロールする */
+function applyFocus(view: EditorView, pos: number, place?: CursorPlace) {
+  const at = Math.max(0, Math.min(pos, view.state.doc.length));
+  view.focus();
+  view.dispatch({ selection: EditorSelection.cursor(at), scrollIntoView: true });
+  // scrollIntoView は次のフレーム (requestAnimationFrame の計測) で行われるので、ここで同期的に済ませる:
+  // Board の「最後のセクションの冒頭を上端に出す」layout effect はこの直後に走り、カーソルへのスクロールを
+  // 上書きする前提 (Textarea の focus() は同期的にスクロールしていた)。coordsAtPos などレイアウトを読む API は
+  // 保留中の計測 (スクロールを含む) をその場で実行する (view.measure() は公開 API ではない)
+  view.coordsAtPos(at);
+  if (place === undefined || place === null) return;
+  // Markdown 表示からエディタに切り替わると、同じ内容でも高さが変わって触った場所が画面の中で大きく動く。
+  // 指定の高さに置き直す (#45)
+  keepAt(view, at, place);
+  // CodeMirror は行の高さをまず見積もりで置き、次のフレームの計測で本当の高さに直す。そのとき自分の
+  // スクロールアンカーに合わせてスクロール位置も動かすので、そこまで待ってからもう一度合わせる。
+  // 同じフレームの中 (CodeMirror の計測より後、描画より前) に走るので画面はちらつかない
+  requestAnimationFrame(() => {
+    if (view.dom.isConnected) keepAt(view, at, place);
+  });
+}
+
+/**
+ * doc の位置 at が画面上の place の高さに来るようにスクロールし、それで固定ヘッダーの裏や
+ * ソフトキーボードのすぐ上に来てしまうなら最小限だけ動かす。
+ * CodeMirror の scrollIntoView は使わない (見積もりの高さで動いてしまうため、ここは実測で動かす)
+ */
+function keepAt(view: EditorView, at: number, place: number | "top") {
+  const coords = view.coordsAtPos(at);
+  if (!coords) return;
+  const band = visibleBand(view);
+  // "top" は見えている範囲の上から 1/4 (上に少し前後の文脈を残しつつ、書く場所を広く取る)
+  const wanted = place === "top" ? band.top + (band.bottom - band.top) / 4 : place;
+  window.scrollBy(0, coords.top - wanted);
+  // スクロールした後のカーソル行の位置 (スクロールした分だけ client 座標が動く)
+  const bottom = wanted + (coords.bottom - coords.top) + view.defaultLineHeight * CURSOR_ROOM_LINES;
+  const over = bottom - band.bottom;
+  const under = band.top - wanted;
+  if (over > 0) window.scrollBy(0, over);
+  else if (under > 0) window.scrollBy(0, -under);
+}
+
+/**
+ * カーソルを出しておきたい範囲 (client 座標の上端と下端)。
+ * 上は固定ヘッダーの下 (Board が Box の scroll-margin-top に入れている「ヘッダーの高さ + 本文の余白」を
+ * そのまま読む。CSS 変数の calc をここで解くより、計算済みの値を読むほうが確実) と、
+ * 画面 (visual viewport) の外に出ている上の帯の、下にあるほう。下はソフトキーボードの上端 (#45)
+ */
+function visibleBand(view: EditorView): { top: number; bottom: number } {
+  const box = view.dom.closest("[data-section]");
+  const header = box ? Number.parseFloat(getComputedStyle(box).scrollMarginTop) || 0 : 0;
+  const { top, bottom } = viewportInsets();
+  return { top: Math.max(header, top), bottom: window.innerHeight - bottom };
+}
+
+/**
+ * 編集中セクションのエディタ (CodeMirror 6)。Board が編集中の 1 セクションだけこれで表示する。
+ * テキストは常に Markdown ソースそのもので、見出し・記号・URL は装飾するだけ (src/routes/(board)/-lib/section-markdown.ts)。
+ * 本文は常に箇条書き: Enter は項目を続け、編集で触れた行には記号を自動で足す (src/routes/(board)/-lib/list-force.ts)。
+ * Textarea 譲りの使い勝手も保つ: 散文向けの spellcheck / 自動大文字化、文字数上限、複数行のプレースホルダ。
+ * セクションの境界 (先頭で Backspace / 末尾で Delete / 最初の行で ↑ / 最後の行で ↓) はキー処理を横取りして
+ * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。
+ * Tab / Shift+Tab はインデント操作 (src/routes/(board)/-lib/list-indent.ts)、Esc は編集をやめる (blur)
+ */
+export function SectionEditor({
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+  onBackspaceAtStart,
+  onDeleteAtEnd,
+  onArrowUpAtFirstLine,
+  onArrowDownAtLastLine,
+  onEscape,
+  maxLength,
+  placeholder,
+  readOnly = false,
+  "aria-label": ariaLabel,
+  ref,
+}: Props) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  // 最後に頼まれたフォーカス位置。StrictMode (開発時のみ) は新しくマウントした layout effect を破棄→再実行するので、
+  // Board がフォーカスした直後に view を作り直すことになる (Textarea は DOM が残るので困らなかった)。
+  // 作り直した view にも同じフォーカス (位置とスクロール先) を引き継ぐ (blur で消す。作り直し時にしか使わない)
+  const wantFocusRef = useRef<{ pos: number; place?: CursorPlace } | null>(null);
+  // コールバックは最新の props を呼ぶ (拡張は一度作ったら作り直さない)
+  const callbacks = {
+    onChange,
+    onFocus,
+    onBlur,
+    onBackspaceAtStart,
+    onDeleteAtEnd,
+    onArrowUpAtFirstLine,
+    onArrowDownAtLastLine,
+    onEscape,
+  };
+  const callbacksRef = useRef(callbacks);
+  callbacksRef.current = callbacks;
+  const maxLengthRef = useRef(maxLength);
+  maxLengthRef.current = maxLength;
+  // マウント後に変わりうる設定 (aria-label はセクション番号なので前が消えると変わる。placeholder は
+  // セクションが 1 つのときだけ) は Compartment で差し替える
+  const [configCompartment] = useState(() => new Compartment());
+  const config = () =>
+    [
+      placeholder !== undefined ? placeholderExt(placeholder) : [],
+      // CodeMirror の既定はコード向け (spellcheck off 等) なので、メモ (散文) 向けに Textarea と同じにする
+      EditorView.contentAttributes.of({
+        "aria-label": ariaLabel,
+        spellcheck: "true",
+        autocorrect: "on",
+        autocapitalize: "sentences",
+      }),
+      readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [],
+    ] as const;
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus(pos, place) {
+        wantFocusRef.current = { pos, place };
+        if (viewRef.current) applyFocus(viewRef.current, pos, place);
+      },
+    }),
+    [],
+  );
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: value,
+        extensions: [
+          configCompartment.of(config()),
+          sectionMarkdown(),
+          history(),
+          Prec.highest(keymap.of(boundaryKeymap(callbacksRef))),
+          keymap.of([...standardKeymap, ...historyKeymap]),
+          // 記号の直後のスペースはインデントにする (モバイルの Tab 代わり。src/routes/(board)/-lib/list-indent.ts)
+          spaceIndentsListItem,
+          // 本文は常に箇条書き: 編集で触れた行に `- ` を自動で足す (src/routes/(board)/-lib/list-force.ts)
+          forceListMarkers,
+          // 空の項目で `#` を打ったら記号を消して見出しにする (箇条書きの途中に見出しを書く入り口)
+          hashStartsHeading,
+          // `#foo` と書いてしまった項目でも、後から # の直後にスペースを入れたら見出しにする
+          spaceAfterHashStartsHeading,
+          EditorView.lineWrapping,
+          // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
+          // 下にカーソルが隠れず、下は次に書く行ぶんの余白が残るようにする。
+          // キーボードの高さ自体は足さない: CodeMirror 自身が visualViewport の下端で止まるので二重になる
+          EditorView.scrollMargins.of((view) => ({
+            top: visibleBand(view).top,
+            bottom: view.defaultLineHeight * CURSOR_ROOM_LINES,
+          })),
+          // 文字数上限 (Textarea の maxLength 相当。板全体の上限を超えないよう、Board が他のセクションのぶんを
+          // 引いて渡す)。減る (または同じ長さの) 変更は常に通す: IME や結合で上限を
+          // 超えた後に 1 文字ずつ消して戻れるように (textarea の maxLength も削除は弾かない)。
+          // 増える変更でも IME の変換中は通す (弾くと変換が壊れる。超過分は保存時の検証で分かる)。
+          // transactionFilter は後に登録したものから先に動くので、Prec.highest で最後に動かし、
+          // forceListMarkers などが足した記号も含めた長さで判定する
+          Prec.highest(
+            EditorState.transactionFilter.of((tr) => {
+              if (
+                !tr.docChanged ||
+                tr.newDoc.length <= maxLengthRef.current ||
+                tr.newDoc.length <= tr.startState.doc.length
+              )
+                return tr;
+              if (tr.isUserEvent("input.type.compose") || tr.annotation(externalSync)) return tr;
+              return [];
+            }),
+          ),
+          EditorView.updateListener.of((update) => {
+            const cb = callbacksRef.current;
+            if (
+              update.docChanged &&
+              !update.transactions.some((tr) => tr.annotation(externalSync))
+            ) {
+              cb.onChange(update.state.doc.toString(), update.state.selection.main.head);
+            }
+            if (update.focusChanged) {
+              if (update.view.hasFocus) cb.onFocus();
+              else {
+                wantFocusRef.current = null;
+                cb.onBlur(cursorAnchor(update.view));
+              }
+            }
+          }),
+        ],
+      }),
+      parent: host,
+    });
+    viewRef.current = view;
+    // StrictMode の作り直し (上記) でフォーカスが失われないように、頼まれていたフォーカスを新しい view に適用する
+    if (wantFocusRef.current !== null) {
+      applyFocus(view, wantFocusRef.current.pos, wantFocusRef.current.place);
+    }
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+    // マウント時に一度だけ作る。props の変化は下の effect と Compartment で反映する
+  }, []);
+
+  // ソフトキーボードは focus より後に開くので、focus 時のスクロール (applyFocus) ではその裏に隠れることがある。
+  // 画面 (visual viewport) が縮んだら、フォーカスがある間だけカーソルを見えるところへ出し直す (#45)。
+  // 広がるとき (キーボードが閉じるとき) は動かさない: 読んでいる場所を勝手にずらさないため
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let hidden = viewportInsets().bottom;
+    const onResize = () => {
+      const { bottom } = viewportInsets();
+      const grew = bottom > hidden + 1;
+      hidden = bottom;
+      if (grew && viewRef.current?.hasFocus) viewRef.current.dispatch({ scrollIntoView: true });
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
+  // value の同期。Board からの分割 / 結合 / 取り消しでしか起きない (自分の入力は onChange で Board に渡した
+  // ものがそのまま返ってくるので一致する)。
+  // 子 (ここ) の layout effect は親 (Board) の layout effect より先に走るので、Board の「描画後にカーソルを置く」
+  // effect が動く時点で doc は新しい値になっている (この順序に依存している)。
+  // 変更は前後の共通部分を除いた最小の範囲にする: 全置換だと履歴 (Ctrl+Z) の位置の対応が崩れる
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const changes = minimalChange(view.state.doc.toString(), value);
+    if (!changes) return;
+    view.dispatch({
+      changes,
+      annotations: [externalSync.of(true), Transaction.addToHistory.of(false)],
+    });
+  }, [value]);
+
+  useLayoutEffect(() => {
+    viewRef.current?.dispatch({ effects: configCompartment.reconfigure(config()) });
+  }, [placeholder, readOnly, ariaLabel]);
+
+  return <div ref={hostRef} className={classes.root} />;
+}
+
+/** 今のカーソルの位置と、それが描かれている画面上の高さ (座標が取れなければ null) */
+function cursorAnchor(view: EditorView): EditAnchor | null {
+  const pos = view.state.selection.main.head;
+  const coords = view.coordsAtPos(pos);
+  return coords ? { pos, top: coords.top } : null;
+}
+
+type Callbacks = Pick<
+  Props,
+  | "onBackspaceAtStart"
+  | "onDeleteAtEnd"
+  | "onArrowUpAtFirstLine"
+  | "onArrowDownAtLastLine"
+  | "onEscape"
+>;
+
+/**
+ * カーソル a が b と表示上 (折り返しを考慮) 同じ行にあるか。文字の座標の top で比べる (同じ行の文字は同じ top)。
+ * 座標が取れない (未計測) ときは null
+ */
+function sameVisualRow(view: EditorView, a: number, b: number, forward: boolean): boolean | null {
+  // 折り返し位置ではカーソルの側 (assoc) に合わせる。assoc が 0 (クリックや handle.focus で置いたカーソル) なら
+  // 移動方向の側: ↓ は次の行側、↑ は前の行側 (@codemirror/commands の moveVertically と同じ解決にしないと、
+  // 判定と実際の移動がずれて ↓ を 2 回押さないと次のセクションへ行けない)
+  const ca = view.coordsAtPos(a, view.state.selection.main.assoc || (forward ? 1 : -1));
+  const cb = view.coordsAtPos(b);
+  if (!ca || !cb) return null;
+  return Math.abs(ca.top - cb.top) <= SAME_ROW_TOLERANCE;
+}
+
+/**
+ * セクションの境界のキー。standardKeymap より先に見る (Prec.highest)。
+ * 修飾キー付き (Shift+↑ の選択など) はこれらの key に一致しないのでそのまま通る
+ */
+function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
+  const backspace = (view: EditorView) => {
+    if (view.composing) return false;
+    const head = cursorOf(view);
+    if (head === 0) {
+      callbacks.current.onBackspaceAtStart();
+      return true;
+    }
+    // 記号より左では記号やインデントをまとめて扱う (src/routes/(board)/-lib/list-force.ts)。
+    // それ以外は 1 文字ずつ (行頭の空白をインデント単位でまとめて消さない。Textarea と同じ)
+    return deleteListMarkerBackward(view) || deleteCharBackwardStrict(view);
+  };
+  return [
+    // Shift+Backspace も同じ (standardKeymap は shift にも deleteCharBackward を割り当てていて、
+    // 付けないとそちらのインデント単位の削除に落ちる)
+    { key: "Backspace", run: backspace, shift: backspace },
+    {
+      key: "Delete",
+      run(view) {
+        if (cursorOf(view) === view.state.doc.length) {
+          callbacks.current.onDeleteAtEnd();
+          return true;
+        }
+        // 行末では次の行の記号ごと結合する (src/routes/(board)/-lib/list-force.ts)。それ以外は通常の削除
+        return deleteListMarkerForward(view);
+      },
+    },
+    {
+      key: "ArrowUp",
+      run(view) {
+        const head = cursorOf(view);
+        if (head === null) return false;
+        // 座標が取れないときは論理行で判定する
+        const first =
+          sameVisualRow(view, head, 0, false) ?? view.state.doc.lineAt(head).number === 1;
+        return first && callbacks.current.onArrowUpAtFirstLine();
+      },
+    },
+    {
+      key: "ArrowDown",
+      run(view) {
+        const head = cursorOf(view);
+        if (head === null) return false;
+        const { doc } = view.state;
+        const last =
+          sameVisualRow(view, head, doc.length, true) ?? doc.lineAt(head).number === doc.lines;
+        return last && callbacks.current.onArrowDownAtLastLine();
+      },
+    },
+    // Enter は箇条書きを同じ階層で続ける (本文は常に箇条書きなので Shift+Enter も同じ。
+    // 逃げ道の単純な改行を残しても、次に書いた行へ forceListMarkers が記号を足すので意味が無い)
+    { key: "Enter", run: insertNewlineContinueList, shift: insertNewlineContinueList },
+    // Tab はインデント (リストの階層下げ / タブ挿入)、Shift+Tab は戻し (src/routes/(board)/-lib/list-indent.ts)
+    { key: "Tab", run: indentMoreOrInsertTab, shift: indentLess },
+    // Esc で編集をやめる (blur して onEscape → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。
+    // 選択があれば 1 回目の Esc は選択の解除だけ (多くのエディタと同じ。いきなり抜けると選択とカーソル位置を失う)。
+    // IME 変換中の Esc は変換の取り消しなので触らない
+    {
+      key: "Escape",
+      run(view) {
+        if (view.composing) return false;
+        if (simplifySelection(view)) return true;
+        view.contentDOM.blur();
+        callbacks.current.onEscape();
+        return true;
+      },
+    },
+  ];
+}

@@ -29,7 +29,7 @@ import { board, memo, userSetting } from "./schema";
 // - 板には版 (board.revision) があり、保存のたびに変わる。PUT にはクライアントが知っている版を付けてもらい、
 //   今の版と違えば (別の端末 / タブが先に保存していれば) 保存せずに 409 Stale を返す。丸ごと置き換えなので、
 //   古い内容のまま保存させると、別の場所で足したセクションが消えたり編集が戻ったりする (issue #72)。
-//   クライアントは取り直した板に自分の変更を重ねて (src/lib/board-merge.ts) 保存し直す
+//   クライアントは取り直した板に自分の変更を重ねて (src/routes/(board)/-lib/board-merge.ts) 保存し直す
 const sectionSchema = z.object({
   id: z.string().min(1).nullable(),
   // 付けていない (古いクライアント) ときは、知らない id を従来どおり新しいセクションとして作る

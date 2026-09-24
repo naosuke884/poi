@@ -1,33 +1,19 @@
-import { Anchor, AppShell, Container, Group, Stack, Text, Title } from "@mantine/core";
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import { AppShell, Container } from "@mantine/core";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { AddSectionButton } from "@/components/AddSectionButton";
-import { OfflineBanner } from "@/components/OfflineBanner";
-import { PwaUpdateBanner } from "@/components/PwaUpdateBanner";
-import { SaveStatusIcon } from "@/components/SaveStatusIcon";
-import { UserMenu } from "@/components/UserMenu";
-import { ViewToggle } from "@/components/ViewToggle";
-import classes from "./__root.module.css";
+import { AppHeader } from "./-root/header/AppHeader";
+import { NotFound } from "./-root/NotFound";
+import { OfflineBanner } from "./-root/OfflineBanner";
+import { PwaUpdateBanner } from "./-root/PwaUpdateBanner";
+import { SkipLink } from "./-root/SkipLink";
 
 export const Route = createRootRoute({
   component: RootLayout,
-  notFoundComponent: () => (
-    <Stack>
-      <Title>404</Title>
-      <Text>ページが見つかりません。</Text>
-      <Anchor component={Link} to="/">
-        トップへ戻る
-      </Anchor>
-    </Stack>
-  ),
+  notFoundComponent: NotFound,
 });
 
 // ノッチ / ホームインジケータのある端末 (viewport-fit=cover) で内容が隠れないよう、
 // AppShell の余白に env(safe-area-inset-*) を足す (Mantine の padding 変数はそのまま使う)
-const safeAreaX = {
-  paddingLeft: "env(safe-area-inset-left)",
-  paddingRight: "env(safe-area-inset-right)",
-};
 const mainPadding = {
   paddingInlineStart: "calc(var(--app-shell-padding) + env(safe-area-inset-left))",
   paddingInlineEnd: "calc(var(--app-shell-padding) + env(safe-area-inset-right))",
@@ -37,29 +23,8 @@ const mainPadding = {
 function RootLayout() {
   return (
     <AppShell header={{ height: 56 }} padding="md">
-      {/* キーボード操作用: ヘッダーを飛ばして本文へ */}
-      <a href="#main" className={classes.skipLink}>
-        本文へ移動
-      </a>
-      <AppShell.Header style={safeAreaX}>
-        <Container size="md" h="100%">
-          <Group h="100%" justify="space-between">
-            <Anchor component={Link} to="/" fw={700} c="inherit" underline="never">
-              <Group gap={8} wrap="nowrap">
-                <img src="/icon.svg" alt="" width={24} height={24} style={{ display: "block" }} />
-                poi
-              </Group>
-            </Anchor>
-            {/* 折り返し禁止: 折り返すと 2 行目が 56px のヘッダーからはみ出して本文に重なる */}
-            <Group gap="md" wrap="nowrap">
-              <ViewToggle />
-              <AddSectionButton />
-              <SaveStatusIcon />
-              <UserMenu />
-            </Group>
-          </Group>
-        </Container>
-      </AppShell.Header>
+      <SkipLink />
+      <AppHeader />
       {/* Main → Container → ページ を縦の flex にして、板が画面の下端まで広がれるようにする */}
       <AppShell.Main
         id="main"
