@@ -3,7 +3,7 @@
 [![CI](https://github.com/naosuke884/poi/actions/workflows/ci.yml/badge.svg)](https://github.com/naosuke884/poi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-**poi** is a single-page scratchpad for the things you only need for a little while.
+**poi** is a memo that disappears in 30 days.
 Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
 https://github.com/user-attachments/assets/b54ecc35-68ed-4000-9c2e-ae42d4a45f12
