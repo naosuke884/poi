@@ -7,13 +7,13 @@ description: poi のフロントエンド (src/) で、コンポーネント・�
 
 部品 (コンポーネント・フック・ロジック) は、**それを使うルートのディレクトリ**に置く。
 ルートのディレクトリをまたいで使うものだけを `src/components` / `src/lib` に置く。
-`__root` もルートの 1 つとして扱い、その部品は `routes/-root/` に置く。
+`__root` もルートの 1 つとして扱い、その部品は `routes/(root)/` に置く (中身のないルートグループで、`(board)` などと同じ形にするため)。
 
 ## 置き場所の決め方
 
 | 使う場所 | 置き場所 |
 |---|---|
-| `__root` (レイアウト・ヘッダー) だけ | `routes/-root/-components/` (UI) / `routes/-root/-lib/` (フック・ロジック・テスト) |
+| `__root` (レイアウト・ヘッダー) だけ | `routes/(root)/-components/` (UI) / `routes/(root)/-lib/` (フック・ロジック・テスト) |
 | 1 つのルートのディレクトリだけ (その下にネストしたルートも含む) | そのディレクトリの `-components/` / `-lib/`。ネストした子ルートどうしで共有するなら、親ディレクトリの `-components/` / `-lib/` |
 | 複数のルートのディレクトリ (`__root` のヘッダーと `(board)` など) | `src/components/` (UI) / `src/lib/` (フック・ロジック・テスト) |
 | `main.tsx` だけ | `src/` 直下 (`main.tsx` の隣) |
@@ -47,7 +47,7 @@ src/
   lib/                    複数のルートで使うもの (板の型, API, 認証, キャッシュ, オフライン判定など)
   routes/
     __root.tsx            全ページ共通のレイアウト (ヘッダー・本文の枠)
-    -root/                __root 専用
+    (root)/               __root 専用 (ルートのないグループ)
       -components/        header/, SkipLink, NotFound, バナー
       -lib/               use-online, use-account-actions
     (board)/
@@ -75,7 +75,7 @@ src/
 
 ## import の書き方
 
-- 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `-root/` も `./-root/...`
+- 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `(root)/` も `./(root)/...`
 - `src/components` / `src/lib` は `@/` で参照する (`@/lib/board`, `@/components/HeaderSlot`)
 - CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む
 

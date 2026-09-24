@@ -2,8 +2,8 @@
 // 使えるのは自分か祖先のルートのものだけで、複数のルートで使うなら src/components / src/lib へ移す。
 // パスの書き方で判定する (import 先の解決はしない):
 // - ../ だけをさかのぼった先の -components / -lib (祖先のルートのもの) は OK。
-//   さかのぼった後に別のディレクトリ ((board)/ や -root/ など) へ入ってから届くものは NG
-// - ./ から子のディレクトリへ入って届くものは NG (__root.tsx から ./-root/ は OK)
+//   さかのぼった後に別のディレクトリ ((board)/ や (root)/ など) へ入ってから届くものは NG
+// - ./ から子のディレクトリへ入って届くものは NG (__root.tsx から ./(root)/ は OK)
 language js
 
 pattern cross_route_source() {
@@ -11,7 +11,7 @@ pattern cross_route_source() {
     and { r"^['\"](?:\.\./)+.*/-(?:components|lib)(?:/.*)?['\"]$",
     not r"^['\"](?:\.\./)+-(?:components|lib)(?:/.*)?['\"]$" },
     and { r"^['\"]\./.*/-(?:components|lib)(?:/.*)?['\"]$",
-    not r"^['\"]\./(?:-root/)?-(?:components|lib)(?:/.*)?['\"]$" }
+    not r"^['\"]\./(?:\(root\)/)?-(?:components|lib)(?:/.*)?['\"]$" }
   }
 }
 
