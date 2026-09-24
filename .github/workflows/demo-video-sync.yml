@@ -1,7 +1,7 @@
 # README.md に埋め込んだデモ動画 (GitHub user-attachments) と public/demo.mp4 の内容が
-# 一致していることを検証する。user-attachments は API でアップロードできないため
-# 自動同期はできず、ズレたらこの CI が落ちて手動での再アップロードを促す。
-# 詳細な手順はエラーメッセージ (scripts/check-demo-video.sh) に出る。
+# 一致していることを検証する。user-attachments へのアップロードは
+# GITHUB_TOKEN では行えないため CI では同期せず、ズレたらこの CI が落ちて
+# 手元での scripts/sync-demo-video.sh の実行を促す。
 name: Demo video sync
 
 on:

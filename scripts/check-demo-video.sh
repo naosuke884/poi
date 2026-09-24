@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # README.md に埋め込んだデモ動画 (GitHub user-attachments) と public/demo.mp4 の内容が
 # 一致していることを検証する。
-# user-attachments は API でアップロードできないため自動同期はできない。
-# ズレていたらエラーで落として、手動での再アップロードと URL 差し替えを促す。
+# user-attachments へのアップロードは Actions の GITHUB_TOKEN では行えないため CI では同期しない。
+# ズレていたらエラーで落として、手元で scripts/sync-demo-video.sh を実行するよう促す。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -27,12 +27,8 @@ if [[ "$local_hash" != "$remote_hash" ]]; then
     echo "public/demo.mp4       sha256: $local_hash"
     echo "README の埋め込み動画 sha256: $remote_hash"
     echo ""
-    echo "直し方 (gh 2.99+ の --attach を使う。dev container では ~/.local/bin/gh):"
-    echo "  1. 適当な issue へのコメントとして新しい動画をアップロードする"
-    echo "       gh issue comment <issue番号> --attach public/demo.mp4 --body 'demo.mp4 re-upload'"
-    echo "     (アップロードが目的なので、URL を取ったらコメントは消してよい)"
-    echo "  2. 投稿されたコメント中の https://github.com/user-attachments/assets/... の URL で"
-    echo "     README.md の既存 URL を差し替えてコミットする"
+    echo "直し方: 手元で (gh にログインした状態で) 次を実行し、差し替わった README.md をコミットする"
+    echo "  ./scripts/sync-demo-video.sh"
   } >&2
   exit 1
 fi
