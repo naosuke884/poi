@@ -43,7 +43,9 @@ export function DemoVideo() {
     }
   };
   return (
-    <Box maw={860} w="100%">
+    // 動画はスマホ幅 (400px) の画面を撮っている。広い画面では拡大せず等倍前後 (480px) に抑え、
+    // 狭い画面 (360px) でも縮みすぎないようにする (本文が 12px 前後で読める)
+    <Box maw={480} w="100%">
       <button
         type="button"
         className={classes.videoZoomButton}
