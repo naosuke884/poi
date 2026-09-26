@@ -1,8 +1,9 @@
-import { Box, CloseButton, Divider, Group, Tooltip } from "@mantine/core";
+import { Box, CloseButton, Group, Tooltip } from "@mantine/core";
 import type { RefObject } from "react";
 import type { EditableSection } from "../../../-lib/data/board";
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { copySectionText } from "../../../-lib/section-export";
+import { LifeLine } from "./LifeLine";
 import { MarkdownView } from "./MarkdownView";
 import { SectionActions } from "./SectionActions";
 import { type EditAnchor, SectionEditor, type SectionEditorHandle } from "./SectionEditor";
@@ -97,14 +98,9 @@ export function SectionRow({
           : undefined,
       }}
     >
-      {/* 区切り: ラベルは線の中 (左)、コピー / スクショ / 削除は線の外の右端 */}
+      {/* 区切り: 線は寿命のバー (左に残り日数)、コピー / スクショ / 削除は線の外の右端 */}
       <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
-        <Divider
-          labelPosition="left"
-          style={{ flex: 1 }}
-          // 未保存のセクションだけラベルを出す (保存済みはラベルが無いほうが線がすっきりする)
-          label={s.expiresAt === null ? "新しいセクション" : undefined}
-        />
+        <LifeLine createdAt={s.createdAt} expiresAt={s.expiresAt} />
         {!empty && (
           <SectionActions
             subject={label}
