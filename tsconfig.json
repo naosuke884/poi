@@ -5,5 +5,10 @@
     { "path": "./tsconfig.worker.json" },
     { "path": "./tsconfig.shared.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  // 型チェックは各 references の設定で行う (tsc --build)。ここの paths は、ルートの tsconfig.json しか読まないツール
+  // (drizzle-kit のスキーマ読み込み、wrangler dev の esbuild) でも worker/ の @shared/* を解決するため
+  "compilerOptions": {
+    "paths": { "@shared/*": ["./shared/*"] }
+  }
 }
