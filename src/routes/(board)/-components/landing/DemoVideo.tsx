@@ -1,4 +1,4 @@
-import { Box } from "@mantine/core";
+import { Box, useComputedColorScheme } from "@mantine/core";
 import { useReducedMotion } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import classes from "./Landing.module.css";
@@ -7,6 +7,10 @@ import classes from "./Landing.module.css";
 export function DemoVideo() {
   // OS で「動きを減らす」を選んでいる人にはデモ動画を自動再生しない (controls で再生してもらう)
   const reduceMotion = useReducedMotion();
+  // ダーク配色では暗い板を撮った版を出す (明るい動画だけが浮かないように。issue #98)。
+  // <source media> は再生中に配色が変わっても切り替わらないので、配色から src を選ぶ。
+  // SPA なので初回の描画から実際の配色を使う (効果の後に直すと明るい版を読みかけてしまう)
+  const dark = useComputedColorScheme("light", { getInitialValueInEffect: false }) === "dark";
   // デモ動画の拡大表示 (#54): クリックで video 要素をそのまま全画面にする。
   // 全画面の間だけ controls を出す (インラインに置くとクリックが再生操作と取り合いになる。
   // 「動きを減らす」の人の再生もここで行う)
@@ -48,10 +52,10 @@ export function DemoVideo() {
       >
         <video
           ref={videoRef}
-          src="/demo.mp4"
-          // 動画の 1 フレーム目は空の板なので、読み込み中や自動再生しないとき (動きを減らす) は
-          // 内容の入った終盤のフレームを見せる (issue #97)
-          poster="/demo-poster.webp"
+          src={dark ? "/demo-dark.mp4" : "/demo.mp4"}
+          // 読み込み中や自動再生しないとき (動きを減らす) に見せる、内容の入った板 (issue #97)。
+          // 動画と同じく配色に合わせる
+          poster={dark ? "/demo-poster-dark.webp" : "/demo-poster.webp"}
           className={classes.demoVideo}
           autoPlay={!reduceMotion}
           controls={videoFullscreen}
