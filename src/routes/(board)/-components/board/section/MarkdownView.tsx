@@ -98,7 +98,8 @@ export function MarkdownView({
       }
       style={{ cursor: editable ? "text" : undefined }}
     >
-      <Typography className={classes.root} fz="md" lh={1.55}>
+      {/* 行間は日本語向けに広め。エディタ (SectionEditor.module.css) と同じ値にする (違うと切り替えで高さが変わる) */}
+      <Typography className={classes.root} fz="md" lh={1.7}>
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkBreaks, [remarkDisable, BOARD_MARKDOWN_DISABLED]]}
           rehypePlugins={[rehypeSourcePositions]}

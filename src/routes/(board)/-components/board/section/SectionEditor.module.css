@@ -8,10 +8,11 @@
   outline: none;
 }
 
-/* 既定の overflow: auto だと箱の中でスクロールしてしまう。Textarea (autosize) と同じく内容の高さに広がる */
+/* 既定の overflow: auto だと箱の中でスクロールしてしまう。Textarea (autosize) と同じく内容の高さに広がる。
+   行間は MarkdownView の lh と同じ値 */
 .root :global(.cm-editor .cm-scroller) {
   font-family: var(--mantine-font-family);
-  line-height: 1.55;
+  line-height: 1.7;
   overflow: visible;
 }
 
