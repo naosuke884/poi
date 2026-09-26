@@ -1,13 +1,13 @@
-# ヘッダーにページの操作を出す (HeaderSlot)
+# Putting page actions in the header (HeaderSlot)
 
-ヘッダーは `__root` の部品だが、ページ専用のボタンや状態表示をヘッダーの部品として作らない。
-作るとページの状態を `__root` から触ることになり、「複数のルートで使うもの」として `src/lib` に押し出されてしまう。
+The header is a `__root` piece, but don't build page-specific buttons or status indicators as header pieces.
+Doing so means touching page state from `__root`, which pushes it out into `src/lib` as "used by several routes".
 
-代わりにページ側 (そのルートの `-components/`) で作り、`@/components/HeaderSlot` の `<HeaderSlot>` で包んで描画する。
-ヘッダーの差し込み位置に portal で出るので、状態はページの中で普通に props として渡せる。
-ページを離れると一緒に消えるので、「このページを開いているときだけ」の条件も自然に満たされる。
+Instead, build it on the page side (in that route's `-components/`) and render it wrapped in `<HeaderSlot>` from `@/components/HeaderSlot`.
+It is portaled into the header's slot, so state can be passed as ordinary props within the page.
+It disappears when the page is left, so "only while this page is open" comes for free.
 
-今の使用例は `grep -rn "<HeaderSlot" src` で見る。
+See current usages with `grep -rn "<HeaderSlot" src`.
 
-「ヘッダーに〇〇を出したい」と言われたら、まずそれがページの状態に依存するかを考え、依存するならこの形にする。
-ページに依存しないもの (ログイン状態、オフライン表示など) は `__root` の部品として `routes/(root)/-components/` に置く。
+When asked to "show X in the header", first ask whether it depends on page state; if it does, use this pattern.
+Things that don't depend on the page (login state, offline indicator, etc.) are `__root` pieces and go in `routes/(root)/-components/`.

@@ -1,81 +1,81 @@
 ---
 name: route-colocation
-description: poi のフロントエンド (src/) で、コンポーネント・フック・ロジック・テストをどこに置くかの規則 (TanStack Router のルートに沿ったコロケーション)。src/ にファイルを作る・移す・消すとき、ルートやページを追加・分割するとき、ある部品を別のページやヘッダーからも使いたくなったとき、置き場所 (どのルートの -components / -lib か、src/components・src/lib か) に迷ったときに使う。「置き場所」と言われていなくても、src/ に新しい .tsx / .ts を足す作業なら読む。
+description: Where to put components, hooks, logic, and tests in poi's frontend (src/) — colocation along TanStack Router routes. Use when creating, moving, or deleting files under src/; when adding or splitting routes or pages; when a piece is about to be used from another page or from the header; or when unsure where something belongs (which route's -components / -lib, or src/components / src/lib). Read it for any task that adds a new .tsx / .ts under src/, even if placement is not mentioned.
 ---
 
-# ルートに沿ったコロケーション
+# Colocation along routes
 
-部品 (コンポーネント・フック・ロジック) は、**それを使うルートのディレクトリ**に置く。
-ルートのディレクトリをまたいで使うものだけを `src/components` / `src/lib` に置く。
+Put each piece (component, hook, logic) in **the directory of the route that uses it**.
+Only things used across route directories go in `src/components` / `src/lib`.
 
-こうしておくと、置き場所を見るだけで「どのページが使っているか」が分かり、ページを消すときはディレクトリごと消せる。
-`src/components` / `src/lib` は「本当に共有されているもの」だけになるので、そこを変えるときに影響範囲を意識できる。
+This way, where a file lives tells you which pages use it, and deleting a page means deleting its directory.
+`src/components` / `src/lib` hold only what is genuinely shared, so changing something there is a signal to think about its reach.
 
-`__root` もルートの 1 つとして扱い、その部品は `routes/(root)/` に置く (中身のないルートグループで、ほかのルートと同じ形にするため)。
+Treat `__root` as a route too; its pieces go in `routes/(root)/` (an otherwise empty route group, so it has the same shape as every other route).
 
-置き場所の検査は `scripts/check-placement.mjs` で機械的にできる (リポジトリ直下から実行する)。
+Placement can be checked mechanically with `scripts/check-placement.mjs` (run from the repository root):
 
 ```sh
-node .claude/skills/route-colocation/scripts/check-placement.mjs          # 全体を検査
-node .claude/skills/route-colocation/scripts/check-placement.mjs <file>   # そのファイルの使う側と、置くべき場所
+node .claude/skills/route-colocation/scripts/check-placement.mjs          # check everything
+node .claude/skills/route-colocation/scripts/check-placement.mjs <file>   # show that file's users and where it belongs
 ```
 
-## 置き場所の決め方
+## Deciding where something goes
 
-置き場所は、その部品を**実際に使う (import する) ファイル**がどこにあるかで決まる。
-既存の部品なら上のスクリプトに `<file>` を渡すと、使う側と置くべき場所が出る。新しく作る部品なら、どこから使うつもりかで下の表に当てはめる。
+Placement is decided by where the files that **actually use (import) it** live.
+For an existing piece, pass it to the script above as `<file>` to see its users and where it belongs. For a new piece, match where you intend to use it against the table below.
 
-| 使う場所 | 置き場所 |
+| Used from | Put it in |
 |---|---|
-| `__root` (レイアウト・ヘッダー) だけ | `routes/(root)/-components/` (UI) / `routes/(root)/-lib/` (フック・ロジック) |
-| 1 つのルートのディレクトリだけ (その下にネストしたルートも含む) | そのディレクトリの `-components/` / `-lib/`。ネストした子ルートどうしで共有するなら、親ディレクトリの `-components/` / `-lib/` |
-| 複数のルートのディレクトリ | `src/components/` (UI) / `src/lib/` (フック・ロジック) |
-| `main.tsx` だけ | `src/` 直下 (`main.tsx` の隣) |
-| `src/lib` のファイルから (ルートからも使うかにかかわらず) | `src/lib/` (`src/lib` からルートの中は import できないため) |
+| `__root` only (layout, header) | `routes/(root)/-components/` (UI) / `routes/(root)/-lib/` (hooks, logic) |
+| One route directory only (including routes nested under it) | That directory's `-components/` / `-lib/`. If shared between nested child routes, the parent directory's `-components/` / `-lib/` |
+| Several route directories, or `main.tsx` and a route | `src/components/` (UI) / `src/lib/` (hooks, logic) |
+| `main.tsx` only | Directly under `src/` (next to `main.tsx`) |
+| A file in `src/lib` (whether or not routes use it too) | `src/lib/` (`src/lib` cannot import from inside routes) |
 
-- テストは対象のファイルの隣に `<name>.test.ts(x)` として置く (対象を移したらテストも一緒に移す)
-- CSS Modules は使うコンポーネントと同じフォルダに置き、`./X.module.css` で読む
-- `-components/` / `-lib/` の中は、使う側の親子関係に合わせてさらにフォルダで入れ子にしてよい。
-  入れ子のフォルダ名には `-` は要らない (親の `-components/` ごとルート生成の対象外になるため)。`-lib/` はファイルが増えたら話題ごとのフォルダにまとめる
-- `.tsx` / `.ts` の部品をルートのディレクトリ直下に置かない。`-` で始まらないファイルはルートとして生成され、URL が増える
-- src と worker の両方で使うもの (定数・検証の上限など) は、リポジトリ直下の `shared/` に置いて `@shared/` で参照する
+- Tests sit next to the file under test as `<name>.test.ts(x)` (move the test along with its target)
+- CSS Modules sit in the same folder as the component that uses them and are imported as `./X.module.css`
+- Inside `-components/` / `-lib/`, you may nest further folders that mirror how the users are structured.
+  Nested folder names need no `-` (the parent `-components/` already excludes everything under it from route generation). Once `-lib/` grows, group its files into folders by topic
+- Never put a `.tsx` / `.ts` piece directly in a route directory. Any file not starting with `-` is generated as a route and adds a URL
+- Things used by both src and worker (constants, validation limits, etc.) go in `shared/` at the repository root and are imported via `@shared/`
 
-ルートやページを追加・分割するときは、[references/routes.md](references/routes.md) (ルートグループと `<name>/index.tsx` の使い分け) も読む。
+When adding or splitting routes or pages, also read [references/routes.md](references/routes.md) (when to use a route group vs. `<name>/index.tsx`).
 
-### 使う側が変わったら置き場所も移す
+### When the users change, move the file
 
-- 1 つのルートのものを別のルートでも使うことになったら、`src/components` / `src/lib` へ移す
-- 逆に `src/components` / `src/lib` のものを 1 つのルートでしか使わなくなったら、そのルートの `-components/` / `-lib/` へ戻す
-- 移すときは名前も見直す。元のルートに寄った名前 (ページ名の付いた `XxxFooter` など) のまま共有の場所へ出すと、他の使う側から見て意味が合わなくなる
-- 別のルートの `-components/` / `-lib/` を直接 import して済ませない。`src/components` / `src/lib` からルートの中を import するのも同じ。
-  どちらも `npm run lint` のエラーになる (前者は `biome-plugins/route-colocation.grit`、後者は `biome.json` の `noRestrictedImports`)。
-  lint が通らないときに import の書き方を変えてすり抜けるのではなく、置き場所を直す
+- If something belonging to one route starts being used by another route, move it to `src/components` / `src/lib`
+- Conversely, if something in `src/components` / `src/lib` ends up used by only one route, move it back into that route's `-components/` / `-lib/`
+- Revisit the name when moving. A name tied to the original route (e.g. `XxxFooter` with the page name in it) reads wrong to the other users once it is shared
+- Do not get by with importing another route's `-components/` / `-lib/` directly. The same goes for importing route internals from `src/components` / `src/lib`.
+  Both are `npm run lint` errors (the former via `biome-plugins/route-colocation.grit`, the latter via `noRestrictedImports` in `biome.json`).
+  When lint fails, fix the placement instead of rewriting the import to slip past the rule
 
-### 丸ごと移す前に、一部だけ切り出せないか考える
+### Before moving a whole file, see whether only part of it needs extracting
 
-1 つのルートのものの一部だけを別のルートでも使うときは、丸ごと `src/lib` へ移すと、そのルートの型や事情まで共有側に持ち込むことになる。
-共有が本当に要る部分だけを切り出して `src/lib` に置き、残りはルートに残す。
+When only part of one route's code is needed by another route, moving the whole thing to `src/lib` drags that route's types and concerns into shared code.
+Extract just the part that really needs sharing into `src/lib` and leave the rest in the route.
 
-例: あるルートのキャッシュを、ヘッダーのログアウトからも消したい。消すのに要るのがキャッシュのキーだけなら、
-キーと消去の関数だけを `src/lib` に置き、そのルートの型に依存する読み書きはルートの `-lib/` に残す。
+Example: the header's logout needs to clear a route's cache. If clearing only needs the cache key,
+put the key and the clear function in `src/lib`, and keep the reads and writes that depend on the route's types in the route's `-lib/`.
 
-### ヘッダーに出すもの
+### Things shown in the header
 
-ページの状態に依存するボタンや表示をヘッダーに出したいときは、ヘッダー (`__root`) の部品にせず、ページ側で作って `<HeaderSlot>` で差し込む。
-詳しくは [references/header-slot.md](references/header-slot.md)。
+When a button or indicator that depends on page state should appear in the header, do not make it a header (`__root`) piece. Build it on the page side and insert it with `<HeaderSlot>`.
+See [references/header-slot.md](references/header-slot.md).
 
-## import の書き方
+## Import style
 
-- 同じルートのディレクトリの中は相対パス (`./`, `../`)。`__root.tsx` から `(root)/` も `./(root)/...`
-- `src/components` / `src/lib` は `@/` で参照する (`@/lib/...`, `@/components/...`)
+- Within the same route directory, use relative paths (`./`, `../`). From `__root.tsx`, `(root)/` is also `./(root)/...`
+- Refer to `src/components` / `src/lib` via `@/` (`@/lib/...`, `@/components/...`)
 
-## ファイルを移動・追加したあと
+## After moving or adding files
 
-1. `node .claude/skills/route-colocation/scripts/check-placement.mjs` を実行する。次のものが見つかる
-   - 使う側と合っていない置き場所、どこからも使われなくなった部品
-   - ルートのディレクトリ直下に置かれた部品
-   - 解決できない import / `import()` / `vi.mock` のパス (`vi.mock` は存在しないパスでもエラーにならず、テストが何もモックせずに通ってしまう)
-   - コメントに書かれた、存在しないファイルパス (src / worker / shared / 設定ファイルを見る)
-2. 名前を変えたなら、古い名前がコメントなどに残っていないか `grep -rn "<古い名前>" src worker shared` で探す (スクリプトはパスしか見ない)
-3. `npm run typecheck && npm run lint && npm test && npm run build` を通す
-4. `src/routeTree.gen.ts` は自動生成なので手で編集しない。変更されていればそのままコミットする
+1. Run `node .claude/skills/route-colocation/scripts/check-placement.mjs`. It finds:
+   - Placements that don't match their users, and pieces no longer used anywhere
+   - Pieces placed directly in a route directory
+   - `import` / `import()` / `vi.mock` paths that don't resolve (`vi.mock` on a nonexistent path is not an error, so the test passes without mocking anything)
+   - File paths written in comments that no longer exist (it looks in src / worker / shared / config files)
+2. If you renamed something, search for leftovers of the old name in comments etc. with `grep -rn "<old name>" src worker shared` (the script only checks paths)
+3. Make `npm run typecheck && npm run lint && npm test && npm run build` pass
+4. `src/routeTree.gen.ts` is generated; never edit it by hand. If it changed, commit it as is

@@ -1,10 +1,10 @@
-# ルートを追加・分割するとき (TanStack Router の命名規則)
+# Adding or splitting routes (TanStack Router naming)
 
-- `(name)/` はルートグループ。URL に影響しない。次の 2 つの場合に使う
-  - `/` のように、ディレクトリ名で URL を作れないルートに部品を置くとき (`(xxx)/index.tsx` + `(xxx)/-components/`)
-  - URL に共通の接頭辞がない複数のページで部品を共有するとき (`(xxx)/a.tsx` と `(xxx)/b.tsx` が `(xxx)/-components/` を共有)
-- 部品を持つ単独のページは `<name>/index.tsx` + `<name>/-components/` にする。部品がなければ `<name>.tsx` のままでよい
-  (部品が増えて `<name>.tsx` → `<name>/index.tsx` に変えても URL は変わらない)
-- ネストした URL はディレクトリで作る (`posts/$postId/index.tsx`)。配下に共通のレイアウトが要るときはそのディレクトリに `route.tsx` を置く
-- ルート ID にはグループ名が入る (`"/(xxx)/"`)。`createFileRoute` の引数は生成処理が自動で書き換えるので手で合わせなくてよい
-- `src/routeTree.gen.ts` は自動生成なので手で編集しない。変更されていればそのままコミットする
+- `(name)/` is a route group and does not affect the URL. Use one in these two cases:
+  - To give pieces a home for a route whose URL can't come from a directory name, such as `/` (`(xxx)/index.tsx` + `(xxx)/-components/`)
+  - To share pieces between pages whose URLs have no common prefix (`(xxx)/a.tsx` and `(xxx)/b.tsx` share `(xxx)/-components/`)
+- A standalone page with its own pieces becomes `<name>/index.tsx` + `<name>/-components/`. Without pieces, `<name>.tsx` is fine
+  (switching from `<name>.tsx` to `<name>/index.tsx` as pieces are added does not change the URL)
+- Nested URLs are made with directories (`posts/$postId/index.tsx`). When everything under a directory needs a shared layout, put a `route.tsx` in that directory
+- Route IDs include the group name (`"/(xxx)/"`). The generator rewrites the `createFileRoute` argument automatically, so there is no need to match it by hand
+- `src/routeTree.gen.ts` is generated; never edit it by hand. If it changed, commit it as is

@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// route-colocation の規則に照らして src/ の置き場所を検査する (依存なし)。
+// Checks placement under src/ against the route-colocation rules (no dependencies).
 //
-//   node .claude/skills/route-colocation/scripts/check-placement.mjs            全体を検査
-//   node .claude/skills/route-colocation/scripts/check-placement.mjs <file>...  そのファイルの使う側と置き場所を説明
+//   node .claude/skills/route-colocation/scripts/check-placement.mjs            check everything
+//   node .claude/skills/route-colocation/scripts/check-placement.mjs <file>...  explain those files' users and placement
 //
-// 検査すること:
-//   1. 部品の置き場所が、それを import しているファイルの場所と合っているか (SKILL.md の表)
-//   2. src/routes の -components / -lib の外に、ルートでない .ts / .tsx が置かれていないか (URL が増える)
-//   3. 相対パス / @/ の import・import()・vi.mock が存在するファイルを指しているか
-//   4. コメントなどに書かれた src/... のパスが存在するか (src, worker, shared, 設定ファイル)
-// import はパスの書き方から解決する (./ ../ @/ のみ。拡張子と index は補う)。
+// Checks:
+//   1. Each piece's placement matches where the files importing it live (the table in SKILL.md)
+//   2. No non-route .ts / .tsx sits in src/routes outside -components / -lib (it would add a URL)
+//   3. Relative / @/ imports, import() and vi.mock point to existing files
+//   4. src/... paths written in comments etc. exist (src, worker, shared, config files)
+// Imports are resolved from how the path is written (./ ../ @/ only; extensions and index are filled in).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,19 +32,19 @@ const srcFiles = walk(join(ROOT, "src")).filter((f) => /\.(tsx?|css)$/.test(f) &
 const isTest = (f) => /\.test\.tsx?$/.test(f);
 const isCode = (f) => /\.tsx?$/.test(f);
 
-// --- import の解決 ---
+// --- Resolving imports ---
 
 const EXTS = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"];
 function resolveSpec(from, spec) {
   let base;
   if (spec.startsWith("./") || spec.startsWith("../")) base = posix.join(posix.dirname(from), spec);
   else if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
-  else return undefined; // パッケージや @shared/ などは対象外
+  else return undefined; // packages, @shared/, etc. are out of scope
   for (const ext of EXTS) {
     const p = base + ext;
     if (existsSync(join(ROOT, p)) && statSync(join(ROOT, p)).isFile()) return p;
   }
-  return null; // 解決できない
+  return null; // unresolved
 }
 
 const IMPORT_RE = [
@@ -54,7 +54,7 @@ const IMPORT_RE = [
   { re: /\bvi\.mock\(\s*["']([^"']+)["']/g, kind: "vi.mock" },
 ];
 
-const importers = new Map(); // 対象 → import しているファイルの集合 (vi.mock は数えない)
+const importers = new Map(); // target → set of files importing it (vi.mock not counted)
 const unresolved = [];
 for (const f of srcFiles.filter(isCode)) {
   const text = readFileSync(join(ROOT, f), "utf8");
@@ -73,11 +73,11 @@ for (const f of srcFiles.filter(isCode)) {
   }
 }
 
-// --- 場所の分類 ---
-// 「場所」は次のどれか:
-//   { kind: "route", dir }  src/routes の中のルートのディレクトリ (部品はその -components / -lib へ)
+// --- Classifying places ---
+// A "place" is one of:
+//   { kind: "route", dir }  a route directory inside src/routes (pieces go in its -components / -lib)
 //   { kind: "shared" }      src/components / src/lib
-//   { kind: "entry" }       src/ 直下 (main.tsx の隣)
+//   { kind: "entry" }       directly under src/ (next to main.tsx)
 
 const isRouteFile = (f) => {
   if (!f.startsWith("src/routes/") || !isCode(f) || isTest(f)) return false;
@@ -85,7 +85,7 @@ const isRouteFile = (f) => {
   return true;
 };
 
-// そのファイルを「使う側」として見たときの場所
+// The place of a file seen as a user
 function userPlace(f) {
   if (f === "src/routes/__root.tsx") return { kind: "route", dir: "src/routes/(root)" };
   if (f.startsWith("src/components/") || f.startsWith("src/lib/")) return { kind: "shared" };
@@ -93,7 +93,7 @@ function userPlace(f) {
     const segs = f.split("/");
     const dash = segs.findIndex((s) => s.startsWith("-"));
     if (dash >= 0) return { kind: "route", dir: segs.slice(0, dash).join("/") };
-    // ルートのファイル: index / route はそのディレクトリ、<name>.tsx は <name>/ (部品を持つなら <name>/index.tsx になる)
+    // Route files: index / route map to their directory, <name>.tsx to <name>/ (it becomes <name>/index.tsx once it has pieces)
     const name = segs.at(-1).replace(/\.tsx?$/, "");
     const dir = segs.slice(0, -1).join("/");
     return { kind: "route", dir: name === "index" || name === "route" ? dir : `${dir}/${name}` };
@@ -101,7 +101,7 @@ function userPlace(f) {
   return { kind: "entry" };
 }
 
-// 部品が今置かれている場所 (と -components / -lib のどちらか)
+// Where a piece currently lives (and whether in -components or -lib)
 function homeOf(f) {
   if (f.startsWith("src/components/")) return { kind: "shared", sub: "components" };
   if (f.startsWith("src/lib/")) return { kind: "shared", sub: "lib" };
@@ -123,13 +123,13 @@ function commonDir(dirs) {
   return out.join("/");
 }
 
-// 使う側の集合から、置くべき場所を決める
+// Decide where a piece belongs from its set of users
 function expectedPlace(users) {
   const places = users.map(userPlace);
-  if (places.some((p) => p.kind === "shared")) return { kind: "shared" }; // src/components・src/lib からはルートを import できない
+  if (places.some((p) => p.kind === "shared")) return { kind: "shared" }; // src/components / src/lib cannot import from routes
   const routes = places.filter((p) => p.kind === "route");
   if (routes.length === 0) return { kind: "entry" };
-  if (routes.length < places.length) return { kind: "shared" }; // main.tsx とルートの両方
+  if (routes.length < places.length) return { kind: "shared" }; // both main.tsx and routes
   const dir = commonDir(routes.map((p) => p.dir));
   if (dir === "src/routes" || !dir.startsWith("src/routes/")) return { kind: "shared" };
   return { kind: "route", dir };
@@ -137,10 +137,10 @@ function expectedPlace(users) {
 
 const describe = (p, sub) =>
   p.kind === "shared"
-    ? `src/${sub ?? "components か lib"}/`
+    ? `src/${sub ?? "components or lib"}/`
     : p.kind === "entry"
-      ? "src/ 直下"
-      : `${p.dir}/-${sub ?? "components か -lib"}/`;
+      ? "directly under src/"
+      : `${p.dir}/-${sub ?? "components or -lib"}/`;
 
 const samePlace = (a, b) => a.kind === b.kind && (a.kind !== "route" || a.dir === b.dir);
 
@@ -150,20 +150,20 @@ function check(f) {
   const users = all.filter((u) => !isTest(u));
   if (!home || isTest(f) || isRouteFile(f)) return { f, users, skip: true };
   if (/\.css$/.test(f)) {
-    // CSS は使うコンポーネントと同じフォルダ
+    // CSS lives in the same folder as the component using it
     const bad = users.filter((u) => posix.dirname(u) !== posix.dirname(f));
     return {
       f,
       users,
-      problem: bad.length ? `使うファイルと別のフォルダにある (${bad.join(", ")})` : null,
+      problem: bad.length ? `in a different folder from its users (${bad.join(", ")})` : null,
     };
   }
   if (users.length === 0) {
-    if (home.kind === "entry") return { f, users, skip: true }; // main.tsx など
+    if (home.kind === "entry") return { f, users, skip: true }; // main.tsx etc.
     return {
       f,
       users,
-      problem: all.length ? "テストからしか使われていない" : "どこからも import されていない",
+      problem: all.length ? "used only from tests" : "not imported anywhere",
     };
   }
   const want = expectedPlace(users);
@@ -171,33 +171,35 @@ function check(f) {
   return {
     f,
     users,
-    problem: `${describe(want, home.sub)} に置くもの (今は ${describe(home, home.sub)})`,
+    problem: `belongs in ${describe(want, home.sub)} (currently ${describe(home, home.sub)})`,
   };
 }
 
-// --- 個別のファイルの説明 ---
+// --- Explaining individual files ---
 
 const args = process.argv.slice(2);
 if (args.length > 0) {
   for (const a of args) {
     const f = rel(resolve(a));
     if (!srcFiles.includes(f)) {
-      console.log(`${f}: src/ の検査対象のファイルではない`);
+      console.log(`${f}: not a file checked under src/`);
       continue;
     }
     const r = check(f);
     console.log(f);
-    console.log(r.users.length ? "  使う側:" : "  使う側: なし");
+    console.log(r.users.length ? "  users:" : "  users: none");
     for (const u of r.users)
-      console.log(`    ${u}  (${describe(userPlace(u)).replace(/-components か -lib\/$/, "")})`);
+      console.log(`    ${u}  (${describe(userPlace(u)).replace(/-components or -lib\/$/, "")})`);
     if (r.users.length)
-      console.log(`  置き場所: ${describe(expectedPlace(r.users), homeOf(f)?.sub)}`);
-    console.log(`  判定: ${r.skip ? "対象外 (ルート / テスト / エントリ)" : (r.problem ?? "OK")}`);
+      console.log(`  belongs in: ${describe(expectedPlace(r.users), homeOf(f)?.sub)}`);
+    console.log(
+      `  verdict: ${r.skip ? "not checked (route / test / entry)" : (r.problem ?? "OK")}`,
+    );
   }
   process.exit(0);
 }
 
-// --- 全体の検査 ---
+// --- Checking everything ---
 
 const problems = { placement: [], stray: [], unresolved, stale: [] };
 
@@ -210,10 +212,10 @@ for (const f of srcFiles.filter(isRouteFile)) {
   if (f === "src/routes/__root.tsx") continue;
   const text = readFileSync(join(ROOT, f), "utf8");
   if (!/createFileRoute|createLazyFileRoute/.test(text))
-    problems.stray.push(`${f}: ルートでないファイルが -components / -lib の外にある`);
+    problems.stray.push(`${f}: non-route file outside -components / -lib`);
 }
 
-// コメントなどに書かれた src/... のパス
+// src/... paths written in comments etc.
 const TEXT_ROOTS = ["src", "worker", "shared"].filter((d) => existsSync(join(ROOT, d)));
 const textFiles = [
   ...TEXT_ROOTS.flatMap((d) => walk(join(ROOT, d))),
@@ -221,13 +223,13 @@ const textFiles = [
     (n) => /\.(ts|mts|js|mjs|json|jsonc)$/.test(n) && !n.includes("lock"),
   ),
 ].filter((f) => /\.(tsx?|mts|m?js|jsonc?|css)$/.test(f) && !SKIP.has(f));
-// src/... と、src/routes/ を省いた (group)/... の書き方
+// src/... and the (group)/... form that omits src/routes/
 const PATH_RE = /(?<![\w@/.-])(?:src\/[\w()$./-]*[\w)]|\([\w-]+\)\/[\w()$./-]*\.(?:tsx?|css)\b)/g;
 for (const f of textFiles) {
   const lines = readFileSync(join(ROOT, f), "utf8").split("\n");
   lines.forEach((line, i) => {
     for (const m of line.matchAll(PATH_RE)) {
-      // 文末の . と、パスの外の閉じ括弧 ("(src/lib/x.ts)" など) を外す
+      // Strip a trailing . and closing parens outside the path (e.g. "(src/lib/x.ts)")
       let p = m[0];
       const count = (s, c) => s.split(c).length - 1;
       while (/[.)]$/.test(p) && (p.endsWith(".") || count(p, ")") > count(p, "(")))
@@ -242,10 +244,10 @@ for (const f of textFiles) {
 }
 
 const sections = [
-  ["置き場所が使う側と合っていない", problems.placement],
-  ["ルートのディレクトリ直下に置かれた部品 (ルートとして生成される)", problems.stray],
-  ["解決できない import / import() / vi.mock", problems.unresolved],
-  ["存在しないパスを書いている箇所 (コメントなど)", problems.stale],
+  ["Placement does not match users", problems.placement],
+  ["Pieces directly in a route directory (generated as routes)", problems.stray],
+  ["Unresolved import / import() / vi.mock", problems.unresolved],
+  ["Paths that do not exist (in comments etc.)", problems.stale],
 ];
 let count = 0;
 for (const [title, list] of sections) {
@@ -255,5 +257,5 @@ for (const [title, list] of sections) {
   for (const l of list) console.log(`- ${l}`);
   console.log();
 }
-if (count === 0) console.log("問題なし");
+if (count === 0) console.log("No problems found");
 process.exit(count === 0 ? 0 : 1);
