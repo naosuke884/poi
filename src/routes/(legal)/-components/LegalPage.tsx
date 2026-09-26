@@ -17,7 +17,9 @@ export function LegalPage({
 }) {
   return (
     <Stack maw={720} mx="auto" w="100%" pb="xl">
-      <Title order={1} size="h2">
+      {/* 本文の見出し (第 N 条 = h2、26px) より大きくする (同じ大きさだと階層が平らに見える)。
+          既定の h1 (34px) のままだとスマホ幅で「プライバシーポリシー」が 1 行に収まらないので、狭い画面では縮める */}
+      <Title order={1} fz="clamp(1.75rem, 1rem + 4vw, 2.125rem)">
         {title}
       </Title>
       <Text c="dimmed" size="sm">
