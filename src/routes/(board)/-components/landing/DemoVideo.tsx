@@ -49,6 +49,9 @@ export function DemoVideo() {
         <video
           ref={videoRef}
           src="/demo.mp4"
+          // 動画の 1 フレーム目は空の板なので、読み込み中や自動再生しないとき (動きを減らす) は
+          // 内容の入った終盤のフレームを見せる (issue #97)
+          poster="/demo-poster.webp"
           className={classes.demoVideo}
           autoPlay={!reduceMotion}
           controls={videoFullscreen}
