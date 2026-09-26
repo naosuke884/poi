@@ -32,9 +32,28 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// 欧文は Inter、日本語などそれ以外の文字は各環境のシステムフォントに任せる (fonts.css)
+// 欧文は Inter、日本語などそれ以外の文字は各環境のシステムフォントに任せる (fonts.css)。
+// 主要色は藍 (ai、6 番 = #3a5a9b。アイコン public/icon.svg などと同じ色。issue #96)。
+// Mantine 既定の青は白い文字とのコントラストが AA (4.5) に届かない (藍の 6 番は 6.7)。
+// ダークでは塗りの色を 7 番にする (既定の 8 番だと暗い背景 #242424 に沈む)
 const theme = createTheme({
   fontFamily: '"Inter Variable", system-ui, sans-serif',
+  colors: {
+    ai: [
+      "#eff3fa",
+      "#dde4f4",
+      "#bccae7",
+      "#97add8",
+      "#7390c9",
+      "#4b6fb9",
+      "#3a5a9b",
+      "#314b82",
+      "#283e6c",
+      "#203255",
+    ],
+  },
+  primaryColor: "ai",
+  primaryShade: { light: 6, dark: 7 },
 });
 
 const rootElement = document.getElementById("root")!;

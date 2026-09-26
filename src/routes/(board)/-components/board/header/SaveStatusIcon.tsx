@@ -36,7 +36,7 @@ function Inner({ state }: { state: SaveState }) {
       );
     case "saving":
       return (
-        <Status label="保存中…" color="blue">
+        <Status label="保存中…" color="ai">
           <CloudUploadIcon />
         </Status>
       );
