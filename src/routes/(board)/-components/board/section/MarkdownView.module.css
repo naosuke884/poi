@@ -56,16 +56,21 @@
 }
 
 /* 見出しレベルの印: 左の縦棒 (h1 太く primary / h2 細く灰色、h3 以下はなし)。
-   セクションの区切り線は横線なので、縦棒なら紛れない */
+   セクションの区切り線は横線なので、縦棒なら紛れない。
+   縦棒 + 余白 (12px) は本文の左の余白へはみ出させ、見出しの文字を本文と同じ位置から始める
+   (エディタには縦棒が無いので、はみ出させないと編集に切り替えるたびに見出しが横に動く。issue #100)。
+   はみ出す分はページの余白 (AppShell の padding) とスクショの余白 (section-export.ts の PAD_X) に収まる */
 .root :where(h1, h2) {
-  padding-left: 12px;
+  margin-left: -12px;
   border-left-style: solid;
 }
 .root :where(h1) {
+  padding-left: 8px;
   border-left-width: 4px;
   border-left-color: var(--mantine-primary-color-filled);
 }
 .root :where(h2) {
+  padding-left: 9px;
   border-left-width: 3px;
   border-left-color: var(--mantine-color-default-border);
 }
