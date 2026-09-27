@@ -1,0 +1,51 @@
+{
+  "skill_name": "poi-ui-conventions",
+  "evals": [
+    {
+      "id": 0,
+      "name": "copy-all-button",
+      "prompt": "板ページのヘッダーに、全セクションをまとめてクリップボードにコピーするボタンを付けて。",
+      "expected_output": "HeaderSlot button following SectionActions feedback pattern.",
+      "files": [],
+      "assertions": [
+        "The button is inserted from the board side via HeaderSlot (AppHeader / __root header is not modified to know about the board)",
+        "The icon uses the existing Svg/Tabler-path approach; no new icon package or @mantine/notifications is added",
+        "Has a Japanese aria-label and Japanese tooltip text",
+        "Success/failure feedback follows the SectionActions pattern (icon/tooltip change + live region), not a new toast system",
+        "Uses onMouseDown={keepEditorFocus} (or equivalent reuse) so clicking does not blur the editor",
+        "No hard-coded hex colours in the new code",
+        "The feedback button logic is shared with SectionActions (extracted/reused), not duplicated"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "delete-all-sections",
+      "prompt": "ユーザーメニューに「すべてのセクションを削除」を追加して。",
+      "expected_output": "Destructive action using the established undo or confirm-modal pattern and copy.",
+      "files": [],
+      "assertions": [
+        "The deletion can be undone via a 元に戻す action (BottomLeftNotice / useUndoableDelete)",
+        "The destructive control is red (color=\"red\")",
+        "A past-tense Japanese result message (〜しました) is shown after deleting",
+        "The action is disabled or guarded while offline",
+        "No new dependencies are added to package.json",
+        "The header/UserMenu does not import board route internals directly",
+        "The menu item is actually wired: any provider/slot it depends on sits above both the header and the board route (e.g. in __root.tsx), so it works on the board page"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "landing-contact-link",
+      "prompt": "ランディングページのフッターに「お問い合わせ」リンクを足して。",
+      "expected_output": "Footer link that reuses CONTACT_URL/ContactLink and matches the footer style.",
+      "files": [],
+      "assertions": [
+        "Reuses CONTACT_URL or ContactLink from src/components/ContactLink.tsx instead of hard-coding an address",
+        "Matches the existing footer items (Anchor size=\"xs\", the ・ separator)",
+        "The link label is Japanese (お問い合わせ)",
+        "No hard-coded hex colours and no new dependencies",
+        "npm run lint and npm run typecheck pass"
+      ]
+    }
+  ]
+}

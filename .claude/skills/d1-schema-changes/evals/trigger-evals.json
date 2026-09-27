@@ -1,0 +1,66 @@
+[
+  {
+    "query": "セクションに色を付けられるようにしたい。まずは保存できるようにDB側から",
+    "should_trigger": true
+  },
+  {
+    "query": "user_setting にタイムゾーンを保存するカラム足して",
+    "should_trigger": true
+  },
+  {
+    "query": "memo テーブルの collapsed ってもう使ってないよね？消しといて",
+    "should_trigger": true
+  },
+  {
+    "query": "better-auth を 1.8 に上げたい。何か気をつけることある？",
+    "should_trigger": true
+  },
+  {
+    "query": "drizzle/0009 を作ったけど db:migrate:local で NOT NULL constraint failed って言われる",
+    "should_trigger": true
+  },
+  {
+    "query": "ユーザーごとに最後にログインした日時を持っておきたい",
+    "should_trigger": true
+  },
+  {
+    "query": "memo の content に全文検索用のインデックス貼れる？",
+    "should_trigger": true
+  },
+  {
+    "query": "board テーブルの revision を integer に変えたい",
+    "should_trigger": true
+  },
+  {
+    "query": "GET /api/board のレスポンスに ttlDays を含めるのやめたい",
+    "should_trigger": false
+  },
+  {
+    "query": "PUT /api/board で 1000 セクション送ると遅い。どこがボトルネックか見て",
+    "should_trigger": false
+  },
+  {
+    "query": "ローカルの D1 に入ってる自分のメモを全部見たい。SQL どう打つ？",
+    "should_trigger": false
+  },
+  {
+    "query": "shared/constants.ts の BOARD_MAX_LENGTH を 2 倍にして",
+    "should_trigger": false
+  },
+  {
+    "query": "worker/board/sweep.ts の cron を 30 分おきにしたい",
+    "should_trigger": false
+  },
+  {
+    "query": "routes.test.ts の getPlatformProxy が遅いので速くする方法ある？",
+    "should_trigger": false
+  },
+  {
+    "query": "セクションの保存期間の選択肢に 60 日を足したい",
+    "should_trigger": false
+  },
+  {
+    "query": "drizzle-orm の select で join する書き方教えて",
+    "should_trigger": false
+  }
+]

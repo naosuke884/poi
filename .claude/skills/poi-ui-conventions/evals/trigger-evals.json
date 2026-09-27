@@ -1,0 +1,66 @@
+[
+  {
+    "query": "セクションの区切り線にある削除ボタン、スマホだと押しにくいので大きくして",
+    "should_trigger": true
+  },
+  {
+    "query": "保存に失敗したときのメッセージがわかりにくいって言われた。文言見直して",
+    "should_trigger": true
+  },
+  {
+    "query": "ユーザーメニューに『エクスポート』を追加して",
+    "should_trigger": true
+  },
+  {
+    "query": "ダークモードでまとめ表示の見出しが読みにくい",
+    "should_trigger": true
+  },
+  {
+    "query": "ランディングページに FAQ セクションを足したい",
+    "should_trigger": true
+  },
+  {
+    "query": "オフラインのときに設定ボタンを押せないようにして、理由も出して",
+    "should_trigger": true
+  },
+  {
+    "query": "セクションを全部折りたためるトグルをヘッダーに置きたい",
+    "should_trigger": true
+  },
+  {
+    "query": "このボタン、ツールチップがタップしたあと消えない",
+    "should_trigger": true
+  },
+  {
+    "query": "SectionRow.tsx を (board) から src/components に移して",
+    "should_trigger": false
+  },
+  {
+    "query": "まったく新しいブランドで、poi とは別の LP を作りたい。大胆なデザインで",
+    "should_trigger": false
+  },
+  {
+    "query": "Board.test.tsx でボタンのクリックをテストする書き方",
+    "should_trigger": false
+  },
+  {
+    "query": "GET /api/board のレスポンスを速くしたい",
+    "should_trigger": false
+  },
+  {
+    "query": "Mantine 9 から 10 にアップグレードしたい。breaking changes 調べて",
+    "should_trigger": false
+  },
+  {
+    "query": "og.png の画像を作り直して",
+    "should_trigger": false
+  },
+  {
+    "query": "プライバシーポリシーの第3条の文言を法務の指摘どおりに直して(文面は下に貼る)",
+    "should_trigger": false
+  },
+  {
+    "query": "devサーバーで画面が表示されない",
+    "should_trigger": false
+  }
+]

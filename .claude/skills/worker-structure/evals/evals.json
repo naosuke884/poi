@@ -1,0 +1,50 @@
+{
+  "skill_name": "worker-structure",
+  "evals": [
+    {
+      "id": 0,
+      "name": "export-endpoint",
+      "prompt": "板の全セクションを1つのMarkdownテキストとして返す GET /api/board/export を作って。フロントからも型付きで呼べるようにしておいて。",
+      "expected_output": "Chained Hono route under requireAuth, part of ApiType, pure helper with test.",
+      "files": [],
+      "assertions": [
+        "The route is added to the boardRoutes method chain in worker/board/routes.ts (not a separate app.get statement, not in index.ts)",
+        "The route is behind requireAuth and takes the user id from c.get(\"user\"), not from the request",
+        "The frontend can call it typed via the hc<ApiType> client (api.board.export.$get) without redeclaring response types by hand",
+        "The Markdown-joining logic is a pure function with a unit test next to it",
+        "No value (non-type) import from worker/ into src/",
+        "npm run typecheck and npm test pass"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "session-cleanup-cron",
+      "prompt": "期限切れのセッション行が溜まっていくのが気になる。1日1回、期限切れセッションを消す定期処理を追加して。",
+      "expected_output": "Second cron, branching handler, deletion function in auth context, tested.",
+      "files": [],
+      "assertions": [
+        "A daily cron expression is added to triggers.crons in wrangler.jsonc while keeping the existing hourly one",
+        "The scheduled handler in worker/index.ts branches on controller.cron",
+        "The deletion function lives in worker/auth/ (not in index.ts or board/)",
+        "The deletion function takes db and now as parameters, and the handler stays a thin adapter",
+        "A test for the deletion function is added",
+        "npm run typecheck and npm test pass"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "add-secret",
+      "prompt": "これからメール送信に Resend を使う予定なので、RESEND_API_KEY を worker で使える secret として追加しておいて。まだ使う処理はなくていい。",
+      "expected_output": "Secret declared in env.d.ts, example file, auth config dummy Env; not in wrangler vars.",
+      "files": [],
+      "assertions": [
+        "RESEND_API_KEY's type is declared in worker/env.d.ts (merged into Env)",
+        "RESEND_API_KEY is added to .dev.vars.example",
+        "The dummy Env literal in better-auth.config.ts is updated so typecheck passes",
+        "The secret is not put in wrangler.jsonc vars (no plaintext secret in config)",
+        "Tells the user to set it with wrangler secret put (and in .dev.vars locally)",
+        "npm run typecheck passes"
+      ]
+    }
+  ]
+}

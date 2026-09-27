@@ -1,0 +1,50 @@
+{
+  "skill_name": "verifying-in-app",
+  "evals": [
+    {
+      "id": 0,
+      "name": "autosave-in-browser",
+      "prompt": "板ページでセクションを追加して何か書いたら、ちゃんとサーバーに保存されるか実際のアプリで動作確認して。スクショも撮って見せて。",
+      "expected_output": "Signed-in board checked in the running app, save confirmed, screenshot saved.",
+      "files": [],
+      "assertions": [
+        "Reached a signed-in board page without asking the user to log in with Google (e.g. seeded a local session)",
+        "A screenshot of the signed-in board page is saved in outputs/",
+        "Confirmed the save against the server (observed PUT /api/board 2xx or re-read the content via GET /api/board)",
+        "Did not run any remote wrangler command, deploy, or delete .wrangler/state",
+        "Left the dev server on :5173 responding and did not restart it (it was already responding)",
+        "Used its own test user (e.g. seed-session --email) rather than the shared default local-test@example.com account, or explains why sharing is safe"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "stale-revision-409",
+      "prompt": "PUT /api/board に古い revision を送ったら 409 Stale が返るはずなんだけど、ローカルで動いてるサーバーで実際に確かめて。",
+      "expected_output": "Real HTTP requests against localhost:5173 with an authenticated session show 409 {error: Stale}.",
+      "files": [],
+      "assertions": [
+        "Sent real HTTP requests to the running server on localhost:5173 (not only reading code or running unit tests)",
+        "The requests were authenticated (got past 401) without a real Google login",
+        "Sent a revision that had been current and was then superseded by a successful PUT (not only a made-up UUID or null)",
+        "Reports the observed 409 response with body {\"error\":\"Stale\"}",
+        "Checked after the 409 that the board was not overwritten (GET shows the previous content/revision)",
+        "Did not run any remote wrangler command or deploy"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "mobile-header-screenshot",
+      "prompt": "スマホ幅(390px くらい)で、ログインした状態の板ページのヘッダーが1行に収まってるか確認して。スクショも見せて。",
+      "expected_output": "Signed-in board at ~390px width, screenshot, a checked answer about the header row.",
+      "files": [],
+      "assertions": [
+        "A screenshot of the signed-in board page at a phone width (about 360–430px) is saved in outputs/",
+        "Reached the signed-in board without a real Google login",
+        "Answers whether the header fits in one row with concrete evidence (measured header height/element positions, or pointing at the screenshot), not just an assumption",
+        "Used its own test user (seed-session --email) rather than the shared default account",
+        "Left the dev server on :5173 responding and did not restart it",
+        "Did not run any remote wrangler command or deploy"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+[
+  {
+    "query": "さっき直したセクション削除の元に戻すボタン、実際の画面で本当に戻るか確認しておいて。スクショもほしい",
+    "should_trigger": true
+  },
+  {
+    "query": "板ページをスマホ幅で開いたときのヘッダー、今どう見えてるか撮って見せて",
+    "should_trigger": true
+  },
+  {
+    "query": "devサーバー落ちてない？localhost:5173 が真っ白なんだけど",
+    "should_trigger": true
+  },
+  {
+    "query": "PUT /api/settings で memoTtlDays に 7 を送ったらちゃんと保存されるか、ローカルで動いてるやつに実際に投げて確かめて",
+    "should_trigger": true
+  },
+  {
+    "query": "ログインした状態のトップページで、まとめ表示に切り替えたときにコンソールエラーが出てないかブラウザで見てほしい",
+    "should_trigger": true
+  },
+  {
+    "query": "issue #98 の「タブを2つ開いてると保存が消える」ってやつ、ブラウザで再現できるかやってみて",
+    "should_trigger": true
+  },
+  {
+    "query": "UI の変更終わったら動作確認までしてから報告して。ヘッダーのボタン並び替えたやつ",
+    "should_trigger": true
+  },
+  {
+    "query": "オフラインバナーが出るか、ネットワーク切った状態で画面確認して",
+    "should_trigger": true
+  },
+  {
+    "query": "pruneExpired のユニットテストが落ちてる。原因調べて",
+    "should_trigger": false
+  },
+  {
+    "query": "vite.config.ts の server.port を 5173 から 3000 に変えたい",
+    "should_trigger": false
+  },
+  {
+    "query": "Board.test.tsx に自動保存のテストを1本足して",
+    "should_trigger": false
+  },
+  {
+    "query": "本番の poinote.app で 500 が出てるってユーザーから連絡きた。Cloudflare のログどこで見るんだっけ",
+    "should_trigger": false
+  },
+  {
+    "query": "playwright を devDependencies に入れて e2e テストの仕組みを作りたい。CI でも回したい",
+    "should_trigger": false
+  },
+  {
+    "query": "README のデモ動画を最新の画面で撮り直したい",
+    "should_trigger": false
+  },
+  {
+    "query": "npm run build が型エラーで落ちるので直して",
+    "should_trigger": false
+  },
+  {
+    "query": "このスクショ(添付)のボタンの余白、もう少し詰められる？CSS どこ？",
+    "should_trigger": false
+  }
+]

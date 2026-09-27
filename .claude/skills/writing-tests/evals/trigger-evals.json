@@ -1,0 +1,66 @@
+[
+  {
+    "query": "planBoardSync にテスト足して。期限切れと新規が混ざるケース",
+    "should_trigger": true
+  },
+  {
+    "query": "さっき直した undo のバグ、再発防止のテストも入れといて",
+    "should_trigger": true
+  },
+  {
+    "query": "Board.test.tsx の自動保存のテストが CI でだけ落ちる",
+    "should_trigger": true
+  },
+  {
+    "query": "list-editing の Tab インデントにテストがない気がする。書いて",
+    "should_trigger": true
+  },
+  {
+    "query": "worker/auth/in-app-browser.ts の判定に LINE のUAを追加して。テストも",
+    "should_trigger": true
+  },
+  {
+    "query": "vitest で1ファイルだけ回すコマンドなんだっけ",
+    "should_trigger": true
+  },
+  {
+    "query": "useAccountActions のログアウト失敗時の挙動をテストしたい。router と auth-client のモックどうする？",
+    "should_trigger": true
+  },
+  {
+    "query": "routes.test.ts で D1 をモックしたほうが速くない？",
+    "should_trigger": true
+  },
+  {
+    "query": "テストファイルを src/lib から (board)/-lib に移したら import が壊れた。どこに置くのが正しい？",
+    "should_trigger": false
+  },
+  {
+    "query": "npm run lint が落ちる。biome の format エラー",
+    "should_trigger": false
+  },
+  {
+    "query": "本番で保存が 409 になる頻度が高い。ログを見たい",
+    "should_trigger": false
+  },
+  {
+    "query": "実際の画面で自動保存されるか確認して",
+    "should_trigger": false
+  },
+  {
+    "query": "CI の GitHub Actions に typecheck を追加したい(もうある？)",
+    "should_trigger": false
+  },
+  {
+    "query": "memo テーブルに column 足したら routes.test.ts の insert が落ちた。マイグレーションどう書く？",
+    "should_trigger": false
+  },
+  {
+    "query": "Playwright で e2e を書く環境を CI に作りたい",
+    "should_trigger": false
+  },
+  {
+    "query": "board-ops.ts の removeGroup のロジックを説明して",
+    "should_trigger": false
+  }
+]

@@ -1,0 +1,53 @@
+{
+  "skill_name": "writing-tests",
+  "evals": [
+    {
+      "id": 0,
+      "name": "route-test-empty-sections",
+      "prompt": "PUT /api/board に sections を空配列で送ったとき、既存のセクションが全部消えて 200 が返ることをテストで保証しておきたい。テスト書いて。",
+      "expected_output": "Route test in routes.test.ts on real local D1 with Japanese title.",
+      "files": [],
+      "assertions": [
+        "The test is added to worker/board/routes.test.ts using its existing getPlatformProxy / app.request harness (D1 not mocked)",
+        "The test title is in Japanese",
+        "The test asserts both the HTTP status and the rows remaining in the DB",
+        "The test checks that the new revision differs from the previous one",
+        "The test checks that another user's rows are not deleted",
+        "Ran the targeted test file and reports it passing",
+        "Did not modify production code"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "pruneExpired-boundary",
+      "prompt": "pruneExpired で、期限ちょうどのセクションが残るのか消えるのか曖昧。境界のテストを追加して挙動をはっきりさせて。",
+      "expected_output": "Pure unit test next to board.ts pinning the boundary with explicit time.",
+      "files": [],
+      "assertions": [
+        "The test is added to src/routes/(board)/-lib/data/board.test.ts (next to board.ts)",
+        "It is a pure unit test (no vi.mock, no jsdom environment added)",
+        "Time is passed explicitly (no vi.useFakeTimers / Date.now stubbing)",
+        "Pins expiresAt === now and expiresAt === now + 1ms (adjacent values, not a far-away fixture)",
+        "The test title is in Japanese",
+        "Ran the targeted test file and reports it passing",
+        "No production logic is changed (comments only at most)",
+        "Does not cite an issue number that does not exist"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "minimalChange-emoji",
+      "prompt": "minimalChange に、日本語や絵文字(サロゲートペア)を含む文字列を編集したときのテストを足して。",
+      "expected_output": "Pure unit tests next to minimal-change.ts covering surrogate pairs.",
+      "files": [],
+      "assertions": [
+        "Tests are added to src/routes/(board)/-lib/editor/minimal-change.test.ts",
+        "Pure unit tests (no vi.mock, no jsdom environment added)",
+        "At least one case edits next to or inside a surrogate-pair emoji and checks from/to/insert",
+        "The test titles are in Japanese",
+        "Ran the targeted test file and reports the result",
+        "No production logic is changed (or, if a real bug was found, the report says so and a failing test came first)"
+      ]
+    }
+  ]
+}

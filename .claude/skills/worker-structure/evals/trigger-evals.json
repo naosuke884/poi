@@ -1,0 +1,66 @@
+[
+  {
+    "query": "GET /api/board/stats でセクション数と総文字数を返すエンドポイントがほしい",
+    "should_trigger": true
+  },
+  {
+    "query": "ログインしてないときに /api/settings 叩いたら 401 じゃなくて 500 が返ってくる。直して",
+    "should_trigger": true
+  },
+  {
+    "query": "Resend で週1回、期限が近いセクションをメールで知らせる機能を作りたい。どこに何を置く？",
+    "should_trigger": true
+  },
+  {
+    "query": "worker/board/routes.ts が長くなってきたので分割したい",
+    "should_trigger": true
+  },
+  {
+    "query": "PUT /api/board のバリデーションエラーのとき、どのフィールドが悪いか返すようにして",
+    "should_trigger": true
+  },
+  {
+    "query": "新しい secret の RESEND_API_KEY を追加したい",
+    "should_trigger": true
+  },
+  {
+    "query": "src から worker の planBoardSync を直接呼びたいんだけどいい？",
+    "should_trigger": true
+  },
+  {
+    "query": "オフラインでも使えるように、サーバーと同じ文字数チェックをフロントでもしたい。共通化して",
+    "should_trigger": true
+  },
+  {
+    "query": "src/routes/(board)/-components に置いてる SectionRow を別ページでも使いたい",
+    "should_trigger": false
+  },
+  {
+    "query": "memo テーブルに pinned カラムを追加して",
+    "should_trigger": false
+  },
+  {
+    "query": "hono の最新版で breaking change ある？",
+    "should_trigger": false
+  },
+  {
+    "query": "ログイン画面のボタンの文言を変えたい",
+    "should_trigger": false
+  },
+  {
+    "query": "wrangler deploy したら本番が壊れた。ロールバックしたい",
+    "should_trigger": false
+  },
+  {
+    "query": "Board.test.tsx が flaky。たまに autosave のテストが落ちる",
+    "should_trigger": false
+  },
+  {
+    "query": "Cloudflare Workers の無料枠の CPU 時間の上限って何ms？",
+    "should_trigger": false
+  },
+  {
+    "query": "devサーバー再起動して",
+    "should_trigger": false
+  }
+]
