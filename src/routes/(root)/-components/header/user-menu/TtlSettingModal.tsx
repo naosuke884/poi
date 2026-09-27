@@ -83,12 +83,7 @@ export function TtlSettingModal({
   return (
     <Modal opened={opened} onClose={onClose} title="保存期間" centered>
       <Stack gap="md">
-        {/* 1 つの文字列にする (JSX で行を分けると、句点の後ろに半角スペースが入る) */}
-        <Text size="sm">
-          {"セクションが書かれてから自動で削除されるまでの日数です。" +
-            "いま保存されているセクションにも新しい期限が適用されます " +
-            "(短くすると、期限を過ぎたセクションはすぐに消えます)。"}
-        </Text>
+        <Text size="sm">セクションが書かれてから自動で削除されるまでの日数です。</Text>
         {value === null && error === null ? (
           <Skeleton h={60} />
         ) : (
