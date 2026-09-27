@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          # コミットメッセージの lint で push / PR の範囲のコミットを読むため、履歴をすべて取る
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -30,6 +33,24 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # コミットメッセージの lint (commitlint.config.js)。PR はベースからの差分、push は前回の push からの差分を見る。
+      # ブランチを新しく作った push (before が 0 埋め) や force push (before が履歴に無い) では範囲が取れないので、先頭のコミットだけ見る
+      - name: commitlint
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            npx commitlint --from "$PR_BASE" --to "$PR_HEAD" --verbose
+          elif [ -z "${BEFORE//0/}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            npx commitlint --last --verbose
+          else
+            npx commitlint --from "$BEFORE" --to "$AFTER" --verbose
+          fi
 
       - run: npm run lint
 

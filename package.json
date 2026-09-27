@@ -27,7 +27,8 @@
     "auth:schema": "npx auth@1.7.2 generate --config better-auth.config.ts --output worker/auth/schema.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply poi --local",
-    "db:migrate:remote": "wrangler d1 migrations apply poi --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply poi --remote",
+    "prepare": "husky"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.2",
@@ -55,6 +56,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
     "@cloudflare/vite-plugin": "^1.54.1",
+    "@commitlint/cli": "^21.2.3",
     "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.35",
     "@types/node": "^26.4.0",
@@ -62,6 +64,7 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
     "drizzle-kit": "^0.31.10",
+    "husky": "^9.1.7",
     "jsdom": "^30.1.1",
     "postcss": "^8.5.26",
     "postcss-preset-mantine": "^1.18.0",
