@@ -325,14 +325,14 @@ describe("Board", () => {
     window.getSelection()!.removeAllRanges();
   });
 
-  it("板全体の文字数上限を超える入力は弾く (自動で足す記号も含めて)", async () => {
+  it("板全体の文字数上限を超える入力は弾く (Enter で続ける記号も含めて)", async () => {
     // 他のセクションと区切り (3 文字) で、残りは 7 文字
     await mount([{ content: "x".repeat(BOARD_MAX_LENGTH - 3 - 7) }]);
     await addSection();
     await type("- abc");
     expect(editor().state.doc.toString()).toBe("- abc");
-    // 入力した 2 文字だけなら 7 文字に収まるが、記号 `- ` が足されて 9 文字になるので弾く
-    await type("\nd");
+    // 改行 1 文字なら 7 文字に収まるが、Enter は次の項目の記号 `- ` も足して 8 文字になるので弾く
+    await key("Enter");
     expect(editor().state.doc.toString()).toBe("- abc");
     await type("de");
     expect(editor().state.doc.toString()).toBe("- abcde");

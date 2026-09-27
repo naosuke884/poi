@@ -3,10 +3,15 @@ import { EditorSelection, EditorState, type Extension } from "@codemirror/state"
 import { type Command, EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
 import { insertNewlineContinueList } from "./list-continue";
-import { forceListMarkers, hashStartsHeading, spaceAfterHashStartsHeading } from "./list-force";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "./list-indent";
+import {
+  deleteListMarkerBackward,
+  deleteListMarkerForward,
+  hashStartsHeading,
+  spaceAfterHashStartsHeading,
+} from "./list-markers";
 
-// Enter / Tab / 自動の箇条書きなど、エディタの編集コマンドの結果をテキストで確かめる。
+// Enter / Tab / Backspace / 見出しの書き出しなど、エディタの編集コマンドの結果をテキストで確かめる。
 // doc の `|` がカーソル位置 (取り除いてから置く)
 
 const views: EditorView[] = [];
@@ -74,12 +79,15 @@ describe("Enter (insertNewlineContinueList)", () => {
     expect(run(insertNewlineContinueList, "- a\n\t- |")).toBe("- a\n- |");
   });
 
-  it("いちばん外の空の項目はセクションの区切りにする", () => {
-    expect(run(insertNewlineContinueList, "- a\n- |")).toBe("- a\n\n\n|");
+  it("いちばん外の空の項目は記号を消し、空行を挟んでリストを抜ける (#104)", () => {
+    expect(run(insertNewlineContinueList, "- a\n- |")).toBe("- a\n\n|");
+    expect(run(insertNewlineContinueList, "- |")).toBe("|");
   });
 
-  it("セクションが空の項目だけなら何もしない", () => {
-    expect(run(insertNewlineContinueList, "- |")).toBe("- |");
+  it("リストを抜けた後の Enter は普通の改行 (もう 1 回で空行 2 つ = セクション区切り)", () => {
+    const view = editor("- a\n- |");
+    for (let i = 0; i < 2; i++) insertNewlineContinueList(view);
+    expect(text(view)).toBe("- a\n\n\n|");
   });
 
   it("リストの外は普通の改行", () => {
@@ -126,40 +134,37 @@ describe("Tab / Shift+Tab (list-indent)", () => {
   });
 });
 
-describe("常に箇条書き (forceListMarkers)", () => {
-  const ext = [forceListMarkers, hashStartsHeading, spaceAfterHashStartsHeading];
-
-  it("記号の無い行に書くと `- ` を足す", () => {
-    const view = editor("|", ext);
-    type(view, "a");
-    expect(text(view)).toBe("- a|");
+describe("Backspace / Delete (deleteListMarkerBackward / Forward)", () => {
+  it("記号の直後の Backspace は記号を消して普通の行に戻す (#104)", () => {
+    expect(run(deleteListMarkerBackward, "- a\n- |b")).toBe("- a\n|b");
+    expect(run(deleteListMarkerBackward, "- a\n1. |")).toBe("- a\n|");
   });
 
-  it("記号を選択して消すと、付け直した記号の後ろにカーソルが来る", () => {
-    const view = editor("- foo", ext);
-    view.dispatch({
-      changes: { from: 0, to: 2 },
-      selection: EditorSelection.cursor(0),
-      userEvent: "delete.backward",
-    });
-    expect(text(view)).toBe("- |foo");
-    type(view, "x");
-    expect(text(view)).toBe("- x|foo");
+  it("インデントした項目では 1 段戻す", () => {
+    expect(run(deleteListMarkerBackward, "- a\n\t- |b")).toBe("- a\n- |b");
   });
 
-  it("見出しの行には足さない", () => {
-    const view = editor("# |", ext);
-    type(view, "a");
-    expect(text(view)).toBe("# a|");
+  it("doc の先頭 (セクションの結合) と記号より右では何もしない", () => {
+    const view = editor("|- a");
+    expect(deleteListMarkerBackward(view)).toBe(false);
+    expect(run(deleteListMarkerBackward, "- a|")).toBe("- a|");
   });
 
-  it("インデントした見出しの行にも足さない (表示でも見出しになる)", () => {
-    for (const doc of ["    # |", "\t# |", "\t\t## |"]) {
-      const view = editor(doc, ext);
-      type(view, "a");
-      expect(text(view)).toBe(doc.replace("|", "a|"));
-    }
+  it("行末の Delete は次の項目の記号ごと結合する", () => {
+    expect(run(deleteListMarkerForward, "- a|\n- b")).toBe("- a|b");
   });
+});
+
+describe("記号を自動で足さない (#104)", () => {
+  it("記号の無い行に書いてもそのまま", () => {
+    const view = editor("- a\n|");
+    type(view, "b");
+    expect(text(view)).toBe("- a\nb|");
+  });
+});
+
+describe("見出しの書き出し", () => {
+  const ext = [hashStartsHeading, spaceAfterHashStartsHeading];
 
   it("空の項目で # を打つと見出しの書き出しにする", () => {
     const view = editor("- a\n\t- |", ext);

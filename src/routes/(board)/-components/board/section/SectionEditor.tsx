@@ -22,17 +22,17 @@ import {
 import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { cursorOf, insertNewlineContinueList } from "../../../-lib/editor/list-continue";
 import {
-  deleteListMarkerBackward,
-  deleteListMarkerForward,
-  forceListMarkers,
-  hashStartsHeading,
-  spaceAfterHashStartsHeading,
-} from "../../../-lib/editor/list-force";
-import {
   indentLess,
   indentMoreOrInsertTab,
   spaceIndentsListItem,
 } from "../../../-lib/editor/list-indent";
+import {
+  deleteListMarkerBackward,
+  deleteListMarkerForward,
+  hashStartsHeading,
+  imeHashStartsHeading,
+  spaceAfterHashStartsHeading,
+} from "../../../-lib/editor/list-markers";
 import { minimalChange } from "../../../-lib/editor/minimal-change";
 import { sectionMarkdown } from "../../../-lib/editor/section-markdown";
 import { viewportInsets } from "../../../-lib/use-keyboard-inset";
@@ -153,7 +153,7 @@ function visibleBand(view: EditorView): { top: number; bottom: number } {
 /**
  * 編集中セクションのエディタ (CodeMirror 6)。Board が編集中の 1 セクションだけこれで表示する。
  * テキストは常に Markdown ソースそのもので、見出し・記号・URL は装飾するだけ (src/routes/(board)/-lib/editor/section-markdown.ts)。
- * 本文は常に箇条書き: Enter は項目を続け、編集で触れた行には記号を自動で足す (src/routes/(board)/-lib/editor/list-force.ts)。
+ * 箇条書きは Enter で項目を続け、空の項目の Enter でリストを抜ける (src/routes/(board)/-lib/editor/list-continue.ts)。
  * Textarea 譲りの使い勝手も保つ: 散文向けの spellcheck / 自動大文字化、文字数上限、複数行のプレースホルダ。
  * セクションの境界 (先頭で Backspace / 末尾で Delete / 最初の行で ↑ / 最後の行で ↓) はキー処理を横取りして
  * Board のコールバックに渡す。Board 側は textarea の selectionStart などに依存しない。
@@ -237,12 +237,12 @@ export function SectionEditor({
           keymap.of([...standardKeymap, ...historyKeymap]),
           // 記号の直後のスペースはインデントにする (モバイルの Tab 代わり。src/routes/(board)/-lib/editor/list-indent.ts)
           spaceIndentsListItem,
-          // 本文は常に箇条書き: 編集で触れた行に `- ` を自動で足す (src/routes/(board)/-lib/editor/list-force.ts)
-          forceListMarkers,
           // 空の項目で `#` を打ったら記号を消して見出しにする (箇条書きの途中に見出しを書く入り口)
           hashStartsHeading,
           // `#foo` と書いてしまった項目でも、後から # の直後にスペースを入れたら見出しにする
           spaceAfterHashStartsHeading,
+          // IME で確定した # / ＃ にも上の 2 つと同じことをする
+          imeHashStartsHeading,
           EditorView.lineWrapping,
           // カーソルへのスクロール (window をスクロールする: .cm-scroller は overflow: visible) で、固定ヘッダーの
           // 下にカーソルが隠れず、下は次に書く行ぶんの余白が残るようにする。
@@ -256,7 +256,7 @@ export function SectionEditor({
           // 超えた後に 1 文字ずつ消して戻れるように (textarea の maxLength も削除は弾かない)。
           // 増える変更でも IME の変換中は通す (弾くと変換が壊れる。超過分は保存時の検証で分かる)。
           // transactionFilter は後に登録したものから先に動くので、Prec.highest で最後に動かし、
-          // forceListMarkers などが足した記号も含めた長さで判定する
+          // Enter の継続などが足した記号も含めた長さで判定する
           Prec.highest(
             EditorState.transactionFilter.of((tr) => {
               if (
@@ -383,7 +383,7 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
       callbacks.current.onBackspaceAtStart();
       return true;
     }
-    // 記号より左では記号やインデントをまとめて扱う (src/routes/(board)/-lib/editor/list-force.ts)。
+    // 記号より左では記号やインデントをまとめて扱う (src/routes/(board)/-lib/editor/list-markers.ts)。
     // それ以外は 1 文字ずつ (行頭の空白をインデント単位でまとめて消さない。Textarea と同じ)
     return deleteListMarkerBackward(view) || deleteCharBackwardStrict(view);
   };
@@ -398,7 +398,7 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
           callbacks.current.onDeleteAtEnd();
           return true;
         }
-        // 行末では次の行の記号ごと結合する (src/routes/(board)/-lib/editor/list-force.ts)。それ以外は通常の削除
+        // 行末では次の行の記号ごと結合する (src/routes/(board)/-lib/editor/list-markers.ts)。それ以外は通常の削除
         return deleteListMarkerForward(view);
       },
     },
@@ -424,9 +424,8 @@ function boundaryKeymap(callbacks: { current: Callbacks }): KeyBinding[] {
         return last && callbacks.current.onArrowDownAtLastLine();
       },
     },
-    // Enter は箇条書きを同じ階層で続ける (本文は常に箇条書きなので Shift+Enter も同じ。
-    // 逃げ道の単純な改行を残しても、次に書いた行へ forceListMarkers が記号を足すので意味が無い)
-    { key: "Enter", run: insertNewlineContinueList, shift: insertNewlineContinueList },
+    // Enter は箇条書きを同じ階層で続ける。Shift+Enter は standardKeymap の普通の改行 (項目の続きの行を書く逃げ道)
+    { key: "Enter", run: insertNewlineContinueList },
     // Tab はインデント (リストの階層下げ / タブ挿入)、Shift+Tab は戻し (src/routes/(board)/-lib/editor/list-indent.ts)
     { key: "Tab", run: indentMoreOrInsertTab, shift: indentLess },
     // Esc で編集をやめる (blur して onEscape → Board が Markdown 表示に切り替え、そこへフォーカスを移す)。

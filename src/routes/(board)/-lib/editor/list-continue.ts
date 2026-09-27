@@ -14,10 +14,12 @@ export function cursorOf(view: EditorView): number | null {
 /**
  * Enter で箇条書きを同じ階層で続ける。
  * - 項目の途中 (記号より後ろ) で Enter → 同じインデント + 同じ記号 (番号付きは +1) を次の行に足す
- * - 空の項目で Enter → インデントがあれば 1 段戻す。いちばん外の空の項目なら行をセクション区切り
- *   (空行 2 つ。Board の splitAtSeparator が拾う) にして、新しいセクションで書き続けられるようにする
- *   (本文は常に箇条書きなのでリストからは抜けない。Enter 連打で次のセクションへ、の流れは保つ)
+ * - 空の項目で Enter → インデントがあれば 1 段戻す。いちばん外なら記号を消し、空行を挟んでリストを抜ける
+ *   (空行を挟まないと、次に書いた行が Markdown では前の項目の続きになる)。
+ *   もう一度 Enter で空行 2 つ = セクション区切りになるので、Enter 連打で次のセクションへ進める
  * - それ以外 (リスト外・記号より前・選択あり・IME 変換中) → 普通の改行 (insertNewline)
+ * Shift+Enter は SectionEditor が insertNewline のままにしているので、項目の中で
+ * 続きの行を書きたいときの逃げ道になる
  */
 export const insertNewlineContinueList: Command = (view) => {
   const { state } = view;
@@ -32,22 +34,16 @@ export const insertNewlineContinueList: Command = (view) => {
   if (!line.text.slice(m[0].length).trim()) {
     if (m[1]!.length > 0) {
       // 空の項目でインデントがあれば 1 段戻す
-      view.dispatch({
-        changes: dedentChange(line)!,
-        userEvent: "delete.dedent",
-      });
+      view.dispatch({ changes: dedentChange(line)!, userEvent: "delete.dedent" });
       return true;
     }
-    // セクションがこの空の項目だけなら何もしない (空のセクションを増やしても仕方がない)
-    if (state.doc.lines === 1) return true;
-    // 行を丸ごと区切りにする。前の (または次の) 行との間の改行と合わせて空行 2 つ = SECTION_SEPARATOR になる。
-    // カーソルは次のセクションの先頭に相当する位置へ (Board が focus を計算し直す)
-    const first = line.number === 1;
-    const insert = first ? "\n\n\n" : "\n\n";
-    const to = line.number === state.doc.lines ? line.to : line.to + 1;
+    // いちばん外の空の項目: 記号を消し、前の行が空でなければ空行を 1 つ挟んでリストを抜ける
+    const blank = line.number > 1 && state.doc.line(line.number - 1).text.trim() !== "";
+    const insert = blank ? state.lineBreak : "";
     view.dispatch({
-      changes: { from: line.from, to, insert },
+      changes: { from: line.from, to: line.to, insert },
       selection: EditorSelection.cursor(line.from + insert.length),
+      scrollIntoView: true,
       userEvent: "input",
     });
     return true;

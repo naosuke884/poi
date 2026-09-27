@@ -1,75 +1,24 @@
-import {
-  type Annotation,
-  type ChangeDesc,
-  ChangeSet,
-  EditorSelection,
-  EditorState,
-  type Extension,
-  type SelectionRange,
-  type Text,
-  Transaction,
-} from "@codemirror/state";
+import { EditorSelection, type Extension, type SelectionRange } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
-import { HEADING_RE, LIST_ITEM_RE, LIST_MARKER_SOURCE } from "../markdown/markdown-syntax";
+import { LIST_ITEM_RE, LIST_MARKER_SOURCE } from "../markdown/markdown-syntax";
 import { cursorOf } from "./list-continue";
 import { dedentChange } from "./list-indent";
 
 /**
- * 本文を常に箇条書きに保つ (#40)。
- * 入力・削除・ペーストで触れた行が項目の形 (`- ` など。LIST_ITEM_RE) でなくなっていたら、
- * インデントの後ろに `- ` を足して項目に戻す。空行 (セクション区切りの素材) と
- * 見出し (`# ` など。見出しは箇条書きにしない) は触らない。
- * 既存の項目でない行も、編集で触れた時点で項目になる (触るまではそのまま)。
- * 取り消し (undo) や Board からの同期 (分割 / 結合) は対象外: userEvent の付いた編集だけ直す。
- * 直しは元の編集と 1 つのトランザクションに合成する (undo で一緒に戻る)。spec を配列で足すと
- * 元の doc の座標で解釈されて挿入の順序を制御できないので、changes を自分で compose して
- * 丸ごと置き換える。annotation は作り直すと消えるので、poi が使うものだけ引き継ぐ
+ * IME で確定した # / ＃ を見出しの書き出しに直す (#46)。スマホの IME は半角 # も composition を通り
+ * inputHandler (hashStartsHeading / spaceAfterHashStartsHeading) に届かないので、確定後にここで拾う。
+ * dispatch 中ではないが、CodeMirror 自身の確定処理と重ならないよう 1 拍置く
  */
-export const forceListMarkers: Extension = [
-  EditorState.transactionFilter.of((tr) => {
-    if (!tr.docChanged || !(tr.isUserEvent("input") || tr.isUserEvent("delete"))) return tr;
-    // IME 変換中に行頭へ挿入すると変換が壊れるので触らない (変換確定後の compositionend で拾う)
-    if (tr.isUserEvent("input.type.compose")) return tr;
-    const fixes = missingMarkers(tr.newDoc, tr.changes);
-    if (fixes.length === 0) return tr;
-    const fixSet = ChangeSet.of(fixes, tr.newDoc.length);
-    const annotations: Annotation<unknown>[] = [];
-    const time = tr.annotation(Transaction.time);
-    if (time !== undefined) annotations.push(Transaction.time.of(time));
-    const userEvent = tr.annotation(Transaction.userEvent);
-    if (userEvent !== undefined) annotations.push(Transaction.userEvent.of(userEvent));
-    const addToHistory = tr.annotation(Transaction.addToHistory);
-    if (addToHistory !== undefined) annotations.push(Transaction.addToHistory.of(addToHistory));
-    return {
-      changes: tr.changes.compose(fixSet),
-      // 記号を足した位置にあるカーソルは記号の後ろへ (記号ごと消した直後など。既定の assoc (-1) だと前に残る)
-      selection: tr.newSelection.map(fixSet, 1),
-      effects: tr.effects,
-      annotations,
-      scrollIntoView: tr.scrollIntoView,
-    };
-  }),
-  // IME で確定した行の分の直し。dispatch 中ではないが、CodeMirror 自身の確定処理と重ならないよう 1 拍置く
-  EditorView.domEventHandlers({
-    compositionend(_event, view) {
-      setTimeout(() => {
-        if (view.composing) return;
-        const line = view.state.doc.lineAt(view.state.selection.main.head);
-        // IME 経由の # / ＃ の確定は見出しの書き出しに正規化する (#46)。スマホの IME は半角 # も
-        // composition を通る (inputHandler の hashStartsHeading に届かない) ので、全角だけでなく
-        // 半角も対象。userEvent 付きの dispatch なので、結果が見出しの形でなければ上の
-        // transactionFilter が `- ` を足す (物理キーボードの半角入力と同じ扱い)
-        const hashFix = hashHeadingFix(line.text, line.from);
-        if (hashFix) {
-          view.dispatch({ ...hashFix, scrollIntoView: true, userEvent: "input" });
-          return;
-        }
-        const fix = markerFor(line.text, line.from);
-        if (fix) view.dispatch({ changes: fix, userEvent: "input" });
-      });
-    },
-  }),
-];
+export const imeHashStartsHeading: Extension = EditorView.domEventHandlers({
+  compositionend(_event, view) {
+    setTimeout(() => {
+      if (view.composing) return;
+      const line = view.state.doc.lineAt(view.state.selection.main.head);
+      const hashFix = hashHeadingFix(line.text, line.from);
+      if (hashFix) view.dispatch({ ...hashFix, scrollIntoView: true, userEvent: "input" });
+    });
+  },
+});
 
 // 記号だけの空の項目に # / ＃ だけが続く形 (IME で # を確定した直後)
 const EMPTY_ITEM_HASH_RE = new RegExp(String.raw`^[ \t]*(?:${LIST_MARKER_SOURCE})[ \t]+([#＃]+)$`);
@@ -121,13 +70,12 @@ function hashHeadingFix(
 
 /**
  * 空の項目で `#` を打ったら、記号 (とインデント) を消して見出しの書き出しにする。
- * 本文は常に箇条書きで、空の項目の Enter はセクション区切りになるため、これが箇条書きの
- * 途中に見出しを書く唯一の入り口 (Enter で空の項目を作って `#`)。
+ * 箇条書きの途中で見出しを書くときの近道 (Enter で空の項目を作って `#`。リストを抜けてから `#` と同じ結果)。
  * インデントも消すのは、見出しは階層に属さない (インデントしても表示は同じ見出しになるだけ) ため。
  * スペースのインデント (spaceIndentsListItem) と同じく、仮想キーボード対応で inputHandler にする。
- * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる (見出しの行は forceListMarkers が触らない)。
+ * 続けて `#` を足して h2..h6 にするのは普通の入力で足りる。
  * 全角 ＃ も同じ扱いで半角にする (#46)。IME の変換 (composition) を経る ＃ はここに届かないので、
- * そちらは forceListMarkers の compositionend (hashHeadingFix) が拾う
+ * そちらは imeHashStartsHeading が拾う
  */
 export const hashStartsHeading = EditorView.inputHandler.of((view, from, to, text) => {
   if ((text !== "#" && text !== "＃") || from !== to) return false;
@@ -174,42 +122,16 @@ export const spaceAfterHashStartsHeading = EditorView.inputHandler.of((view, fro
   return true;
 });
 
-/** 行が項目の形でなければ、インデントの直後に `- ` を挿す変更 (空行・見出し・項目の行は null) */
-function markerFor(text: string, from: number): { from: number; insert: string } | null {
-  if (/^[ \t]*$/.test(text) || HEADING_RE.test(text) || LIST_ITEM_RE.test(text)) return null;
-  return { from: from + /^[ \t]*/.exec(text)![0].length, insert: "- " };
-}
-
-/** 変更が触れた行のうち、項目の形に直すべきものへの挿入 (新しい doc の座標) */
-function missingMarkers(doc: Text, changes: ChangeDesc): { from: number; insert: string }[] {
-  const fixes: { from: number; insert: string }[] = [];
-  const seen = new Set<number>();
-  changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
-    for (let n = doc.lineAt(fromB).number; n <= doc.lineAt(toB).number; n++) {
-      if (seen.has(n)) continue;
-      seen.add(n);
-      const line = doc.line(n);
-      const fix = markerFor(line.text, line.from);
-      if (fix) fixes.push(fix);
-    }
-  });
-  return fixes;
-}
-
 /**
- * 項目の記号より左 (行頭〜本文の先頭) での Backspace。
- * 1 文字ずつ消すと記号が壊れて forceListMarkers が `- ` を足し直してしまうので、まとめて扱う:
+ * 項目の記号より左 (行頭〜本文の先頭) での Backspace。記号を 1 文字ずつ削らず、まとめて扱う:
  * - インデントがあれば 1 段戻す (Shift+Tab と同じ)
- * - 最初の行では、中身が空なら記号ごと消して空のセクションに戻す。中身があれば何もしない
- *   (セクションの結合は行頭 = doc の先頭での Backspace。SectionEditor が Board に渡す)
- * - それ以外は前の行の末尾に結合する (改行と記号をまとめて消す)
- * 記号より右では false (通常の 1 文字削除に任せる)
+ * - なければ記号を消して普通の行に戻す (本文はそのまま。もう一度 Backspace で前の行と結合する)
+ * doc の先頭 (セクションの結合。SectionEditor が Board に渡す) と記号より右では false (通常の 1 文字削除に任せる)
  */
 export const deleteListMarkerBackward: Command = (view) => {
   const head = cursorOf(view);
   if (head === null) return false;
-  const { state } = view;
-  const line = state.doc.lineAt(head);
+  const line = view.state.doc.lineAt(head);
   const m = LIST_ITEM_RE.exec(line.text);
   if (!m) return false;
   const markerEnd = line.from + m[0].length;
@@ -222,19 +144,9 @@ export const deleteListMarkerBackward: Command = (view) => {
     });
     return true;
   }
-  if (line.number === 1) {
-    if (line.text.slice(m[0].length).trim() === "")
-      view.dispatch({
-        changes: { from: line.from, to: line.to },
-        scrollIntoView: true,
-        userEvent: "delete",
-      });
-    return true;
-  }
-  const prev = state.doc.line(line.number - 1);
   view.dispatch({
-    changes: { from: prev.to, to: markerEnd },
-    selection: EditorSelection.cursor(prev.to),
+    changes: { from: line.from, to: markerEnd },
+    selection: EditorSelection.cursor(line.from),
     scrollIntoView: true,
     userEvent: "delete",
   });
@@ -243,7 +155,7 @@ export const deleteListMarkerBackward: Command = (view) => {
 
 /**
  * 行末での Delete で次の行が項目のとき、改行と記号をまとめて消して中身だけを引き上げる
- * (Backspace の結合の鏡写し。改行だけ消すと記号が本文の途中に残る)。
+ * (改行だけ消すと記号が本文の途中に残る)。
  * それ以外は false (通常の削除に任せる)
  */
 export const deleteListMarkerForward: Command = (view) => {
