@@ -1,7 +1,6 @@
-import { Box, CloseButton, Divider, Group, Text, Tooltip } from "@mantine/core";
+import { Box, Divider, Group, Text } from "@mantine/core";
 import { useMemo, useRef } from "react";
 import type { EditableSection } from "../../-lib/data/board";
-import { keepEditorFocus } from "../../-lib/keep-editor-focus";
 import { copySectionText, deliverImage, renderSectionImage } from "../../-lib/section-export";
 import {
   locateInSection,
@@ -9,7 +8,7 @@ import {
   organizeSections,
 } from "../../-lib/sections/organized";
 import { MarkdownView } from "./section/MarkdownView";
-import { SectionActions } from "./section/SectionActions";
+import { SectionActions, SectionDeleteButton } from "./section/SectionActions";
 
 /**
  * 見出しごとにまとめた表示 (#37)。タイムライン (通常の板) と切り替えて使う閲覧用のビュー。
@@ -76,16 +75,8 @@ export function OrganizedView({
                 onScreenshot={() => screenshot(g.key)}
               />
               {!readOnly && (
-                /* タイムラインのセクション削除と同じ見た目。押した後は Board の「元に戻す」通知に任せる */
-                <Tooltip label="削除" withArrow>
-                  <CloseButton
-                    size="xs"
-                    c="red"
-                    aria-label={`${subject} を削除`}
-                    onMouseDown={keepEditorFocus}
-                    onClick={() => onDelete(g)}
-                  />
-                </Tooltip>
+                /* タイムラインのセクション削除と同じボタン。押した後は Board の「元に戻す」通知に任せる */
+                <SectionDeleteButton subject={subject} onDelete={() => onDelete(g)} />
               )}
             </Group>
             <MarkdownView

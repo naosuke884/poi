@@ -1,7 +1,8 @@
-import { ActionIcon, Tooltip, VisuallyHidden } from "@mantine/core";
+import { ActionIcon, CloseButton, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { Svg } from "../TablerIcon";
+import classes from "./SectionActions.module.css";
 
 // 結果の表示 (チェック / ×) を出しておく時間
 const FEEDBACK_MS = 1500;
@@ -47,6 +48,32 @@ export function SectionActions({
         <CameraIcon />
       </ActionButton>
     </>
+  );
+}
+
+/**
+ * 区切り線の右端の削除ボタン (セクション / まとめ)。押した後の「元に戻す」は Board の通知に任せる。
+ * mousedown を止めて、編集中のエディタを blur させない
+ */
+export function SectionDeleteButton({
+  subject,
+  onDelete,
+}: {
+  /** 読み上げ用の対象の名前 (SectionActions と同じ) */
+  subject: string;
+  onDelete: () => void;
+}) {
+  return (
+    <Tooltip label="削除" withArrow>
+      <CloseButton
+        size="xs"
+        c="red"
+        className={classes.touchTarget}
+        aria-label={`${subject} を削除`}
+        onMouseDown={keepEditorFocus}
+        onClick={onDelete}
+      />
+    </Tooltip>
   );
 }
 
@@ -104,6 +131,7 @@ function ActionButton({
           // variant の色は gray のまま (色付きにするとクリック直後のホバー背景が緑/赤に光る)
           c={feedback ? (feedback.ok ? "teal" : "red") : "dimmed"}
           size="xs"
+          className={classes.touchTarget}
           aria-label={label}
           loading={busy}
           onMouseDown={keepEditorFocus}

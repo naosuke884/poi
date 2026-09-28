@@ -1,11 +1,10 @@
-import { Box, CloseButton, Group, Tooltip } from "@mantine/core";
+import { Box, Group } from "@mantine/core";
 import type { RefObject } from "react";
 import type { EditableSection } from "../../../-lib/data/board";
-import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { copySectionText } from "../../../-lib/section-export";
 import { LifeLine } from "./LifeLine";
 import { MarkdownView } from "./MarkdownView";
-import { SectionActions } from "./SectionActions";
+import { SectionActions, SectionDeleteButton } from "./SectionActions";
 import { type EditAnchor, SectionEditor, type SectionEditorHandle } from "./SectionEditor";
 
 /**
@@ -108,17 +107,7 @@ export function SectionRow({
             onScreenshot={() => h.screenshot(s.key)}
           />
         )}
-        {!readOnly && (
-          <Tooltip label="削除" withArrow>
-            <CloseButton
-              size="xs"
-              c="red"
-              aria-label={`${label} を削除`}
-              onMouseDown={keepEditorFocus}
-              onClick={() => h.remove(s.key)}
-            />
-          </Tooltip>
-        )}
+        {!readOnly && <SectionDeleteButton subject={label} onDelete={() => h.remove(s.key)} />}
       </Group>
       {(readOnly || !editing) && !empty ? (
         <MarkdownView
