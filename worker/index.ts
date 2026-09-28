@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { withClearSiteData } from "./auth/clear-site-data";
 import { authMiddleware } from "./auth/middleware";
 import { boardRoutes, settingsRoutes } from "./board/routes";
 import { deleteExpiredMemos } from "./board/sweep";
@@ -9,8 +10,11 @@ const app = new Hono<AppEnv>();
 
 app.use("/api/*", authMiddleware);
 
-// Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)
-app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
+// Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。
+// ログアウト / アカウント削除の成功時は Clear-Site-Data で cookie も消させる
+app.all("/api/auth/*", async (c) =>
+  withClearSiteData(c.req.raw, await c.get("auth").handler(c.req.raw)),
+);
 
 // RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
 const api = new Hono<AppEnv>().route("/board", boardRoutes).route("/settings", settingsRoutes);

@@ -17,7 +17,7 @@ worker/
   db.ts         createDb / Db / merged schema (every context's schema.ts spread into one)
   types.ts      AppEnv (Bindings: Env, Variables: auth / user / session)
   env.d.ts      secret types merged into the generated Env
-  auth/         Better Auth: createAuth, authMiddleware / requireAuth, in-app-browser, schema.ts (generated)
+  auth/         Better Auth: createAuth, authMiddleware / requireAuth, in-app-browser, clear-site-data, schema.ts (generated)
   board/        the board: routes (board + settings), board-sync (pure diffing), sweep (cron), schema.ts
 shared/         code used by both src and worker (constants, limits, pure helpers)
 ```
@@ -57,6 +57,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
 ### Auth
 
 - `authMiddleware` runs on every `/api/*`: it builds a per-request Better Auth instance and sets `auth`, `user`, `session` (null when signed out). For `/api/auth/*` it skips the session lookup, because those requests only go to Better Auth's handler and the DB read would be wasted.
+- Responses from Better Auth's handler pass through `withClearSiteData` (`auth/clear-site-data.ts`), which adds `Clear-Site-Data: "cookies"` to a successful `POST /api/auth/sign-out` or `/api/auth/delete-user`. It backs up the Set-Cookie expiry and the client's `clearOfflineCaches`; don't remove either. Note it wipes every cookie on the origin, including the other accounts' `multiSession` cookies. If another endpoint should end the session on this device, add its path there. Never add `"storage"` or `"cache"`: they would delete the Service Worker and its precache, so the PWA could no longer start offline.
 - Put `.use(requireAuth)` first in any chain that needs a signed-in user. It returns `401 { error: "Unauthorized" }` and narrows `c.get("user")` to non-null through `AuthedEnv`, so do not add `if (!user)` checks or `!` after it.
 - Take the user id from `c.get("user").id`, never from the request body. When the body carries a user id (as PUT /api/board does), it is only a check against the session (`409 UserMismatch`), not the identity.
 
@@ -78,6 +79,7 @@ Do this even for a few lines: a route test alone can't pin edge cases cheaply, a
 - Tests sit next to the file as `<name>.test.ts` (vitest includes `worker/**/*.test.ts`, node environment).
   - Pure modules: plain unit tests (`board-sync.test.ts`, `auth/in-app-browser.test.ts`).
   - Routes: mount the sub-app in a test Hono app with a middleware that sets a fixed `user` / `session`, and call `app.request(path, init, { DB })` against `getPlatformProxy` D1 with the `drizzle/` migrations applied (`board/routes.test.ts`). This hits the real SQLite limits, which mocks would hide.
+  - Wiring in `index.ts` (what the whole app does to a response, e.g. Clear-Site-Data or security headers): call `worker.fetch(request, env)` from `index.test.ts` with test secrets and a signed session cookie against the same local D1, so Better Auth's real handler runs.
 
 ## Scheduled work (Cron)
 

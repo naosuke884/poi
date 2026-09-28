@@ -24,6 +24,7 @@ Prefer the cheapest test that can catch the bug. Put logic where the cheap test 
 | A hook or loader that talks to the API, router, or auth client | jsdom + `vi.mock` of those modules | `src/routes/(root)/-lib/use-account-actions.test.tsx`, `.../data/board-loader.test.ts` |
 | Editing → sections on screen → autosave PUT, conflicts, expiry | jsdom integration test of the whole `Board` | `src/routes/(board)/-components/board/Board.test.tsx` |
 | A worker route's SQL, D1 limits, status codes | Route test against local D1 via `getPlatformProxy` | `worker/board/routes.test.ts` |
+| Worker wiring in `index.ts` (Better Auth handler, headers added to every response) | Whole-app test: `worker.fetch` against local D1 with test secrets and a signed session cookie | `worker/index.test.ts` |
 
 ### Extract pure functions first
 
