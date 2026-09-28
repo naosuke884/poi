@@ -9,7 +9,17 @@ export const Route = createFileRoute("/(legal)/privacy")({
 
 function Privacy() {
   return (
-    <LegalPage title="プライバシーポリシー" updatedAt="2026 年 9 月 24 日">
+    <LegalPage
+      title={
+        // スマホ幅で 1 行に収まらないとき「…ポリシ / ー」ではなく「プライバシー / ポリシー」で折り返す
+        <>
+          プライバシー
+          <wbr />
+          ポリシー
+        </>
+      }
+      updatedAt="2026 年 9 月 24 日"
+    >
       <p>
         poi (以下「本サービス」) の運営者 (以下「運営者」)
         は、本サービスにおける利用者の個人情報の取り扱いについて、

@@ -54,6 +54,9 @@ const theme = createTheme({
   },
   primaryColor: "ai",
   primaryShade: { light: 6, dark: 7 },
+  // 見出しが折り返すとき、各行の長さを揃える (最後の行が 1 文字だけになるのを防ぐ)。
+  // 行数は変わらないので、板の見出しの表示と編集の高さの一致は崩れない。未対応のブラウザは通常の折り返し
+  headings: { textWrap: "balance" },
 });
 
 const rootElement = document.getElementById("root")!;
