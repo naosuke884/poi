@@ -11,7 +11,7 @@ export type DeviceSessions = {
 }[];
 
 // 実行中の操作。どれか 1 つしか同時に走らない (busy で他の項目を無効にする) ので 1 つの state で持ち、
-// 対応する Loader の読み上げ文言をここから引く
+// 実行中の読み上げ文言 (RunningStatus) をここから引く
 export const RUNNING_LABELS = {
   logout: "ログアウト中…",
   delete: "アカウント削除中…",

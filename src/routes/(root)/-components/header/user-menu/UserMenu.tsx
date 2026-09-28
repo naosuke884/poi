@@ -1,14 +1,15 @@
-import { Avatar, Button, Group, Loader, Menu, Skeleton, Text, UnstyledButton } from "@mantine/core";
+import { Avatar, Button, Group, Menu, Skeleton, Text, UnstyledButton } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { CONTACT_URL } from "@/components/ContactLink";
 import { authClient } from "@/lib/auth-client";
 import { readCachedUser } from "@/lib/session-cache";
-import { RUNNING_LABELS, useAccountActions } from "../../../-lib/use-account-actions";
+import { useAccountActions } from "../../../-lib/use-account-actions";
 import { useOnBackOnline, useOnline } from "../../../-lib/use-online";
 import { DeleteAccountConfirmModal } from "./DeleteAccountConfirmModal";
 import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
+import { RunningStatus } from "./RunningStatus";
 import { TtlSettingModal } from "./TtlSettingModal";
 
 export function UserMenu() {
@@ -153,7 +154,7 @@ export function UserMenu() {
         onClose={() => setConfirmingDelete(false)}
         onConfirm={() => void deleteAccount(user.id)}
       />
-      {runningAction && <Loader size="xs" aria-label={RUNNING_LABELS[runningAction]} />}
+      <RunningStatus action={runningAction} />
       {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
       {actionError && (
         <BottomLeftNotice

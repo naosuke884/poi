@@ -36,7 +36,7 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 - Offline: `オフラインです` (Alert title), `表示しているのは前回取得した内容です。編集はオンラインに戻ってから保存されます。`, `オフラインのため閲覧のみです (<日時> 時点の内容)。オンラインに戻ると自動的に最新の内容を読み込みます。`, menu label `オフライン (ログアウトはオンラインで)`
 - Divider label for an unsaved section: `新しいセクション`; organized view labels: `見出しなし`, `<n> か所`, joined with ` · `
 - Empty organized view: `まだメモがありません。タイムラインで書いたメモが、ここに見出しごとにまとまります。`
-- Busy labels (`RUNNING_LABELS`): `ログアウト中…`, `アカウント削除中…`, `アカウント切り替え中…`
+- Busy labels (`RUNNING_LABELS`, read out by `RunningStatus`): `ログアウト中…`, `アカウント削除中…`, `アカウント切り替え中…`
 - Editor placeholder (only section): `ここに書く…` / `セクションごとに <n> 日で消えます` / `空行 2 つで次のセクションへ` / `Markdown が使えます (# 見出し、- 箇条書き)` / `Tab でインデント、Esc で編集をやめる`
 
 ## Errors
