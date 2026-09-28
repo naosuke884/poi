@@ -1,0 +1,38 @@
+/* セクションの区切り線 (全幅の薄い線。Mantine の Divider と同じ色)。
+   背景ではなく枠線で描く: Windows のハイコントラスト (forced colors) では背景が Canvas に塗られて
+   見えなくなるが、枠線はシステムの文字色で残る (issue #130) */
+.track {
+  position: relative;
+  flex: 1;
+  border-block-start: 1px solid var(--mantine-color-default-border);
+}
+
+/* 残りの期間の濃い線。長さ (--life-line-ratio) と色 (--life-line-color) は LifeLine.tsx から渡す。
+   線と同じく枠線で描く。track の中身は高さ 0 で、線はその上の -1〜0px にあるので、
+   2px の線の中央を合わせるには -1.5px から置く */
+.remaining {
+  position: absolute;
+  inset-inline-start: 0;
+  top: -1.5px;
+  width: var(--life-line-ratio);
+  border-block-start: 2px solid var(--life-line-color);
+  border-radius: 1px;
+}
+
+/* forced colors では枠線も一色 (CanvasText) に揃えられ、区切り線と残りの期間の線が見分けられない。
+   区切り線は控えめな GrayText、残りの期間は CanvasText にして濃淡を残す
+   (残り 1 日以下のオレンジはここでは出せないが、「あと N 日」の文字で分かる) */
+@media (forced-colors: active) {
+  .track,
+  .remaining {
+    forced-color-adjust: none;
+  }
+
+  .track {
+    border-block-start-color: GrayText;
+  }
+
+  .remaining {
+    border-block-start-color: CanvasText;
+  }
+}

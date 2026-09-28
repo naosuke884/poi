@@ -1,6 +1,7 @@
 import { Box, Group, Text } from "@mantine/core";
 import { DAY_MS } from "@shared/constants";
 import type { ReactNode } from "react";
+import classes from "./LifeLine.module.css";
 
 /**
  * セクションの区切り線を兼ねた寿命のバー (issue #95)。
@@ -48,16 +49,9 @@ export function LifeLine({
       <Track>
         <Box
           aria-hidden
-          style={{
-            position: "absolute",
-            left: 0,
-            top: "50%",
-            height: 2,
-            transform: "translateY(-50%)",
-            width: `${ratio * 100}%`,
-            background: color,
-            borderRadius: 1,
-          }}
+          className={classes.remaining}
+          // 長さと色だけ渡し、描き方は LifeLine.module.css に置く
+          style={{ "--life-line-ratio": `${ratio * 100}%`, "--life-line-color": color }}
         />
       </Track>
     </Group>
@@ -67,15 +61,7 @@ export function LifeLine({
 /** 全幅の薄い線 (Mantine の Divider と同じ色)。子に残りの期間の濃い線を重ねる */
 function Track({ children }: { children?: ReactNode }) {
   return (
-    <Box
-      aria-hidden
-      style={{
-        position: "relative",
-        flex: 1,
-        height: 1,
-        background: "var(--mantine-color-default-border)",
-      }}
-    >
+    <Box aria-hidden className={classes.track}>
       {children}
     </Box>
   );
