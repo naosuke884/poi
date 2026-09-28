@@ -1,3 +1,4 @@
+import { BOARD_MAX_LENGTH, SECTION_SEPARATOR } from "@shared/constants";
 import { describe, expect, it } from "vitest";
 import type { EditableSection } from "../data/board";
 import {
@@ -8,6 +9,7 @@ import {
   removeGroup,
   removeSection,
   restoreSections,
+  sectionMaxLength,
 } from "./board-ops";
 import { organizeSections } from "./organized";
 
@@ -138,5 +140,15 @@ describe("removeGroup", () => {
   it("どれにも当たらなければ null", () => {
     const group = organizeSections([saved("z", "# Z")])[0]!;
     expect(removeGroup([saved("a", "x")], group)).toBeNull();
+  });
+});
+
+describe("sectionMaxLength", () => {
+  it("板全体の上限から、他の空でないセクションの文字数と区切りのぶんを引く (空のセクションは数えない)", () => {
+    const sections = [saved("a", "12345"), saved("b", ""), saved("c", "xyz")];
+    const sep = SECTION_SEPARATOR.length;
+    expect(sectionMaxLength(sections, "a")).toBe(BOARD_MAX_LENGTH - 3 - sep);
+    expect(sectionMaxLength(sections, "b")).toBe(BOARD_MAX_LENGTH - 5 - 3 - 2 * sep);
+    expect(sectionMaxLength(sections, "c")).toBe(BOARD_MAX_LENGTH - 5 - sep);
   });
 });

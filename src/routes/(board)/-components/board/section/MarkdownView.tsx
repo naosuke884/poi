@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mantine/core";
-import type { KeyboardEvent, MouseEvent, Ref } from "react";
-import ReactMarkdown from "react-markdown";
+import { type KeyboardEvent, type MouseEvent, memo, type Ref } from "react";
+import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { rehypeBlankLines } from "../../../-lib/markdown/markdown-blank-lines";
@@ -10,6 +10,46 @@ import {
   sourceOffsetAtPoint,
 } from "../../../-lib/markdown/markdown-source-offset";
 import classes from "./MarkdownView.module.css";
+
+const REMARK_PLUGINS: Options["remarkPlugins"] = [
+  remarkGfm,
+  remarkBreaks,
+  [remarkDisable, BOARD_MARKDOWN_DISABLED],
+];
+const REHYPE_PLUGINS_SOURCE_BLANK_LINES: Options["rehypePlugins"] = [
+  rehypeSourcePositions,
+  rehypeBlankLines,
+];
+const REHYPE_PLUGINS_FIXED_GAPS: Options["rehypePlugins"] = [rehypeSourcePositions];
+const COMPONENTS: Components = {
+  a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+};
+
+/**
+ * Markdown の解析と描画 (react-markdown)。content が同じなら描き直さない (memo。issue #114):
+ * 板は 1 文字の入力ごとに全体を描き直す (Board の setSections) ので、そのたびに編集していない
+ * セクションまで全部解析し直すと、セクションが多いときに入力が重くなる。
+ * プラグインなどの props はモジュールの定数にして、memo の比較が content と sourceBlankLines だけで決まるようにしている
+ */
+const MarkdownBody = memo(function MarkdownBody({
+  content,
+  sourceBlankLines,
+}: {
+  content: string;
+  sourceBlankLines: boolean;
+}) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={REMARK_PLUGINS}
+      rehypePlugins={
+        sourceBlankLines ? REHYPE_PLUGINS_SOURCE_BLANK_LINES : REHYPE_PLUGINS_FIXED_GAPS
+      }
+      components={COMPONENTS}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+});
 
 /** 空でない選択範囲が el に掛かっているか */
 function selectionIntersects(el: Element): boolean {
@@ -110,19 +150,7 @@ export function MarkdownView({
         fz="md"
         lh={1.7}
       >
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkBreaks, [remarkDisable, BOARD_MARKDOWN_DISABLED]]}
-          rehypePlugins={
-            sourceBlankLines ? [rehypeSourcePositions, rehypeBlankLines] : [rehypeSourcePositions]
-          }
-          components={{
-            a: ({ node: _node, ...props }) => (
-              <a {...props} target="_blank" rel="noopener noreferrer" />
-            ),
-          }}
-        >
-          {content}
-        </ReactMarkdown>
+        <MarkdownBody content={content} sourceBlankLines={sourceBlankLines} />
       </Typography>
     </Box>
   );

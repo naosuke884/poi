@@ -76,6 +76,13 @@ These came from dedicated fix commits; keep them when touching nearby code.
 - **Forced colors (Windows high contrast)**: backgrounds are repainted as `Canvas`, so a line or bar drawn as a `background` on an empty box disappears. Draw such lines with borders in a CSS Module and, where two lines must stay distinguishable, set system colours under `@media (forced-colors: active)` (`LifeLine.module.css`, #130).
 - **Contrast**: don't use `c="dimmed"` for small body text that must be read (FeatureList keeps the body at normal colour for AA); dimmed is for labels, hints and footers.
 
+## Board rendering performance
+
+Every keystroke updates `Board`'s state and re-renders it, so the cost of one render grows with the number of sections (#114: 40 sections cost ~50 ms of script per keystroke before the fix, ~3.5 ms after).
+- `SectionRow` is `memo`: only the row whose props changed re-renders. Keep its props unchanged for untouched rows: handlers go through `useStableHandlers` (`(board)/-lib/`, same object every render, calls the latest function), `refs` through `useMemo`, and a value that depends on *other* sections (like the character limit) is asked for through a handler at input time (`handlers.maxLength` → `SectionEditor`'s `getMaxLength`), never passed as a prop. A new prop that changes on every render for every row (an inline object or closure, a board-wide count) silently undoes this.
+- `MarkdownView` renders through the memoized `MarkdownBody`, which re-parses only when `content` / `sourceBlankLines` change; its remark / rehype plugin lists and `components` are module constants so the memo can hold. Keep new react-markdown options module-level too.
+- `Board.test.tsx` counts react-markdown renders (`markdownRenders`); the #114 case fails if typing or saving re-renders unchanged sections' Markdown.
+
 ## Before finishing
 
 - Check light and dark mode, a narrow (~360px) touch viewport and a desktop width; tab through the changed UI.

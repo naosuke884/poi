@@ -11,6 +11,8 @@
 - `expiredOnServer`: ids the server treats as expired and returns as `null` (issue #94).
 - New ids come back as `new-<put#>-<n>`.
 
+`react-markdown` is wrapped (not replaced) so `markdownRenders.count` counts how often a section's Markdown was rendered; reset it to 0 before the step you measure (issue #114).
+
 `@tanstack/react-router` is mocked to `useBlocker: () => {}` and `useRouter: () => ({ invalidate })`, which are the only router APIs Board uses. If Board starts using more, extend the stub.
 
 ## Helpers

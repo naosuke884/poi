@@ -89,6 +89,19 @@ vi.mock("@tanstack/react-router", () => ({
   useRouter: () => routerStub,
 }));
 
+// Markdown 表示 (react-markdown) が何回描画されたか (issue #114)。中身は本物のまま数えるだけ
+const markdownRenders = vi.hoisted(() => ({ count: 0 }));
+vi.mock("react-markdown", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-markdown")>();
+  return {
+    ...actual,
+    default: (props: Parameters<typeof actual.default>[0]) => {
+      markdownRenders.count++;
+      return actual.default(props);
+    },
+  };
+});
+
 const { Board } = await import("./Board");
 const { readCachedBoard } = await import("../../-lib/data/board-cache");
 const { writeCachedUser, clearCachedUser } = await import("@/lib/session-cache");
@@ -549,5 +562,29 @@ describe("Board: 削除した後のフォーカス (issue #112)", () => {
     await clickDelete(3, 1);
     expect(sectionTexts()).toEqual(["- a", "b"]);
     expect(editor().hasFocus).toBe(true);
+  });
+});
+
+describe("Board: 入力中の再描画 (issue #114)", () => {
+  it("1 文字ずつ入力しても、保存しても、編集していないセクションの Markdown は描き直さない", async () => {
+    await mount(
+      Array.from({ length: 20 }, (_, i) => ({
+        content: `## 見出し ${i}\n- 項目 [リンク](https://example.com/${i})`,
+      })),
+    );
+    await act(async () =>
+      container.querySelector<HTMLElement>(`[aria-label^="セクション 1 ("]`)!.click(),
+    );
+    markdownRenders.count = 0;
+    for (const ch of "abc") await type(ch);
+    expect(editor().state.doc.toString()).toMatch(/abc$/);
+    expect(markdownRenders.count).toBe(0);
+    // 保存の結果を反映すると全セクションの控え (id / 期限) が作り直されるが、内容は同じなので解析し直さない
+    await waitForSave();
+    expect(puts).toHaveLength(1);
+    expect(markdownRenders.count).toBe(0);
+    // 編集をやめたセクションは (内容が変わったので) 描く
+    await key("Escape");
+    expect(markdownRenders.count).toBe(1);
   });
 });

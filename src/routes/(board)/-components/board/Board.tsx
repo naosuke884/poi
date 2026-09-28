@@ -1,6 +1,6 @@
 import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
-import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@shared/constants";
-import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import { MEMO_TTL_DAYS } from "@shared/constants";
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { HeaderSlot } from "@/components/HeaderSlot";
@@ -8,11 +8,17 @@ import { affixInset } from "@/lib/affix";
 import type { BoardSection } from "../../-lib/data/board";
 import { keepEditorFocus } from "../../-lib/keep-editor-focus";
 import { deliverImage, renderSectionImage } from "../../-lib/section-export";
-import { appendSection, changeSection, mergeSections } from "../../-lib/sections/board-ops";
+import {
+  appendSection,
+  changeSection,
+  mergeSections,
+  sectionMaxLength,
+} from "../../-lib/sections/board-ops";
 import { useBoardSections } from "../../-lib/sections/use-board-sections";
 import { useSectionFocus } from "../../-lib/sections/use-section-focus";
 import { useUndoableDelete } from "../../-lib/sections/use-undoable-delete";
 import { useKeyboardInset } from "../../-lib/use-keyboard-inset";
+import { useStableHandlers } from "../../-lib/use-stable-handlers";
 import { useViewMode } from "../../-lib/view-mode";
 import { AddSectionButton } from "./header/AddSectionButton";
 import { SaveStatusIcon } from "./header/SaveStatusIcon";
@@ -266,8 +272,9 @@ export function Board({
     setEditingKey((k) => (k === key ? null : k));
   };
 
-  // 各セクション (SectionRow) への操作
-  const handlers: SectionHandlers = {
+  // 各セクション (SectionRow) への操作。SectionRow は memo しているので、同一性の変わらない
+  // オブジェクトにして渡す (呼ぶと最新の描画の関数が動く。入力のたびに全セクションを描き直さないため: issue #114)
+  const handlers = useStableHandlers<SectionHandlers>({
     change,
     startEditing: setEditingKey,
     blur: onBlur,
@@ -282,8 +289,13 @@ export function Board({
     navigateView: focusViewFrom,
     screenshot,
     remove,
-  };
-  const refs: SectionRefs = { boxes: boxesRef, views: viewsRef, editors: elementsRef };
+    // 各セクションに書ける文字数。他のセクションへの入力で変わるので、エディタが入力のたびに最新の値を聞く
+    maxLength: (key) => sectionMaxLength(latestRef.current, key),
+  });
+  const refs: SectionRefs = useMemo(
+    () => ({ boxes: boxesRef, views: viewsRef, editors: elementsRef }),
+    [boxesRef, viewsRef, elementsRef],
+  );
   // セクションが 1 つだけのときのエディタのプレースホルダ (書き方の案内)
   const placeholder = [
     "ここに書く…",
@@ -292,17 +304,6 @@ export function Board({
     "Markdown が使えます (# 見出し、- 箇条書き)",
     "Tab でインデント、Esc で編集をやめる",
   ].join("\n");
-  // 各セクションに書ける文字数: 板全体の上限 (保存するのは空でないセクションを区切りで連結したもの。boardLength) から、
-  // 他の空でないセクションの文字数と、それらとの区切りのぶんを引く
-  const filled = sections.filter((s) => s.content !== "");
-  const filledLength = filled.reduce((n, s) => n + s.content.length, 0);
-  const maxLengthOf = (s: (typeof sections)[number]) => {
-    const own = s.content !== "";
-    const others = filled.length - (own ? 1 : 0);
-    const othersLength = filledLength - s.content.length;
-    return BOARD_MAX_LENGTH - othersLength - others * SECTION_SEPARATOR.length;
-  };
-
   return (
     <Stack gap="xs" style={{ flex: 1 }}>
       {/* ヘッダーに出す板の操作 (板を表示している間だけ)。表示切替はまとめが閲覧にも役立つので
@@ -341,7 +342,6 @@ export function Board({
               editing={s.key === editingKey}
               readOnly={readOnly}
               fillScreen={i === sections.length - 1 && sections.length > 1}
-              maxLength={maxLengthOf(s)}
               placeholder={sections.length === 1 ? placeholder : undefined}
               handlers={handlers}
               refs={refs}

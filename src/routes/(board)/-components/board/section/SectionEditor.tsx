@@ -83,8 +83,12 @@ type Props = {
   onArrowDownAtLastLine(): boolean;
   /** Esc で編集をやめた (blur 済み)。Board は Markdown 表示に切り替えてそこへフォーカスを移す */
   onEscape(): void;
-  /** このセクションに書ける文字数 (板全体の上限から、他のセクションと区切りのぶんを引いたもの) */
-  maxLength: number;
+  /**
+   * このセクションに書ける文字数 (板全体の上限から、他のセクションと区切りのぶんを引いたもの)。
+   * 値ではなく関数で受け取り、入力のたびに最新の値を聞く: 値だと他のセクションへの入力のたびに変わり、
+   * 編集していないセクションまで描き直すことになるため (issue #114)
+   */
+  getMaxLength(): number;
   /** 複数行なら \n 区切り */
   placeholder?: string;
   readOnly?: boolean;
@@ -180,7 +184,7 @@ export function SectionEditor({
   onArrowUpAtFirstLine,
   onArrowDownAtLastLine,
   onEscape,
-  maxLength,
+  getMaxLength,
   placeholder,
   readOnly = false,
   "aria-label": ariaLabel,
@@ -204,11 +208,10 @@ export function SectionEditor({
     onArrowUpAtFirstLine,
     onArrowDownAtLastLine,
     onEscape,
+    getMaxLength,
   };
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
-  const maxLengthRef = useRef(maxLength);
-  maxLengthRef.current = maxLength;
   // マウント後に変わりうる設定 (aria-label はセクション番号なので前が消えると変わる。placeholder は
   // セクションが 1 つのときだけ) は Compartment で差し替える
   const [configCompartment] = useState(() => new Compartment());
@@ -266,7 +269,7 @@ export function SectionEditor({
             bottom: view.defaultLineHeight * CURSOR_ROOM_LINES,
           })),
           // 文字数上限 (Textarea の maxLength 相当。板全体の上限を超えないよう、Board が他のセクションのぶんを
-          // 引いて渡す)。減る (または同じ長さの) 変更は常に通す: IME や結合で上限を
+          // 引いて返す)。減る (または同じ長さの) 変更は常に通す: IME や結合で上限を
           // 超えた後に 1 文字ずつ消して戻れるように (textarea の maxLength も削除は弾かない)。
           // 増える変更でも IME の変換中は通す (弾くと変換が壊れる。超過分は保存時の検証で分かる)。
           // transactionFilter は後に登録したものから先に動くので、Prec.highest で最後に動かし、
@@ -275,7 +278,7 @@ export function SectionEditor({
             EditorState.transactionFilter.of((tr) => {
               if (
                 !tr.docChanged ||
-                tr.newDoc.length <= maxLengthRef.current ||
+                tr.newDoc.length <= callbacksRef.current.getMaxLength() ||
                 tr.newDoc.length <= tr.startState.doc.length
               )
                 return tr;

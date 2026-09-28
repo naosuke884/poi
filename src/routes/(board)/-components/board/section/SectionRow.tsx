@@ -1,5 +1,5 @@
 import { Box, Group } from "@mantine/core";
-import type { RefObject } from "react";
+import { memo, type RefObject } from "react";
 import type { EditableSection } from "../../../-lib/data/board";
 import { copySectionText } from "../../../-lib/section-export";
 import { LifeLine } from "./LifeLine";
@@ -34,6 +34,8 @@ export type SectionHandlers = {
   screenshot(key: string): Promise<"clipboard" | "download">;
   /** 削除。viaKeyboard はキーボード (や支援技術) で押した (click の detail が 0) */
   remove(key: string, viaKeyboard: boolean): void;
+  /** このセクションに書ける文字数 (エディタが入力のたびに聞く) */
+  maxLength(key: string): number;
 };
 
 /** key → 要素の控え (useSectionFocus)。描画した要素をここに登録する */
@@ -53,15 +55,19 @@ function register<T>(map: RefObject<Map<string, T>>, key: string) {
 
 /**
  * 板の 1 セクション: 区切り線 (ラベル + コピー / スクショ / 削除) と、本文。
- * 本文は編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示 (空のセクションは常にエディタ)
+ * 本文は編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示 (空のセクションは常にエディタ)。
+ * memo して、props が変わったセクションだけ描き直す (issue #114): 板は 1 文字の入力ごとに全体を描き直すので、
+ * そのたびに全セクションを描き直すと、セクションが多いときに入力が重くなる。
+ * そのため props は、そのセクションの内容や状態が変わらない限り同じ値のままにする: handlers / refs は
+ * 同一性の変わらないオブジェクト (Board の useStableHandlers / useMemo)、文字数上限は値でなく
+ * handlers.maxLength (他のセクションへの入力のたびに変わる値を渡すと、全セクションの memo が外れる)
  */
-export function SectionRow({
+export const SectionRow = memo(function SectionRow({
   section: s,
   index: i,
   editing,
   readOnly,
   fillScreen,
-  maxLength,
   placeholder,
   handlers: h,
   refs,
@@ -72,8 +78,6 @@ export function SectionRow({
   readOnly: boolean;
   /** 画面 1 つ分の高さを確保する (最後のセクション) */
   fillScreen: boolean;
-  /** このセクションに書ける文字数 (SectionEditor の maxLength) */
-  maxLength: number;
   /** エディタのプレースホルダ (セクションが 1 つだけのとき) */
   placeholder: string | undefined;
   handlers: SectionHandlers;
@@ -139,11 +143,11 @@ export function SectionRow({
           onArrowUpAtFirstLine={() => h.arrowUpAtFirstLine(s.key)}
           onArrowDownAtLastLine={() => h.arrowDownAtLastLine(s.key)}
           onEscape={() => h.exitEditing(s.key)}
-          maxLength={maxLength}
+          getMaxLength={() => h.maxLength(s.key)}
           readOnly={readOnly}
           ref={register(refs.editors, s.key)}
         />
       )}
     </Box>
   );
-}
+});

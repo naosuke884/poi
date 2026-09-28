@@ -1,3 +1,4 @@
+import { BOARD_MAX_LENGTH, SECTION_SEPARATOR } from "@shared/constants";
 import { type EditableSection, newKey, newSection, splitAtSeparator } from "../data/board";
 import { cutRanges, type OrganizedGroup } from "./organized";
 
@@ -22,6 +23,21 @@ export type RemovedSection = { section: EditableSection; index: number; remainin
 
 /** セクションが 1 つも無くならないようにする (板には常に書く場所を 1 つ残す) */
 const nonEmpty = (sections: EditableSection[]) => (sections.length > 0 ? sections : [newSection()]);
+
+/**
+ * key のセクションに書ける文字数。板全体の上限 (保存するのは空でないセクションを区切りで連結したもの。boardLength) から、
+ * 他の空でないセクションの文字数と、それらとの区切りのぶんを引く。key が無ければ他のすべてを数える
+ */
+export function sectionMaxLength(sections: EditableSection[], key: string): number {
+  let othersLength = 0;
+  let others = 0;
+  for (const s of sections) {
+    if (s.key === key || s.content === "") continue;
+    othersLength += s.content.length;
+    others++;
+  }
+  return BOARD_MAX_LENGTH - othersLength - others * SECTION_SEPARATOR.length;
+}
 
 /**
  * key のセクションの入力を反映する。区切り (空行 2 つ) が入っていたらそこで分ける。
