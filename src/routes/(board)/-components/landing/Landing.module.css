@@ -8,8 +8,13 @@
   word-break: auto-phrase;
 }
 
+/* aspect-ratio: ポスターや動画が読み込まれる前から動画の高さ分の場所を取る (無いと既定の 300×150 の比率で
+   描かれ、読み込み後に 800×1040 へ伸びて下の特徴リストとフッターが押し下げられる。issue #118)。
+   値は public/demo*.mp4 と demo-poster*.webp の縦横比 (800×1040 = 10 / 13)。撮り直しで比率が変わったら合わせる。
+   auto を付けると比率が枠線を除いた中身に掛かり、読み込み後 (動画自身の比率) と高さが 1px 未満もずれない */
 .demoVideo {
   width: 100%;
+  aspect-ratio: auto 10 / 13;
   display: block;
   border-radius: var(--mantine-radius-md);
   border: 1px solid var(--mantine-color-default-border);
