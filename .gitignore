@@ -8,3 +8,8 @@ data
 .DS_Store
 worker-configuration.d.ts
 .claude/worktrees
+
+# Playwright (npm run test:a11y)
+test-results
+playwright-report
+e2e/.auth
