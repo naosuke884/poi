@@ -25,7 +25,7 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 | `Google でログインして始める` | landing CTA |
 | `アカウントを追加` / `ホーム画面に追加` / `保存期間の設定` / `利用規約` / `プライバシーポリシー` / `問い合わせ` / `ログアウト` / `アカウント削除` | `UserMenu` items, in this order |
 | `タイムライン` / `見出しごとにまとめる` | `ViewToggle` tooltips |
-| `閉じる` | close button label of every `BottomLeftNotice` |
+| `「<title>」を閉じる` / `エラーを閉じる` / `通知を閉じる` | close button label of `BottomLeftNotice` (from the title; `closeLabel` for the untitled error toast; fallback) |
 
 ## Status, results, notices
 

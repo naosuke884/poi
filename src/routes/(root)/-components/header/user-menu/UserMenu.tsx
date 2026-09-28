@@ -156,7 +156,12 @@ export function UserMenu() {
       {runningAction && <Loader size="xs" aria-label={RUNNING_LABELS[runningAction]} />}
       {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
       {actionError && (
-        <BottomLeftNotice color="red" role="alert" onClose={clearActionError}>
+        <BottomLeftNotice
+          color="red"
+          role="alert"
+          closeLabel="エラーを閉じる"
+          onClose={clearActionError}
+        >
           {actionError}
         </BottomLeftNotice>
       )}
