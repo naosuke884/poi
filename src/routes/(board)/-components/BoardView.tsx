@@ -1,4 +1,4 @@
-import { Alert, Stack } from "@mantine/core";
+import { Alert, Stack, VisuallyHidden } from "@mantine/core";
 import { useRef } from "react";
 import { formatDateTime } from "../-lib/data/board";
 import type { TopPage } from "../-lib/data/board-loader";
@@ -30,6 +30,8 @@ export function BoardView({
   return (
     // gap は 0 にして、注意書きとの間隔は Alert の mb で取る (常在の空のライブリージョンに間隔が付かないように)
     <Stack gap={0} style={{ flex: 1 }}>
+      {/* 見出しで画面の構造をたどれるよう、画面には出さない h1 を置く (板の見た目はメモだけにしておく。#120) */}
+      <VisuallyHidden component="h1">板</VisuallyHidden>
       {/* ライブリージョンは中身と同時に挿入されると読み上げられないことが多いので、入れ物は常に置いておき
           Alert だけを出し入れする (#126)。Alert の既定の role="alert" は入れ物と二重になるので note にする */}
       <div role="status">

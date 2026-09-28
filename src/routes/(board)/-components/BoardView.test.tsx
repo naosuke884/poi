@@ -68,6 +68,13 @@ describe("BoardView", () => {
     expect(region?.textContent).toBe("");
   });
 
+  it("画面には出さない h1 で板の見出しを置く (issue #120)", async () => {
+    await render(false);
+    const headings = container.querySelectorAll("h1");
+    expect(headings).toHaveLength(1);
+    expect(headings[0]?.textContent).toBe("板");
+  });
+
   it("オンラインで開いた板にも空のライブリージョンを置いておく (issue #126)", async () => {
     await render(false);
     expect(container.querySelector('[role="status"]')?.textContent).toBe("");
