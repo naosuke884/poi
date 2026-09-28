@@ -1,15 +1,4 @@
-import {
-  Avatar,
-  Button,
-  Group,
-  Loader,
-  Menu,
-  Modal,
-  Skeleton,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "@mantine/core";
+import { Avatar, Button, Group, Loader, Menu, Skeleton, Text, UnstyledButton } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
@@ -18,6 +7,7 @@ import { authClient } from "@/lib/auth-client";
 import { readCachedUser } from "@/lib/session-cache";
 import { RUNNING_LABELS, useAccountActions } from "../../../-lib/use-account-actions";
 import { useOnBackOnline, useOnline } from "../../../-lib/use-online";
+import { DeleteAccountConfirmModal } from "./DeleteAccountConfirmModal";
 import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
 import { TtlSettingModal } from "./TtlSettingModal";
 
@@ -158,37 +148,11 @@ export function UserMenu() {
         onClose={() => setSettingTtl(false)}
         onSaved={() => void router.invalidate()}
       />
-      {/* 見出しは付けない (本文だけで足りる)。閉じるのはキャンセル / Esc / 外側クリック */}
-      <Modal
+      <DeleteAccountConfirmModal
         opened={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}
-        withCloseButton={false}
-        centered
-      >
-        <Stack gap="md">
-          <Text size="sm">
-            アカウントを削除しますか？
-            <br />
-            メモした内容はすべて消え、元に戻せません。
-          </Text>
-          {/* 取り返しがつかない操作なので、キャンセルを主ボタン (塗り + 初期フォーカス) にして強調する */}
-          <Group gap="sm">
-            <Button
-              color="red"
-              variant="outline"
-              onClick={() => {
-                setConfirmingDelete(false);
-                void deleteAccount(user.id);
-              }}
-            >
-              削除する
-            </Button>
-            <Button data-autofocus onClick={() => setConfirmingDelete(false)}>
-              キャンセル
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        onConfirm={() => void deleteAccount(user.id)}
+      />
       {runningAction && <Loader size="xs" aria-label={RUNNING_LABELS[runningAction]} />}
       {/* エラーは他の通知と同じく左下に出す (ヘッダー内だと狭くて読みにくい) */}
       {actionError && (

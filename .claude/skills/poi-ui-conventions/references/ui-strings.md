@@ -20,7 +20,7 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 | `トップへ戻る` | `RouteErrorFallback`, `NotFound`, `LegalPage` |
 | `リロード` | `PwaUpdateBanner` |
 | `保存` / `キャンセル` | `TtlSettingModal` |
-| `削除する` / `キャンセル` | account-deletion confirm |
+| `削除する` / `キャンセル` | account-deletion confirm (`DeleteAccountConfirmModal`, dialog name `アカウント削除の確認`) |
 | `ログイン` | header, when signed out and not on `/` |
 | `Google でログインして始める` | landing CTA |
 | `アカウントを追加` / `ホーム画面に追加` / `保存期間の設定` / `利用規約` / `プライバシーポリシー` / `問い合わせ` / `ログアウト` / `アカウント削除` | `UserMenu` items, in this order |
