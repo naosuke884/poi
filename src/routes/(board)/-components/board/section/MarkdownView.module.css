@@ -7,9 +7,11 @@
   outline-offset: 4px;
 }
 
-/* ユーザーが書いた内容なので、長い URL や区切りの無い文字列でも板の幅で折り返す */
+/* ユーザーが書いた内容なので、長い URL や区切りの無い文字列でも板の幅で折り返す。
+   flow-root: 先頭の要素の上の余白 (先頭の空行。下の data-blank-lines) を外へ相殺させず、この中に収める */
 .root {
   overflow-wrap: anywhere;
+  display: flow-root;
 }
 
 /* Markdown 表示の最後の要素の下マージンを消し、エディタに切り替わったときの高さの差を小さくする */
@@ -17,13 +19,49 @@
   margin-bottom: 0;
 }
 
-/* 見出しの上の余白: Mantine の Typography は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める。
-   セクション先頭の見出しは区切り線の直後なので余白なし */
+/* 見出しの上の余白: Mantine の Typography は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める
+   (エディタの見出し行の padding-top と同じ)。セクション先頭の見出しは区切り線の直後なので余白なし。
+   行の高さと下の余白はエディタに合わせる: Mantine は見出しごとの line-height (h1 1.3 〜 h6 1.5) と
+   下マージン (xs) を付けるが、エディタの見出し行は本文の 1.7 を継承して下の余白も無い
+   (違うと表示と編集を切り替えるたびに見出しより下の行が上下に動く。issue #117) */
 .root :where(h1, h2, h3, h4, h5, h6) {
   margin-top: var(--mantine-spacing-md);
+  margin-bottom: 0;
+  line-height: inherit;
 }
 .root > :first-child {
   margin-top: 0;
+}
+
+/* 段落・箇条書きの上下の余白 (Mantine は p の下に lg と ul / ol の下に md、ブラウザは ul / ol の上に 1em) も消す。
+   ブロックの間の余白はエディタと同じく、元テキストにある空行のぶんだけ空ける (下の data-blank-lines)。
+   段落の直後の見出しも、見出しの上の余白だけになる。
+   ul / ol は Mantine のセレクタ (:where(ul, ol):not([data-type='taskList'])) と同じ強さにして後から上書きする */
+.root :where(p) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.root :where(ul, ol):not([data-type="taskList"]) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* 前に空行がある要素 (rehypeBlankLines が data-blank-lines を付ける) は、空行 1 行ぶん (本文の行の高さ) 上を空ける。
+   見出しは見出しの上の余白に足す (エディタでは空行の次の見出し行に padding-top が付くため)。
+   セクションの中の空行は続けて 1 つまで (2 つでセクションが分かれる) なので、数によらず 1 行ぶんにする。
+   本文の行の高さは lh と同じ 1.7 (見出しの中では 1lh が見出しの大きさになるので lh 単位は使わない)。
+   Mantine の :first-child の margin-top: 0 やセクション先頭の 0 より後に書いて勝たせる (先頭の空行もエディタでは 1 行) */
+.root [data-blank-lines] {
+  margin-top: calc(1.7 * var(--mantine-font-size-md));
+}
+.root :where(h1, h2, h3, h4, h5, h6)[data-blank-lines] {
+  margin-top: calc(var(--mantine-spacing-md) + 1.7 * var(--mantine-font-size-md));
+}
+
+/* sourceBlankLines={false} (まとめ表示) では空行を見ないので、並んだ段落・箇条書きの間に 1 行ぶん空けて区切る
+   (空けないと別々の段落がつながって見える)。見出しの前後は見出しの上の余白だけ */
+.fixedGaps > :where(p, ul, ol) + :where(p, ul, ol) {
+  margin-top: 1lh;
 }
 
 /* 見出しの大きさ: 既定 (h1 34px / h2 26px / h3 22px / h4 18px) は文書向けに大きいので、本文 16px に対して控えめにする

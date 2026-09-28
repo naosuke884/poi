@@ -3,6 +3,7 @@ import type { KeyboardEvent, MouseEvent, Ref } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { rehypeBlankLines } from "../../../-lib/markdown/markdown-blank-lines";
 import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "../../../-lib/markdown/markdown-disable";
 import {
   rehypeSourcePositions,
@@ -25,6 +26,9 @@ function selectionIntersects(el: Element): boolean {
  * - GFM (裸の URL の自動リンク) 対応。BOARD_MARKDOWN_DISABLED の記法は無効 (文字のまま表示)。
  *   改行 1 つはそのまま改行として扱う (remark-breaks。メモなので)
  * - HTML は構文ごと無効 (文字のまま表示) なので sanitize は不要
+ * - ブロックの間の余白はエディタと同じく元テキストの空行のぶんだけ (rehypeBlankLines。切り替えで高さが変わらないように)。
+ *   sourceBlankLines={false} なら空行は見ず、段落・箇条書きが並ぶところに 1 行ぶん空ける
+ *   (まとめ表示: 連結で入れた空行はユーザーが書いたものではないので、余白にすると見出しの下などが空きすぎる)
  * - リンクは別タブで開く (同じタブで開くと編集中の板から離れてしまうため)
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
  *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/(board)/-lib/markdown/markdown-source-offset.ts。
@@ -42,10 +46,13 @@ export function MarkdownView({
   content,
   onEdit,
   onNavigate,
+  sourceBlankLines = true,
   "aria-label": ariaLabel,
   ref,
 }: {
   content: string;
+  /** 元テキストの空行を余白にする (既定)。false なら空行によらず決まった余白 */
+  sourceBlankLines?: boolean;
   /** 編集に切り替える。pos はカーソルを置く元テキストの位置 */
   onEdit?: (pos: number) => void;
   /** ↑ (-1) / ↓ (1) で隣のセクションへフォーカスを移す。移れたら true */
@@ -98,10 +105,16 @@ export function MarkdownView({
       style={{ cursor: editable ? "text" : undefined }}
     >
       {/* 行間は日本語向けに広め。エディタ (SectionEditor.module.css) と同じ値にする (違うと切り替えで高さが変わる) */}
-      <Typography className={classes.root} fz="md" lh={1.7}>
+      <Typography
+        className={sourceBlankLines ? classes.root : `${classes.root} ${classes.fixedGaps}`}
+        fz="md"
+        lh={1.7}
+      >
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkBreaks, [remarkDisable, BOARD_MARKDOWN_DISABLED]]}
-          rehypePlugins={[rehypeSourcePositions]}
+          rehypePlugins={
+            sourceBlankLines ? [rehypeSourcePositions, rehypeBlankLines] : [rehypeSourcePositions]
+          }
           components={{
             a: ({ node: _node, ...props }) => (
               <a {...props} target="_blank" rel="noopener noreferrer" />

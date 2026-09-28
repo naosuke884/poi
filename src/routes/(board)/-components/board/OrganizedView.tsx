@@ -8,14 +8,14 @@ import {
   type OrganizedGroup,
   organizeSections,
 } from "../../-lib/sections/organized";
-import classes from "./OrganizedView.module.css";
 import { MarkdownView } from "./section/MarkdownView";
 import { SectionActions } from "./section/SectionActions";
 
 /**
  * 見出しごとにまとめた表示 (#37)。タイムライン (通常の板) と切り替えて使う閲覧用のビュー。
  * - 同じ見出しのチャンクを 1 つの Markdown に連結して表示する (まとめ方は src/routes/(board)/-lib/sections/organized.ts)。
- *   同じ見出しの箇条書きは 1 つのリストに見えるよう、連結でできた項目間の余白は詰める (CSS)
+ *   連結で入れた空行は余白にしない (sourceBlankLines={false})。同じ見出しの箇条書きは連結で 1 つのリスト
+ *   (項目が段落の loose list) になるが、段落の上下の余白は MarkdownView が消すので詰まったリストに見える
  * - 区切り線はタイムラインと同じ見た目で、右にコピー / スクショ。
  *   期限は出さない (チャンクごとに違うのでまとめでは意味が薄い。タイムラインで見られる)
  * - このビュー自体は編集できないが、クリックした場所に対応する元セクションの位置を onJump に渡す
@@ -88,24 +88,23 @@ export function OrganizedView({
                 </Tooltip>
               )}
             </Group>
-            <Box className={classes.group}>
-              <MarkdownView
-                content={g.content}
-                aria-label={subject}
-                onEdit={
-                  readOnly
-                    ? undefined
-                    : (pos) => {
-                        const loc = locateInSection(g.ranges, pos);
-                        if (loc) onJump(loc.sectionKey, loc.pos);
-                      }
-                }
-                ref={(el) => {
-                  if (el) viewsRef.current.set(g.key, el);
-                  else viewsRef.current.delete(g.key);
-                }}
-              />
-            </Box>
+            <MarkdownView
+              content={g.content}
+              sourceBlankLines={false}
+              aria-label={subject}
+              onEdit={
+                readOnly
+                  ? undefined
+                  : (pos) => {
+                      const loc = locateInSection(g.ranges, pos);
+                      if (loc) onJump(loc.sectionKey, loc.pos);
+                    }
+              }
+              ref={(el) => {
+                if (el) viewsRef.current.set(g.key, el);
+                else viewsRef.current.delete(g.key);
+              }}
+            />
           </Box>
         );
       })}
