@@ -108,3 +108,49 @@ describe("ログアウト / アカウント削除で cookie を消させる (iss
     expect(res.headers.has("Clear-Site-Data")).toBe(false);
   });
 });
+
+describe("セキュリティ関連のレスポンスヘッダー (issue #111)", () => {
+  it.each([
+    ["未ログインで弾いた API (401)", "/api/board", {}],
+    ["未定義の API (404)", "/api/nope", {}],
+    ["Better Auth のハンドラ", "/api/auth/get-session", {}],
+  ])("%s にも付く", async (_, path, init) => {
+    const res = await request(path, init);
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("Strict-Transport-Security")).toBe("max-age=86400");
+    expect(res.headers.get("Referrer-Policy")).toBe("no-referrer");
+  });
+
+  it("ログアウトでは Clear-Site-Data と両方付く", async () => {
+    const res = await request("/api/auth/sign-out", {
+      method: "POST",
+      body: "{}",
+      headers: { Cookie: await signIn() },
+    });
+    expect(res.headers.get("Clear-Site-Data")).toBe('"cookies"');
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  // 静的アセットのヘッダー (public/_headers) は Worker を通らないので、ファイルの中身で確かめる
+  const headersFile = readFileSync("public/_headers", "utf8");
+  const staticHeader = (name: string) =>
+    headersFile.match(new RegExp(`^\\s+${name}: (.*)$`, "m"))?.[1];
+
+  it("静的アセットの HSTS と iframe 埋め込みの禁止は API と同じ値", async () => {
+    const res = await request("/api/nope");
+    expect(staticHeader("Strict-Transport-Security")).toBe(
+      res.headers.get("Strict-Transport-Security"),
+    );
+    expect(staticHeader("X-Frame-Options")).toBe(res.headers.get("X-Frame-Options"));
+  });
+
+  it("index.html にインラインスクリプトが無い (CSP の script-src 'self' に引っかかるため)", () => {
+    expect(staticHeader("Content-Security-Policy-Report-Only")).toContain("script-src 'self';");
+    const html = readFileSync("index.html", "utf8");
+    const inlineScripts = [...html.matchAll(/<script\b([^>]*)>/g)].filter(
+      ([, attrs]) => !/\bsrc=/.test(attrs ?? ""),
+    );
+    expect(inlineScripts).toEqual([]);
+  });
+});

@@ -1,0 +1,14 @@
+# 静的アセット (index.html・JS・画像など) に付けるセキュリティ関連のヘッダー (Cloudflare Workers の静的アセット配信が読む)。
+# /api/* は Worker が返すのでここは効かない。そちらは worker/index.ts の secureHeaders で付ける。
+# CSP はまず Report-Only (違反はブラウザのコンソールに出るだけで止めない)。インラインスクリプト・eval・
+# 外部スクリプトを足すとここに引っかかる。style-src は Mantine がインライン style を入れるので指定しない。
+# base-uri は 'none' にしない: 「画像にする」(modern-screenshot) が CSS 内の相対 URL (フォント) を解決するのに
+# 作業用ドキュメントへ同じオリジンの <base> を入れる。
+# CSP が Report-Only のうちも iframe 埋め込みは X-Frame-Options で止める。HSTS は短い max-age から始める
+/*
+  Content-Security-Policy-Report-Only: script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=86400
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()

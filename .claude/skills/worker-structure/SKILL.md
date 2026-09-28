@@ -81,6 +81,26 @@ Do this even for a few lines: a route test alone can't pin edge cases cheaply, a
   - Routes: mount the sub-app in a test Hono app with a middleware that sets a fixed `user` / `session`, and call `app.request(path, init, { DB })` against `getPlatformProxy` D1 with the `drizzle/` migrations applied (`board/routes.test.ts`). This hits the real SQLite limits, which mocks would hide.
   - Wiring in `index.ts` (what the whole app does to a response, e.g. Clear-Site-Data or security headers): call `worker.fetch(request, env)` from `index.test.ts` with test secrets and a signed session cookie against the same local D1, so Better Auth's real handler runs.
 
+## Security headers
+
+Two places set them, because Cloudflare serves static assets without running the Worker:
+
+| Responses | Where | What |
+|---|---|---|
+| `/api/*` (everything in `run_worker_first`) | `app.use("/api/*", secureHeaders(...))` in `worker/index.ts`, before `authMiddleware` so 401s, 404s and Better Auth's handler get it too | Hono defaults (nosniff, `Referrer-Policy: no-referrer`, COOP / CORP same-origin, ...) with `X-Frame-Options: DENY` and a short HSTS. No CSP (JSON only). |
+| Everything else (`index.html`, `/assets/*`, `sw.js`, images, video, the SPA fallback) | `public/_headers` (Vite copies it to `dist/client`; Cloudflare's asset server applies it and never serves the file) | `Content-Security-Policy-Report-Only`, `X-Frame-Options: DENY`, nosniff, HSTS, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
+
+- Keep HSTS and `X-Frame-Options` identical in both (a test in `worker/index.test.ts` compares them). HSTS starts at `max-age=86400`; raise it in both places once production has run without trouble.
+- The CSP is `script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'`, Report-Only: violations are only logged in the browser console as `[Report Only]` (there is no report endpoint). No `style-src` (Mantine injects inline styles) and no `default-src` (images from Google avatars, same-origin fetches and media are not restricted). `base-uri` is `'self'`, not `'none'`, because modern-screenshot (「画像にする」) sets a same-origin `<base>` to resolve fonts in CSS. `X-Frame-Options: DENY` blocks framing while the CSP is not enforced.
+- To enforce it later, rename the header to `Content-Security-Policy` after checking the console in production. Before changing it, verify against the built app: **`npm run dev` (Vite) does not apply `_headers`**, only `wrangler dev` on the build does:
+  ```sh
+  npm run build
+  npx wrangler dev --config dist/poi/wrangler.json --port 8788 --persist-to .wrangler/state   # the build's config, the dev server's local D1
+  curl -sI http://localhost:8788/ | grep -i content-security
+  ```
+  Then drive the pages with the Playwright sidecar (`verifying-in-app`, seed the session with `--origin http://localhost:8788`) and look for `securitypolicyviolation` events / `[Report Only]` console messages (Chromium logs them at `info` level, not `error`). Stop it afterwards; `--config dist/poi/...` without `--persist-to` uses an empty D1 in `dist/poi/.wrangler`.
+- A new header for `/api/*` goes in the `secureHeaders` options; for pages, in `_headers`. Don't set page headers from the Worker: pages never reach it.
+
 ## Scheduled work (Cron)
 
 - Crons are declared in `wrangler.jsonc` `triggers.crons` (currently `"0 * * * *"`) and all go to the one `scheduled` handler in `worker/index.ts`.

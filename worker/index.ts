@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 import { withClearSiteData } from "./auth/clear-site-data";
 import { authMiddleware } from "./auth/middleware";
 import { boardRoutes, settingsRoutes } from "./board/routes";
@@ -8,6 +9,13 @@ import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
 
+// /api/* のレスポンスにセキュリティ関連のヘッダーを付ける (401 や 404 も含め、authMiddleware より前に置く)。
+// 静的アセット側は public/_headers で付ける。HSTS と iframe 埋め込みの禁止はそちらと値を揃えている
+// (HSTS は短い max-age から始める)。JSON を返すだけなので CSP・Permissions-Policy は付けない
+app.use(
+  "/api/*",
+  secureHeaders({ strictTransportSecurity: "max-age=86400", xFrameOptions: "DENY" }),
+);
 app.use("/api/*", authMiddleware);
 
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。
