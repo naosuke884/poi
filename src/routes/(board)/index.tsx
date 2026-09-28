@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { BoardView } from "./-components/BoardView";
 import { Landing } from "./-components/landing/Landing";
 import { loadTopPage } from "./-lib/data/board-loader";
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/(board)/")({
 function BoardPage() {
   const data = Route.useLoaderData();
   const { session } = Route.useRouteContext();
+  // 板もランディングもタイトルは「poi」だけ (他のページから戻ってきたときに戻す)
+  useDocumentTitle();
   if (data.kind === "landing" || session === null) return <Landing />;
   return <BoardView data={data} />;
 }

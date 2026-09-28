@@ -1,6 +1,7 @@
 import { Alert, Anchor, Button, Group, Stack } from "@mantine/core";
 import { type ErrorComponentProps, Link, useRouter } from "@tanstack/react-router";
 import { OfflineError } from "@/lib/offline";
+import { useDocumentTitle } from "@/lib/use-document-title";
 
 /**
  * ルートの loader / beforeLoad が throw したときの表示 (createRouter の defaultErrorComponent)。
@@ -10,12 +11,12 @@ import { OfflineError } from "@/lib/offline";
 export function RouteErrorFallback({ error }: ErrorComponentProps) {
   const router = useRouter();
   const offline = error instanceof OfflineError;
+  const title = offline ? "オフラインです" : "エラーが発生しました";
+  // 見出し (h1) は無いので、遷移後のフォーカスは #main に移る
+  useDocumentTitle(title);
   return (
     <Stack>
-      <Alert
-        color={offline ? "yellow" : "red"}
-        title={offline ? "オフラインです" : "エラーが発生しました"}
-      >
+      <Alert color={offline ? "yellow" : "red"} title={title}>
         {error.message}
       </Alert>
       <Group>

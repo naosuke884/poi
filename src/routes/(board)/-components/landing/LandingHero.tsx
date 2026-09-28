@@ -32,7 +32,8 @@ export function LandingHero() {
   };
   return (
     <Stack gap="sm" align="center" ta="center">
-      <Title order={1} className={classes.heroTitle}>
+      {/* ページを移ったときのフォーカス先 (#121。枠を出さないのは heroTitle で) */}
+      <Title order={1} className={classes.heroTitle} tabIndex={-1}>
         {MEMO_TTL_DAYS} 日で消えるメモ帳
       </Title>
       <Button size="md" mt={40} mb="lg" loading={busy} onClick={() => void login()}>

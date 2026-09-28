@@ -7,6 +7,7 @@ import { NotFound } from "./(root)/-components/NotFound";
 import { OfflineBanner } from "./(root)/-components/OfflineBanner";
 import { PwaUpdateBanner } from "./(root)/-components/PwaUpdateBanner";
 import { SkipLink } from "./(root)/-components/SkipLink";
+import { useFocusOnNavigate } from "./(root)/-lib/use-focus-on-navigate";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -22,6 +23,8 @@ const mainPadding = {
 };
 
 function RootLayout() {
+  // ページを移ったら新しいページの h1 へフォーカスを移す (読み上げで遷移が分かるように)
+  useFocusOnNavigate();
   return (
     // ページがヘッダーに自分用の操作を出せるようにする (HeaderSlot)
     <HeaderSlotProvider>

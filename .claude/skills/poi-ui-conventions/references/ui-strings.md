@@ -67,4 +67,5 @@ Note: sentence-final `。` is inconsistent today — the modal / inline errors i
 
 - Modals: `保存期間` (radio group label `削除までの日数`, options `<n> 日`; warning when shortening `保存すると、書いてから <n> 日を過ぎたセクション <m> 個がすぐに消えます (元に戻せません)。`), `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
 - Landing: `<n> 日で消えるメモ帳`; consent line `ログインすると、利用規約とプライバシーポリシーに同意したものとみなします。`; features `<n> 日たつと、勝手に消える`, `メモをシェアできる`, `Markdown で整えて書ける`
+- Document titles (`useDocumentTitle`): `poi` (top), `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
 - Legal: `最終更新日: <yyyy> 年 <m> 月 <d> 日`

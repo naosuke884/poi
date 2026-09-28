@@ -10,7 +10,8 @@ export const Route = createFileRoute("/(legal)/privacy")({
 function Privacy() {
   return (
     <LegalPage
-      title={
+      title="プライバシーポリシー"
+      heading={
         // スマホ幅で 1 行に収まらないとき「…ポリシ / ー」ではなく「プライバシー / ポリシー」で折り返す
         <>
           プライバシー
