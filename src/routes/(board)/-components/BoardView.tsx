@@ -28,13 +28,18 @@ export function BoardView({
   const ttlDaysRef = useRef(ttlDays);
   if (ttlDays !== undefined) ttlDaysRef.current = ttlDays;
   return (
-    <Stack style={{ flex: 1 }}>
-      {readOnly && (
-        <Alert color="yellow" role="status">
-          {`オフラインのため閲覧のみです (${cachedAt !== null ? formatDateTime(cachedAt) : "前回取得"} 時点の内容)。`}
-          オンラインに戻ると自動的に最新の内容を読み込みます。
-        </Alert>
-      )}
+    // gap は 0 にして、注意書きとの間隔は Alert の mb で取る (常在の空のライブリージョンに間隔が付かないように)
+    <Stack gap={0} style={{ flex: 1 }}>
+      {/* ライブリージョンは中身と同時に挿入されると読み上げられないことが多いので、入れ物は常に置いておき
+          Alert だけを出し入れする (#126)。Alert の既定の role="alert" は入れ物と二重になるので note にする */}
+      <div role="status">
+        {readOnly && (
+          <Alert color="yellow" role="note" mb="md">
+            {`オフラインのため閲覧のみです (${cachedAt !== null ? formatDateTime(cachedAt) : "前回取得"} 時点の内容)。`}
+            オンラインに戻ると自動的に最新の内容を読み込みます。
+          </Alert>
+        )}
+      </div>
       {/* キャッシュ表示 (閲覧のみ) → オンライン復帰で最新を取得したときは作り直して最新の内容にする。
           編集中 (readOnly でない) 間は offline フラグが変わっても作り直さない (未保存分を保持するため)。
           アカウント切り替えでは userId (loader 由来。上記) が変わるので、作り直して切り替え先の板にする (issue #52) */}
