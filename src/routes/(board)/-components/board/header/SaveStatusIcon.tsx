@@ -1,6 +1,10 @@
 import { ActionIcon, Box, ThemeIcon, Tooltip, VisuallyHidden } from "@mantine/core";
-import type { ReactNode } from "react";
-import type { SaveState } from "../../../-lib/sections/save-status";
+import { type ReactNode, useRef } from "react";
+import {
+  NO_SAVE_ANNOUNCEMENT,
+  nextSaveAnnouncement,
+  type SaveState,
+} from "../../../-lib/sections/save-status";
 import { Svg } from "../TablerIcon";
 
 const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
@@ -9,15 +13,43 @@ const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後�
  * ヘッダーに出す板の保存状態 (雲のアイコンのみ、説明は Tooltip)。
  * 雲+チェック = 保存済み、雲 = 未保存、雲+↑ = 保存中、雲に斜線 = オフライン、雲+! = 失敗。
  * 閲覧のみ (state が null) のときはアイコンを出さない。offline / error はクリックで再試行。
- * 読み上げ用に、状態の文言を常在のライブリージョン (role="status") の中に隠しテキストで置く
- * (リージョン自体は状態が無いときも残しておく: 後から中身が変わったときに読み上げられるように)
+ * 今の状態の文言は隠しテキストで添える (読み上げの対象にはなるが、変わるたびには読まない)。
+ *
+ * 変化の読み上げは意味のあるものだけにする (#113、nextSaveAnnouncement)。入力のたびに
+ * 「未保存の変更があります」→「保存中…」→「保存済み」と読むと割り込みが続くため。
+ * オフライン / エラーは role="alert" で割り込んで伝え、そこから戻って保存できたら role="status" で「保存済み」と読む。
+ * どちらのライブリージョンも中身が空のときも残しておく (中身と同時に挿入すると読み上げられないことが多い)
  */
 export function SaveStatusIcon({ state }: { state: SaveState | null }) {
+  // 前回の描画の読み上げ文言から次を決める (同じ状態で何度描画しても結果は変わらない)
+  const announcementRef = useRef(NO_SAVE_ANNOUNCEMENT);
+  announcementRef.current = state
+    ? nextSaveAnnouncement(announcementRef.current, state.status, problemLabel(state))
+    : NO_SAVE_ANNOUNCEMENT;
+  const announcement = announcementRef.current;
   return (
-    <Box component="span" role="status" style={{ display: "inline-flex", alignItems: "center" }}>
+    <Box component="span" style={{ display: "inline-flex", alignItems: "center" }}>
       {state && <Inner state={state} />}
+      <VisuallyHidden component="span" role="alert">
+        {announcement.alert}
+      </VisuallyHidden>
+      <VisuallyHidden component="span" role="status">
+        {announcement.status}
+      </VisuallyHidden>
     </Box>
   );
+}
+
+/** offline / error の文言 (ツールチップ・隠しテキスト・読み上げで共通)。それ以外は null */
+function problemLabel(state: SaveState): string | null {
+  switch (state.status) {
+    case "offline":
+      return OFFLINE_SAVE_MESSAGE;
+    case "error":
+      return `保存に失敗${state.errorMessage ? `: ${state.errorMessage}` : ""}`;
+    default:
+      return null;
+  }
 }
 
 function Inner({ state }: { state: SaveState }) {
@@ -48,11 +80,7 @@ function Inner({ state }: { state: SaveState }) {
       );
     case "error":
       return (
-        <RetryStatus
-          label={`保存に失敗${state.errorMessage ? `: ${state.errorMessage}` : ""}`}
-          color="red"
-          onRetry={state.retry}
-        >
+        <RetryStatus label={problemLabel(state) ?? ""} color="red" onRetry={state.retry}>
           <CloudExclamationIcon />
         </RetryStatus>
       );
