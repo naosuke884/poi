@@ -15,6 +15,7 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 - `npm run dev` — Vite + Worker dev server on :5173 with local D1 (`scripts/dev-server.sh start` keeps it running).
 - `npm test` / `npm run lint` / `npm run typecheck` / `npm run build` — run all four before committing (CI runs the same).
 - `npm run lint:fix` — Biome format and autofix.
+- `npm run test:a11y` — Playwright + axe accessibility check of the rendered pages (starts its own dev server on :5174; CI job `a11y`).
 
 ## Conventions
 

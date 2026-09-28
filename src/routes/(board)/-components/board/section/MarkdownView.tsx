@@ -80,6 +80,8 @@ function selectionIntersects(el: Element): boolean {
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
  *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/(board)/-lib/markdown/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。
+ *   role は button ではなく group: button の中身は読み上げで 1 つのボタン名にまとめられ、中のリンクが
+ *   スクリーンリーダーから見えなくなる (操作できる要素の入れ子。axe の nested-interactive)
  *   ドラッグで文字を選択しただけのときは切り替えない (このセクションに掛かる選択が残っている click は無視。
  *   編集中のエディタの選択は mousedown を止めるので残るが、それは別のセクションなので切り替える)
  * - onNavigate があれば、フォーカス中の ↑↓ で隣のセクションへ移れる (Esc で編集をやめた後のキーボード操作)。
@@ -112,7 +114,7 @@ export function MarkdownView({
     <Box
       ref={ref}
       className={editable ? classes.editable : undefined}
-      role={editable ? "button" : undefined}
+      role={editable ? "group" : undefined}
       tabIndex={editable ? 0 : undefined}
       aria-label={editable && ariaLabel ? `${ariaLabel} (Enter で編集)` : ariaLabel}
       onClick={

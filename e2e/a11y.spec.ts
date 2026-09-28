@@ -77,20 +77,32 @@ test.describe("ログイン済み (板)", () => {
     await expectNoViolations(page, testInfo, "セクションのある板");
 
     // 見出しごとのまとめ表示
-    await page.getByText("まとめ (見出しごとにまとめた表示)").click();
+    // SegmentedControl の radio は見えない input なので、クリックのイベントを直接送る
+    await page.getByRole("radio", { name: /まとめ/ }).dispatchEvent("click");
     await expect(page.getByRole("radio", { name: /まとめ/ })).toBeChecked();
     await expectNoViolations(page, testInfo, "まとめ表示");
   });
 
-  test("ユーザーメニューと保存期間の設定", async ({ page }, testInfo) => {
+  test("ユーザーメニューとダイアログ", async ({ page }, testInfo) => {
     await resetBoard(page, []);
     await page.goto("/");
     await page.getByRole("button", { name: "A11y Check" }).click();
-    await expect(page.getByRole("menu")).toBeVisible();
+    // 開くときのフェードの途中だと色が背景と混ざり、コントラストが低く出るので、終わるまで待つ
+    await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
     await expectNoViolations(page, testInfo, "ユーザーメニュー");
 
     await page.getByRole("menuitem", { name: "保存期間の設定" }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
     await expectNoViolations(page, testInfo, "保存期間の設定");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+
+    await page.getByRole("button", { name: "A11y Check" }).click();
+    await page.getByRole("menuitem", { name: "アカウント削除" }).click();
+    await expect(page.getByRole("dialog", { name: "アカウント削除の確認" })).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await expectNoViolations(page, testInfo, "アカウント削除の確認");
   });
 });

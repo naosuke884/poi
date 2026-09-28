@@ -119,3 +119,9 @@
   border-left-width: 3px;
   border-left-color: var(--mantine-color-default-border);
 }
+
+/* 本文中のリンクは常に下線を出す (Mantine の Typography はホバー時だけ)。
+   ダークではリンクの色と本文の色の差が小さく (1.9)、色だけではリンクと分からないため (WCAG 1.4.1) */
+.root :where(a) {
+  text-decoration: underline;
+}

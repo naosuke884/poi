@@ -1,6 +1,6 @@
 import "@mantine/core/styles.css";
 import "./fonts.css";
-import { createTheme, MantineProvider } from "@mantine/core";
+import { type CSSVariablesResolver, createTheme, MantineProvider } from "@mantine/core";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -60,13 +60,46 @@ const theme = createTheme({
   // 見出しが折り返すとき、各行の長さを揃える (最後の行が 1 文字だけになるのを防ぐ)。
   // 行数は変わらないので、板の見出しの表示と編集の高さの一致は崩れない。未対応のブラウザは通常の折り返し
   headings: { textWrap: "balance" },
+  components: {
+    // モーダルの見出し部分: Mantine は <header> で描画し、axe などはページの banner ランドマーク (2 つ目) と
+    // みなす (ページのヘッダーと区別できない)。ランドマークにしないよう div にする
+    ModalHeader: { defaultProps: { component: "div" } },
+    // モーダルの × ボタンには既定で名前が無い (アイコンだけ)。読み上げで何のボタンか分かるようにする
+    ModalCloseButton: { defaultProps: { "aria-label": "閉じる" } },
+  },
+});
+
+// 控えめな文字 (c="dimmed") とプレースホルダーの色。Mantine 既定の dimmed は白地で 3.3 (gray 6)、
+// ダークの #242424 地で 4.0 (dark 2) と、小さな文字の AA (4.5) に届かない (placeholder はさらに薄い)。
+// パレットに 4.5 を超えつつ薄く見える段が無いので、隣り合う 2 段の中間色にする
+// (白地で 5.2 / #242424 地で 6.0 / メニューの #2e2e2e 地で 5.3。e2e/a11y.spec.ts の axe で確認)。
+// 赤の文字 (c="red"、メニューのログアウト、アカウント削除の確認の outline ボタンなど) も、ライトの既定 (red 6) は白地で 3.3 しかないので 9 番 (5.5) にする
+// (ダークの既定 red 4 は 5.9 で足りている)
+const cssVariablesResolver: CSSVariablesResolver = () => ({
+  variables: {},
+  light: {
+    "--mantine-color-dimmed":
+      "color-mix(in srgb, var(--mantine-color-gray-6), var(--mantine-color-gray-7))",
+    "--mantine-color-placeholder": "var(--mantine-color-dimmed)",
+    "--mantine-color-red-text": "var(--mantine-color-red-9)",
+    "--mantine-color-red-outline": "var(--mantine-color-red-9)",
+  },
+  dark: {
+    "--mantine-color-dimmed":
+      "color-mix(in srgb, var(--mantine-color-dark-1), var(--mantine-color-dark-2))",
+    "--mantine-color-placeholder": "var(--mantine-color-dimmed)",
+  },
 });
 
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   createRoot(rootElement).render(
     <StrictMode>
-      <MantineProvider theme={theme} defaultColorScheme="auto">
+      <MantineProvider
+        theme={theme}
+        defaultColorScheme="auto"
+        cssVariablesResolver={cssVariablesResolver}
+      >
         <RouterProvider router={router} />
       </MantineProvider>
     </StrictMode>,

@@ -46,11 +46,11 @@ export function LandingHero() {
       )}
       <Text c="dimmed" size="xs">
         ログインすると、
-        <Anchor component={Link} to="/terms" size="xs">
+        <Anchor component={Link} to="/terms" size="xs" underline="always">
           利用規約
         </Anchor>
         と
-        <Anchor component={Link} to="/privacy" size="xs">
+        <Anchor component={Link} to="/privacy" size="xs" underline="always">
           プライバシーポリシー
         </Anchor>
         に同意したものとみなします。

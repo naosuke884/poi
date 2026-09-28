@@ -67,7 +67,17 @@ export function UserMenu() {
   };
   return (
     <Group gap="xs" wrap="nowrap">
-      <Menu shadow="md" width={200} onOpen={onOpen}>
+      {/* withinPortal={false}: メニューをヘッダー (banner ランドマーク) の中に描画する。body 直下の portal だと
+          どのランドマークにも属さず、ランドマークで移動する人が辿れない。
+          withInitialFocusPlaceholder={false}: 開いたときのフォーカス置き場 (role="presentation" の空の div) を置かず、
+          最初の項目にフォーカスする。menu の子に menuitem 以外があると支援技術が構造を取り違える */}
+      <Menu
+        shadow="md"
+        width={200}
+        onOpen={onOpen}
+        withinPortal={false}
+        withInitialFocusPlaceholder={false}
+      >
         <Menu.Target>
           {/* button にしてキーボード (Tab → Enter / Space) でも開けるようにする。
               名前の読み上げは aria-label で (狭い画面では名前の文字を隠すため。下記) */}
@@ -129,11 +139,18 @@ export function UserMenu() {
           </Menu.Item>
           <Menu.Divider />
           {offline && <Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
-          <Menu.Item color="red" disabled={offline || busy} onClick={() => void logout()}>
+          {/* 文字色は Menu.Item の color (red 6 固定) ではなく、コントラストを確保した red-text にする (main.tsx) */}
+          <Menu.Item
+            color="red"
+            c="var(--mantine-color-red-text)"
+            disabled={offline || busy}
+            onClick={() => void logout()}
+          >
             ログアウト
           </Menu.Item>
           <Menu.Item
             color="red"
+            c="var(--mantine-color-red-text)"
             disabled={offline || busy}
             onClick={() => setConfirmingDelete(true)}
           >
