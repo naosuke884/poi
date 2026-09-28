@@ -40,3 +40,26 @@ describe("clearOfflineCaches で板のキャッシュを消す", () => {
     expect(readCachedBoard("third")).not.toBeNull();
   });
 });
+
+describe("readCachedBoard は期限切れのセクションを端末のキャッシュからも消す (issue #115)", () => {
+  const now = Date.parse("2026-09-28T00:00:00.000Z");
+  const at = (ms: number) => new Date(ms).toISOString();
+  const sections = [
+    { id: "past", content: "1 ms 前に期限切れ", expiresAt: at(now - 1) },
+    { id: "edge", content: "ちょうど期限", expiresAt: at(now) },
+    { id: "live", content: "あと 1 ms", expiresAt: at(now + 1) },
+  ] as Parameters<typeof writeCachedBoard>[1];
+
+  beforeEach(() => {
+    localStorage.clear();
+    writeCachedBoard("me", sections, 123);
+  });
+
+  it("期限 (expiresAt <= now) を過ぎたものを除いて返し、localStorage にも書き戻す", () => {
+    expect(readCachedBoard("me", now)?.sections.map((s) => s.id)).toEqual(["live"]);
+    const stored = JSON.parse(localStorage.getItem("poi:board-cache:v2:me") ?? "null");
+    expect(stored).toEqual({ sections: [sections[2]], cachedAt: 123 });
+    expect(localStorage.getItem("poi:board-cache:v2:me")).not.toContain("ちょうど期限");
+  });
+
+});

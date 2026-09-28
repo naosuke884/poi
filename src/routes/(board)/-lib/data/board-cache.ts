@@ -1,5 +1,5 @@
 import { readJson, writeJson } from "@/lib/local-storage";
-import { boardCacheKey } from "@/lib/offline-caches";
+import { boardCacheKey, pruneBoardCache } from "@/lib/offline-caches";
 import type { BoardSection } from "./board";
 
 // オフライン閲覧用の板のキャッシュ (localStorage)。
@@ -16,13 +16,8 @@ import type { BoardSection } from "./board";
 export type CachedBoard = { sections: BoardSection[]; cachedAt: number };
 
 export function readCachedBoard(userId: string, now = Date.now()): CachedBoard | null {
-  const cached = readJson<CachedBoard>(boardCacheKey(userId));
-  if (!cached || !Array.isArray(cached.sections)) return null;
-  // サーバ側の「未期限切れのみ」と同じ条件。オフラインでも期限を過ぎたセクションは見せない
-  return {
-    ...cached,
-    sections: cached.sections.filter((s) => new Date(s.expiresAt).getTime() > now),
-  };
+  // オフラインでも期限を過ぎたセクションは見せず、端末からも消す (書き戻す。issue #115)
+  return pruneBoardCache<CachedBoard>(boardCacheKey(userId), now);
 }
 
 /**

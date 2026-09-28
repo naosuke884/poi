@@ -9,11 +9,14 @@ import { RouteErrorFallback } from "./RouteErrorFallback";
 // 受け取り口をここで先に用意しておく (副作用だけの import)
 import "@/lib/install-prompt";
 import { removeByPrefix } from "@/lib/local-storage";
+import { pruneBoardCaches } from "@/lib/offline-caches";
 import { routeTree } from "./routeTree.gen";
 
 // セクションの折り畳み機能は 2026-09 に廃止した (#51)。端末ごとに localStorage へ
 // 記録していた頃の残りを消す (しばらく経ったらこの行ごと消してよい)
 removeByPrefix("poi:collapsed:v1:");
+// オフライン用の板のキャッシュから、期限を過ぎたセクションの本文を消す (issue #115)
+pruneBoardCaches();
 
 const router = createRouter({
   routeTree,

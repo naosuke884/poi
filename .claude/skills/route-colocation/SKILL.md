@@ -59,6 +59,7 @@ Extract just the part that really needs sharing into `src/lib` and leave the res
 
 Example: the header's logout needs to clear a route's cache. If clearing only needs the cache key,
 put the key and the clear function in `src/lib`, and keep the reads and writes that depend on the route's types in the route's `-lib/`.
+The same goes for `main.tsx`'s startup sweep of expired sections from that cache (#115): `pruneBoardCache` / `pruneBoardCaches` in `src/lib/offline-caches.ts` work on a minimal `{ sections: { expiresAt }[] }` shape, and the route's `readCachedBoard` calls them with its own type.
 
 ### Things shown in the header
 
