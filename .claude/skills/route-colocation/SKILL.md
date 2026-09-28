@@ -46,7 +46,8 @@ When adding or splitting routes or pages, also read [references/routes.md](refer
 
 - If something belonging to one route starts being used by another route, move it to `src/components` / `src/lib`
 - Conversely, if something in `src/components` / `src/lib` ends up used by only one route, move it back into that route's `-components/` / `-lib/`
-- Revisit the name when moving. A name tied to the original route (e.g. `XxxFooter` with the page name in it) reads wrong to the other users once it is shared
+- Revisit the name when moving. A name tied to the original route (e.g. `XxxFooter` with the page name in it) reads wrong to the other users once it is shared.
+  Example: the landing's `LandingFooter` became `src/components/SiteFooter.tsx` when the legal pages started showing it too (#139)
 - Do not get by with importing another route's `-components/` / `-lib/` directly. The same goes for importing route internals from `src/components` / `src/lib`.
   Both are `npm run lint` errors (the former via `biome-plugins/route-colocation.grit`, the latter via `noRestrictedImports` in `biome.json`).
   When lint fails, fix the placement instead of rewriting the import to slip past the rule

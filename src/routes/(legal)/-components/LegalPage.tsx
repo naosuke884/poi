@@ -1,6 +1,7 @@
 import { Anchor, Stack, Text, Title, Typography } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import classes from "./LegalPage.module.css";
 
@@ -45,6 +46,8 @@ export function LegalPage({
       <Anchor component={Link} to="/" size="sm">
         トップへ戻る
       </Anchor>
+      {/* 規約のページからも他のページ (もう一方の規約、GitHub) へ移れるように (#139) */}
+      <SiteFooter />
     </Stack>
   );
 }

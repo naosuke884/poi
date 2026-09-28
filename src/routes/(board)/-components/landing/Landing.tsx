@@ -1,8 +1,8 @@
 import { Stack } from "@mantine/core";
 import { useLayoutEffect } from "react";
+import { SiteFooter } from "@/components/SiteFooter";
 import { DemoVideo } from "./DemoVideo";
 import { FeatureList } from "./FeatureList";
-import { LandingFooter } from "./LandingFooter";
 import { LandingHero } from "./LandingHero";
 
 /**
@@ -20,7 +20,7 @@ export function Landing() {
       <LandingHero />
       <DemoVideo />
       <FeatureList />
-      <LandingFooter />
+      <SiteFooter />
     </Stack>
   );
 }
