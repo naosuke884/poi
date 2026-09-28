@@ -54,3 +54,11 @@ describe("LIST_ITEM_RE", () => {
       expect(LIST_ITEM_RE.test(line), line).toBe(false);
   });
 });
+
+describe("無効にした記法", () => {
+  it("表は <table> にならず文字のまま表示する (表用の描画コードは持たない。issue #134)", () => {
+    const html = render("| a | b |\n| - | - |\n| 1 | 2 |");
+    expect(html).not.toContain("<table");
+    expect(html).toContain("| a | b |");
+  });
+});

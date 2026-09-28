@@ -22,11 +22,10 @@ function selectionIntersects(el: Element): boolean {
 
 /**
  * セクションの Markdown レンダリング表示 (編集していないセクション用)。
- * - GFM (チェックボックス・表・打ち消し線・自動リンク) 対応。BOARD_MARKDOWN_DISABLED の記法は無効 (文字のまま表示)。
+ * - GFM (裸の URL の自動リンク) 対応。BOARD_MARKDOWN_DISABLED の記法は無効 (文字のまま表示)。
  *   改行 1 つはそのまま改行として扱う (remark-breaks。メモなので)
  * - HTML は構文ごと無効 (文字のまま表示) なので sanitize は不要
  * - リンクは別タブで開く (同じタブで開くと編集中の板から離れてしまうため)
- * - 表は横スクロールする箱で包む (幅広の表でページ全体が横に伸びないように)
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
  *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/(board)/-lib/markdown/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。
@@ -106,11 +105,6 @@ export function MarkdownView({
           components={{
             a: ({ node: _node, ...props }) => (
               <a {...props} target="_blank" rel="noopener noreferrer" />
-            ),
-            table: ({ node: _node, ...props }) => (
-              <div className={classes.tableScroll}>
-                <table {...props} />
-              </div>
             ),
           }}
         >
