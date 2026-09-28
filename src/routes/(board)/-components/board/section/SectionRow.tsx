@@ -32,7 +32,8 @@ export type SectionHandlers = {
   navigateView(key: string, dir: -1 | 1): boolean;
   /** 画像にして届ける (クリップボードかダウンロードか) */
   screenshot(key: string): Promise<"clipboard" | "download">;
-  remove(key: string): void;
+  /** 削除。viaKeyboard はキーボード (や支援技術) で押した (click の detail が 0) */
+  remove(key: string, viaKeyboard: boolean): void;
 };
 
 /** key → 要素の控え (useSectionFocus)。描画した要素をここに登録する */
@@ -107,7 +108,12 @@ export function SectionRow({
             onScreenshot={() => h.screenshot(s.key)}
           />
         )}
-        {!readOnly && <SectionDeleteButton subject={label} onDelete={() => h.remove(s.key)} />}
+        {!readOnly && (
+          <SectionDeleteButton
+            subject={label}
+            onDelete={(viaKeyboard) => h.remove(s.key, viaKeyboard)}
+          />
+        )}
       </Group>
       {(readOnly || !editing) && !empty ? (
         <MarkdownView

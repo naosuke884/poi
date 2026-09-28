@@ -1,5 +1,5 @@
 import { Box, Divider, Group, Text } from "@mantine/core";
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { EditableSection } from "../../-lib/data/board";
 import { copySectionText, deliverImage, renderSectionImage } from "../../-lib/section-export";
 import {
@@ -7,6 +7,7 @@ import {
   type OrganizedGroup,
   organizeSections,
 } from "../../-lib/sections/organized";
+import type { DeleteFocus } from "../../-lib/sections/use-undoable-delete";
 import { MarkdownView } from "./section/MarkdownView";
 import { SectionActions, SectionDeleteButton } from "./section/SectionActions";
 
@@ -32,8 +33,8 @@ export function OrganizedView({
   readOnly: boolean;
   /** まとめの中のクリック位置に対応する、元セクションの位置で編集を開く */
   onJump: (sectionKey: string, pos: number) => void;
-  /** このまとめに含めた内容を元セクションから取り除く */
-  onDelete: (group: OrganizedGroup) => void;
+  /** このまとめに含めた内容を元セクションから取り除く (フォーカスの扱いは DeleteFocus) */
+  onDelete: (group: OrganizedGroup, focus: DeleteFocus) => void;
 }) {
   const groups = useMemo(() => organizeSections(sections), [sections]);
   // グループ key → Markdown 表示の要素 (スクショの対象)
@@ -42,6 +43,30 @@ export function OrganizedView({
     const el = viewsRef.current.get(key);
     if (!el) throw new Error("まとめが空のため画像にできません");
     return deliverImage(renderSectionImage(el));
+  };
+  // 描画後にフォーカスを移すまとめの位置 (削除した場所。#112)。後ろが無ければ前のまとめへ
+  const pendingFocusRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const index = pendingFocusRef.current;
+    if (index === null) return;
+    pendingFocusRef.current = null;
+    const g = groups[Math.min(index, groups.length - 1)];
+    if (g) viewsRef.current.get(g.key)?.focus();
+  });
+  // 削除ボタン。フォーカスがそのまとめの中にあった (削除ボタンを押した) ときだけ前後のまとめへ移す
+  // (そのままだと body に落ちる)。キーボードで押したときは Board が先に「元に戻す」へ移す
+  const boxesRef = useRef(new Map<string, HTMLDivElement>());
+  const remove = (g: OrganizedGroup, index: number, viaKeyboard: boolean) => {
+    const hadFocus = boxesRef.current.get(g.key)?.contains(document.activeElement) ?? false;
+    onDelete(g, {
+      viaKeyboard,
+      returnFocus:
+        hadFocus || viaKeyboard
+          ? () => {
+              pendingFocusRef.current = index;
+            }
+          : null,
+    });
   };
 
   if (groups.length === 0) {
@@ -61,7 +86,13 @@ export function OrganizedView({
           ...(g.chunkCount >= 2 ? [`${g.chunkCount} か所`] : []),
         ].join(" · ");
         return (
-          <Box key={g.key}>
+          <Box
+            key={g.key}
+            ref={(el) => {
+              if (el) boxesRef.current.set(g.key, el);
+              else boxesRef.current.delete(g.key);
+            }}
+          >
             {/* タイムラインのセクションの区切り線と同じ並び (コピー / スクショ / 期限は線の外の右端) */}
             <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
               <Divider
@@ -76,7 +107,10 @@ export function OrganizedView({
               />
               {!readOnly && (
                 /* タイムラインのセクション削除と同じボタン。押した後は Board の「元に戻す」通知に任せる */
-                <SectionDeleteButton subject={subject} onDelete={() => onDelete(g)} />
+                <SectionDeleteButton
+                  subject={subject}
+                  onDelete={(viaKeyboard) => remove(g, i, viaKeyboard)}
+                />
               )}
             </Group>
             <MarkdownView

@@ -1,6 +1,6 @@
 import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
 import { BOARD_MAX_LENGTH, MEMO_TTL_DAYS, SECTION_SEPARATOR } from "@shared/constants";
-import { type MouseEvent, useRef, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { HeaderSlot } from "@/components/HeaderSlot";
@@ -98,12 +98,59 @@ export function Board({
 
   const indexOf = (key: string) => latestRef.current.findIndex((s) => s.key === key);
 
-  const { deleted, cancelUndo, removeSection, removeGroup, undoDelete } = useUndoableDelete({
-    latestRef,
-    organized,
-    focusLater,
-    update,
-  });
+  const { deleted, closeUndo, holdUndo, removeSection, removeGroup, undoDelete } =
+    useUndoableDelete({
+      latestRef,
+      organized,
+      focusLater,
+      update,
+    });
+
+  // キーボードで削除したら「元に戻す」へフォーカスを移す (DOM の末尾の通知には Tab で届かないので。#112)。
+  // 通知 (Affix) はポータルで、初めて出るときはボタンが 1 描画遅れて現れるので、予約しておいて
+  // ボタンが現れた (ref が付いた) 時点でも移す
+  const undoButtonRef = useRef<HTMLButtonElement | null>(null);
+  const focusUndoRef = useRef(false);
+  const focusUndoButton = () => {
+    const el = undoButtonRef.current;
+    if (!el || !focusUndoRef.current) return;
+    focusUndoRef.current = false;
+    el.focus();
+  };
+  const setUndoButton = useCallback((el: HTMLButtonElement | null) => {
+    undoButtonRef.current = el;
+    focusUndoButton();
+    // ref だけを読むので作り直さない
+  }, []);
+  useEffect(() => {
+    if (!deleted?.focusUndo) return;
+    focusUndoRef.current = true;
+    focusUndoButton();
+  }, [deleted]);
+
+  // 削除した場所 (index) の前後のセクションへフォーカスを移す (#112)。後ろが無ければ前へ。
+  // 空のセクション (常にエディタ) と編集中のものはエディタへ、それ以外は Markdown 表示へ (Esc で抜けたときと同じ)。
+  // どちらも描画後に移す (削除や通知を閉じた描画の後。表示から消える要素にフォーカスを置かないように)
+  const focusSectionNear = (index: number) => {
+    const cur = latestRef.current;
+    const s = cur[Math.min(index, cur.length - 1)];
+    if (!s) return;
+    if (s.content.trim() === "" || editingKeyRef.current === s.key) {
+      focusLater(s.key, s.content.length);
+    } else {
+      pendingViewFocusRef.current = s.key;
+    }
+  };
+  // 削除ボタン。フォーカスがそのセクションの中 (削除ボタン自身や編集中のエディタ) にあったときだけ前後へ移す。
+  // 別のセクションを編集しながらマウスで押したときは、そのエディタにフォーカスを残す (keepEditorFocus)
+  const remove = (key: string, viaKeyboard: boolean) => {
+    const index = indexOf(key);
+    const hadFocus = boxesRef.current.get(key)?.contains(document.activeElement) ?? false;
+    removeSection(key, {
+      viaKeyboard,
+      returnFocus: hadFocus || viaKeyboard ? () => focusSectionNear(index) : null,
+    });
+  };
 
   // 入力。区切り (空行 2 つ) が入ったらそこで分け、カーソルを行き先へ (配列の変換は board-ops)
   const change = (key: string, value: string, cursor: number) => {
@@ -234,7 +281,7 @@ export function Board({
     edit: (key, pos) => focus(key, pos, "top"),
     navigateView: focusViewFrom,
     screenshot,
-    remove: removeSection,
+    remove,
   };
   const refs: SectionRefs = { boxes: boxesRef, views: viewsRef, editors: elementsRef };
   // セクションが 1 つだけのときのエディタのプレースホルダ (書き方の案内)
@@ -334,10 +381,25 @@ export function Board({
         </Affix>
       )}
 
-      {/* 削除の取り消し (左下角。PwaUpdateBanner はこの上、右下は追加ボタン) */}
+      {/* 削除の取り消し (左下角。PwaUpdateBanner はこの上、右下は追加ボタン)。
+          ホバーかフォーカスがある間は消えるまでの時間を止める (読んでいる途中や押す直前に消えないように)。
+          Esc でも閉じられる (キーボードで「元に戻す」に移ってきたときの戻り道。フォーカスは削除した場所の前後へ) */}
       {deleted && (
-        <BottomLeftNotice title={deleted.title} onClose={cancelUndo}>
-          <Button size="xs" mt="xs" variant="default" onClick={undoDelete}>
+        <BottomLeftNotice
+          title={deleted.title}
+          onClose={closeUndo}
+          onMouseEnter={() => holdUndo("hover", true)}
+          onMouseLeave={() => holdUndo("hover", false)}
+          onFocus={() => holdUndo("focus", true)}
+          onBlur={(e) => {
+            // 通知の中でのフォーカスの移動 (「元に戻す」→ ×) は離れたことにしない
+            if (!e.currentTarget.contains(e.relatedTarget)) holdUndo("focus", false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") closeUndo();
+          }}
+        >
+          <Button ref={setUndoButton} size="xs" mt="xs" variant="default" onClick={undoDelete}>
             元に戻す
           </Button>
         </BottomLeftNotice>

@@ -479,3 +479,75 @@ describe("Board: 別のタブで保持日数を短くした後の保存 (issue #
     expect(puts).toHaveLength(1);
   });
 });
+
+describe("Board: 削除した後のフォーカス (issue #112)", () => {
+  /** 削除ボタンを押す。detail 0 はキーボード (や支援技術) での click、1 はマウス / タップ */
+  async function clickDelete(n: number, detail: 0 | 1) {
+    const button = container.querySelector<HTMLElement>(`[aria-label='セクション ${n} を削除']`)!;
+    await act(async () => {
+      // キーボードで押すときは、先にボタンへフォーカスが来ている
+      if (detail === 0) button.focus();
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail }));
+    });
+  }
+  const undoButton = () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "元に戻す");
+  const focusedLabel = () => document.activeElement?.getAttribute("aria-label");
+
+  it("キーボードで削除すると「元に戻す」にフォーカスが移り、× で閉じると削除した場所の次のセクションへ戻る", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
+    await clickDelete(2, 0);
+    expect(sectionTexts()).toEqual(["a", "c"]);
+    expect(document.activeElement).toBe(undoButton());
+    const close = document.querySelector<HTMLElement>(
+      "[aria-label='「セクションを削除しました」を閉じる']",
+    )!;
+    await act(async () => close.click());
+    expect(undoButton()).toBeUndefined();
+    expect(focusedLabel()).toBe("セクション 2 (Enter で編集)");
+    expect(document.activeElement?.textContent?.trim()).toBe("c");
+  });
+
+  it("「元に戻す」で Esc を押しても閉じ、最後のセクションを消したときは前のセクションへ戻る", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }]);
+    await clickDelete(2, 0);
+    await act(async () => {
+      undoButton()!.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+    expect(undoButton()).toBeUndefined();
+    expect(focusedLabel()).toBe("セクション 1 (Enter で編集)");
+  });
+
+  it("キーボードで削除して「元に戻す」を押すと、戻したセクションの編集に入る", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
+    await clickDelete(2, 0);
+    await act(async () => undoButton()!.click());
+    expect(sectionTexts()).toEqual(["a", "- b", "c"]);
+    expect(editor().hasFocus).toBe(true);
+  });
+
+  it("編集中のセクションをマウスで削除すると、次のセクションの表示へフォーカスが移る", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
+    await act(async () =>
+      container.querySelector<HTMLElement>(`[aria-label^="セクション 2 ("]`)!.click(),
+    );
+    expect(editor().hasFocus).toBe(true);
+    await clickDelete(2, 1);
+    expect(sectionTexts()).toEqual(["a", "c"]);
+    expect(focusedLabel()).toBe("セクション 2 (Enter で編集)");
+    // マウスで押したときは「元に戻す」へは移さない
+    expect(document.activeElement).not.toBe(undoButton());
+  });
+
+  it("別のセクションを編集しながらマウスで削除したときは、編集中のエディタにフォーカスを残す", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
+    await act(async () =>
+      container.querySelector<HTMLElement>(`[aria-label^="セクション 1 ("]`)!.click(),
+    );
+    await clickDelete(3, 1);
+    expect(sectionTexts()).toEqual(["- a", "b"]);
+    expect(editor().hasFocus).toBe(true);
+  });
+});

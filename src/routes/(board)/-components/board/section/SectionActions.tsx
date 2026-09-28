@@ -61,7 +61,8 @@ export function SectionDeleteButton({
 }: {
   /** 読み上げ用の対象の名前 (SectionActions と同じ) */
   subject: string;
-  onDelete: () => void;
+  /** viaKeyboard はキーボード (や支援技術) で押した (click の detail が 0。マウスやタップなら 1 以上) */
+  onDelete: (viaKeyboard: boolean) => void;
 }) {
   return (
     <Tooltip label="削除" withArrow>
@@ -71,7 +72,7 @@ export function SectionDeleteButton({
         className={classes.touchTarget}
         aria-label={`${subject} を削除`}
         onMouseDown={keepEditorFocus}
-        onClick={onDelete}
+        onClick={(e) => onDelete(e.detail === 0)}
       />
     </Tooltip>
   );
