@@ -2,6 +2,7 @@ import { List, Modal, Stack, Text } from "@mantine/core";
 import { useMediaQuery, useOs } from "@mantine/hooks";
 import { useState } from "react";
 import { promptInstall, useInstallState } from "@/lib/install-prompt";
+import { useCloseWatcher } from "../../../-lib/use-close-watcher";
 
 /**
  * メニューの「ホーム画面に追加」(PWA のインストール導線)。
@@ -47,6 +48,8 @@ export function InstallGuideModal({
   opened: boolean;
   onClose: () => void;
 }) {
+  // Android の戻る操作でもモーダルだけを閉じる
+  useCloseWatcher(opened, onClose);
   return (
     <Modal opened={opened} onClose={onClose} title="ホーム画面に追加" centered>
       <Stack gap="md">

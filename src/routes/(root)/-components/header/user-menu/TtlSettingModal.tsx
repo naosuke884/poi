@@ -3,6 +3,7 @@ import { MEMO_TTL_CHOICES } from "@shared/constants";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { countExpiring } from "../../../-lib/ttl-expiring";
+import { useCloseWatcher } from "../../../-lib/use-close-watcher";
 
 /**
  * セクションの保存期間 (書いてから削除されるまでの日数) の設定モーダル (UserMenu から開く)。
@@ -28,6 +29,8 @@ export function TtlSettingModal({
   const [createdAts, setCreatedAts] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Android の戻る操作でもモーダルだけを閉じる
+  useCloseWatcher(opened, onClose);
 
   // 開くたびに現在値を取り直す (別の端末で変えた値が残らないように)
   useEffect(() => {
