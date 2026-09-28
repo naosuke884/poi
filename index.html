@@ -20,6 +20,17 @@
          manifest.webmanifest の theme_color (vite.config.ts) は light と同じ値にしておく -->
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#242424" media="(prefers-color-scheme: dark)" />
+    <!-- Mantine が JS で data-mantine-color-scheme を付けるまでの最初のフレームも OS の配色で描く
+         (無いとダークモードの起動時に一瞬白くなる)。color-scheme だけだとブラウザ既定の暗色
+         (Chrome は #121212) になるので、背景は Mantine の body 色 (#242424) に揃える -->
+    <meta name="color-scheme" content="light dark" />
+    <style>
+      @media (prefers-color-scheme: dark) {
+        html {
+          background: #242424;
+        }
+      }
+    </style>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
