@@ -2,8 +2,11 @@
 // 板は Container size="md" (__root.tsx) で幅に上限があるので、広い画面では固定要素も板の端に
 // 揃える (画面の隅だと板から離れすぎる)。狭い画面では従来どおり画面端から 16px (+ ノッチ等の safe-area)。
 // 30rem は Mantine の --container-size-md (60rem。Container のクラス内でしか参照できない) の半分:
-// 板の端 = (100vw - 60rem) / 2 = 50vw - 30rem。除算で書かないのは、Affix が position 値を rem() 変換に
+// 板の端 = (ビューポート幅 - 60rem) / 2 = 50% - 30rem。除算で書かないのは、Affix が position 値を rem() 変換に
 // 通すため、単位のない数字 (「/ 2」の 2) が rem に化けて式が壊れるから。
+// 幅は vw ではなく % で取る: Affix は position: fixed なので % はスクロールバーを除いたビューポート基準で、
+// 中央寄せの板と同じ幅になる。vw はスクロールバーの幅を含むので、スクロールバーが幅を取る環境
+// (Windows / Linux) では板の端から半分 (約 7px) ずれる (issue #131)。
 // 16px は Container 自身の padding-inline (--mantine-spacing-md) と合わせる
 export const affixInset = (side: "left" | "right") =>
-  `max(calc(16px + env(safe-area-inset-${side})), calc(50vw - 30rem * var(--mantine-scale, 1) + 16px))`;
+  `max(calc(16px + env(safe-area-inset-${side})), calc(50% - 30rem * var(--mantine-scale, 1) + 16px))`;
