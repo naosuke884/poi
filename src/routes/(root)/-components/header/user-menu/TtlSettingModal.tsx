@@ -65,7 +65,8 @@ export function TtlSettingModal({
   const expiring = value !== null && createdAts ? countExpiring(createdAts, Number(value)) : 0;
 
   const save = async () => {
-    if (value === null) return;
+    // Enter での送信は保存ボタンの disabled / loading を通らないので、ここでも弾く
+    if (value === null || saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -82,47 +83,55 @@ export function TtlSettingModal({
 
   return (
     <Modal opened={opened} onClose={onClose} title="保存期間" centered>
-      <Stack gap="md">
-        <Text size="sm">セクションが書かれてから自動で削除されるまでの日数です。</Text>
-        {value === null && error === null ? (
-          <Skeleton h={60} />
-        ) : (
-          <div>
-            {/* 選択肢は 7 つだけなので、ドロップダウン (モーダルからはみ出してボタンを隠す) にせず並べる */}
-            <Radio.Group label="削除までの日数" value={value} onChange={setValue}>
-              <Group gap="md" mt="xs">
-                {MEMO_TTL_CHOICES.map((d) => (
-                  <Radio key={d} value={String(d)} label={`${d} 日`} disabled={value === null} />
-                ))}
-              </Group>
-            </Radio.Group>
-            {/* 保存すると元に戻せないので、消える数を前もって出す。選び直すたびに読み上げるよう、
-                live region は空でも置いておく (空のときは余白も付けない) */}
-            <Text size="sm" c="red" mt={expiring > 0 ? "sm" : 0} role="status" aria-live="polite">
-              {expiring > 0 &&
-                `保存すると、書いてから ${value} 日を過ぎたセクション ${expiring} 個がすぐに消えます (元に戻せません)。`}
+      {/* form にして、ラジオで Enter を押しても保存できるようにする (#129) */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <Stack gap="md">
+          <Text size="sm">セクションが書かれてから自動で削除されるまでの日数です。</Text>
+          {value === null && error === null ? (
+            <Skeleton h={60} />
+          ) : (
+            <div>
+              {/* 選択肢は 7 つだけなので、ドロップダウン (モーダルからはみ出してボタンを隠す) にせず並べる */}
+              <Radio.Group label="削除までの日数" value={value} onChange={setValue}>
+                <Group gap="md" mt="xs">
+                  {MEMO_TTL_CHOICES.map((d) => (
+                    <Radio key={d} value={String(d)} label={`${d} 日`} disabled={value === null} />
+                  ))}
+                </Group>
+              </Radio.Group>
+              {/* 保存すると元に戻せないので、消える数を前もって出す。選び直すたびに読み上げるよう、
+                  live region は空でも置いておく (空のときは余白も付けない) */}
+              <Text size="sm" c="red" mt={expiring > 0 ? "sm" : 0} role="status" aria-live="polite">
+                {expiring > 0 &&
+                  `保存すると、書いてから ${value} 日を過ぎたセクション ${expiring} 個がすぐに消えます (元に戻せません)。`}
+              </Text>
+            </div>
+          )}
+          {error && (
+            <Text size="sm" c="red" role="alert">
+              {error}
             </Text>
-          </div>
-        )}
-        {error && (
-          <Text size="sm" c="red" role="alert">
-            {error}
-          </Text>
-        )}
-        <Group gap="sm">
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={value === null}
-            color={expiring > 0 ? "red" : undefined}
-          >
-            保存
-          </Button>
-          <Button variant="default" onClick={onClose} disabled={saving}>
-            キャンセル
-          </Button>
-        </Group>
-      </Stack>
+          )}
+          <Group gap="sm">
+            <Button
+              type="submit"
+              loading={saving}
+              disabled={value === null}
+              color={expiring > 0 ? "red" : undefined}
+            >
+              保存
+            </Button>
+            <Button variant="default" onClick={onClose} disabled={saving}>
+              キャンセル
+            </Button>
+          </Group>
+        </Stack>
+      </form>
     </Modal>
   );
 }
