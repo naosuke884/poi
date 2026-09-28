@@ -40,7 +40,7 @@ For an existing piece, pass it to the script above as `<file>` to see its users 
 - Never put a `.tsx` / `.ts` piece directly in a route directory. Any file not starting with `-` is generated as a route and adds a URL
 - Things used by both src and worker (constants, validation limits, etc.) go in `shared/` at the repository root and are imported via `@shared/`
 
-When adding or splitting routes or pages, also read [references/routes.md](references/routes.md) (when to use a route group vs. `<name>/index.tsx`).
+When adding or splitting routes or pages, also read [references/routes.md](references/routes.md) (when to use a route group vs. `<name>/index.tsx`, and how to keep heavy page code out of other pages' first load).
 
 ### When the users change, move the file
 

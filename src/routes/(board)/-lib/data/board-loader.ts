@@ -1,9 +1,10 @@
 import { api } from "@/lib/api";
 import { fetchOrOffline, OfflineError } from "@/lib/offline";
 import { clearOfflineCaches } from "@/lib/offline-caches";
+import { readCachedUser } from "@/lib/session-cache";
 import type { BoardSection } from "./board";
 import { readCachedBoard, writeCachedBoard } from "./board-cache";
-import type { LoginContext } from "./optional-login";
+import { type LoginContext, optionalLogin } from "./optional-login";
 
 /** トップ (/) に出すもの: 未ログインならランディング、ログイン済みなら板 */
 export type TopPage =
@@ -22,6 +23,35 @@ export type TopPage =
       /** 板の持ち主。sections と同じスナップショットから取る (BoardView の key に使う。issue #52) */
       userId: string;
     };
+
+/**
+ * 板 / ランディングの画面のチャンク (動的 import) を取りに行く関数。取得済みなら何もしない (undefined)。
+ * 取得に失敗しても reject しない (描画時にエラーになる。lazyRouteComponent の preload と同じ)
+ */
+export type ViewChunks = {
+  board: () => Promise<unknown> | undefined;
+  landing: () => Promise<unknown> | undefined;
+};
+
+/**
+ * トップ (/) の loader。セッション確認 (optionalLogin) と板の取得 (loadTopPage) に、画面のチャンクの取得を
+ * 並行させる (issue #110)。板のチャンク (CodeMirror・react-markdown) は大きく、ランディングには要らないため別にしてある。
+ * - セッション確認を待つ間に、出しそうな方のチャンクを先に取りに行く: この端末で前回ログインしていた
+ *   (ユーザー情報のキャッシュがある) なら板、無ければランディング
+ * - 確認が済んだら、実際に出す方のチャンクを板の取得と並行して待つ (予想が外れていたらここで取る)。
+ *   チャンクが揃ってから返すので、描画のときにチャンク待ちで一瞬空白になることはない
+ */
+export async function loadTopPageWithView(chunks: ViewChunks): Promise<TopPage> {
+  void (readCachedUser() ? chunks.board() : chunks.landing());
+  const { session } = await optionalLogin();
+  const [page] = await Promise.all([
+    loadTopPage(session),
+    session ? chunks.board() : chunks.landing(),
+  ]);
+  // ログイン済みでも板を取りに行ったらセッションが切れていた (401) ときはランディングになる
+  if (page.kind === "landing") await chunks.landing();
+  return page;
+}
 
 /**
  * トップの loader の中身。板を取得し、取れたらオフライン閲覧用のキャッシュを最新にする。

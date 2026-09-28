@@ -119,6 +119,15 @@ curl -s -X PUT -H "Cookie: $C" -H 'Content-Type: application/json' \
 
 PUT replaces the whole board and returns 409 when `revision` is not the current one, so take `userId` and `revision` from a GET first.
 
+## 5b. Production build (chunks, Service Worker, offline)
+
+The dev server serves unbundled modules and registers no Service Worker, so questions like "which chunks does this page download?" or "does it start offline from the precache?" need the production build.
+`npx vite preview --port 4173 --strictPort` (after `npm run build`; run it in the background) serves `dist/` through the same local workerd and local D1, and the `seed-session.mjs` cookie works there too (cookies are not per port).
+- List what a page fetched: `performance.getEntriesByType("resource")` in `page.evaluate` (name, `startTime`, `responseEnd`) shows both which chunks loaded and whether requests ran in parallel.
+- Offline: load the page once, `await navigator.serviceWorker.ready`, then `page.context().setOffline(true)` and `page.reload()`. `caches.keys()` / `caches.open(n).keys()` list the precached files.
+- Throttle with CDP (`page.context().newCDPSession(page)`, `Network.emulateNetworkConditions`) to compare load times; preview serves uncompressed, so absolute numbers are pessimistic.
+- Stop the preview when done (kill its `vite preview` process by PID; don't `pkill -f "vite preview"` from a shell whose own command line contains that text). It does not replace the dev server on :5173.
+
 ## 6. Show it to the user
 
 Port 5173 is forwarded to the host (Vite listens on `0.0.0.0`), so open it directly:
