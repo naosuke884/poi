@@ -57,7 +57,7 @@ Note: sentence-final `。` is inconsistent today — the modal / inline errors i
 
 ## Accessibility labels
 
-- Sections: `セクション <n>`; view: `セクション <n> (Enter で編集)`; editor: `セクション <n> (Esc で編集をやめる)`
+- Sections: `セクション <n>`; view: `セクション <n> (Enter で編集)`; editor: `セクション <n>` with the description (`aria-describedby`) `Esc で編集をやめる`
 - `<subject> をコピー`, `<subject> を画像にする`, `<subject> を削除`
 - `保存を再試行`, `板の表示方法`, `デモ動画を全画面で見る`, `本文へ移動` (skip link)
 - VisuallyHidden view names: `タイムライン (書いた順の表示)`, `まとめ (見出しごとにまとめた表示)`

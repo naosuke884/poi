@@ -19,7 +19,15 @@ import {
   keymap,
   placeholder as placeholderExt,
 } from "@codemirror/view";
-import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import {
+  type Ref,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { cursorOf, insertNewlineContinueList } from "../../../-lib/editor/list-continue";
 import {
   indentLess,
@@ -80,7 +88,10 @@ type Props = {
   /** 複数行なら \n 区切り */
   placeholder?: string;
   readOnly?: boolean;
+  /** 読み上げの名前 (「セクション 3」)。操作の説明は入れない (フォーカスのたびに読まれる) */
   "aria-label": string;
+  /** 読み上げ用の補足説明 (操作の案内など)。hidden の要素に置いて aria-describedby で参照する */
+  description?: string;
   ref?: Ref<SectionEditorHandle>;
 };
 
@@ -173,8 +184,10 @@ export function SectionEditor({
   placeholder,
   readOnly = false,
   "aria-label": ariaLabel,
+  description,
   ref,
 }: Props) {
+  const descriptionId = useId();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   // 最後に頼まれたフォーカス位置。StrictMode (開発時のみ) は新しくマウントした layout effect を破棄→再実行するので、
@@ -205,6 +218,7 @@ export function SectionEditor({
       // CodeMirror の既定はコード向け (spellcheck off 等) なので、メモ (散文) 向けに Textarea と同じにする
       EditorView.contentAttributes.of({
         "aria-label": ariaLabel,
+        ...(description !== undefined ? { "aria-describedby": descriptionId } : {}),
         spellcheck: "true",
         autocorrect: "on",
         autocapitalize: "sentences",
@@ -336,9 +350,21 @@ export function SectionEditor({
 
   useLayoutEffect(() => {
     viewRef.current?.dispatch({ effects: configCompartment.reconfigure(config()) });
-  }, [placeholder, readOnly, ariaLabel]);
+  }, [placeholder, readOnly, ariaLabel, description]);
 
-  return <div ref={hostRef} className={classes.root} />;
+  return (
+    <>
+      <div ref={hostRef} className={classes.root} />
+      {/* 名前 (aria-label) に詰めると毎回読まれるので、説明はここに置いて参照する (#127)。
+          hidden でも aria-describedby からは読まれる。hidden にしておけば、文書を順に読んだときに
+          エディタの後で説明がもう一度読まれることもない */}
+      {description !== undefined && (
+        <div hidden id={descriptionId}>
+          {description}
+        </div>
+      )}
+    </>
+  );
 }
 
 /** 今のカーソルの位置と、それが描かれている画面上の高さ (座標が取れなければ null) */

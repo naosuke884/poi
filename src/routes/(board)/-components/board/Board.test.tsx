@@ -313,6 +313,18 @@ describe("Board", () => {
     expect(editor().state.doc.toString()).toBe("- b");
   });
 
+  it("エディタの名前はセクション番号だけで、Esc の案内は説明として読ませる (issue #127)", async () => {
+    await mount([{ content: "- a" }, { content: "- b" }]);
+    await act(async () =>
+      container.querySelector<HTMLElement>(`[aria-label^="セクション 2 ("]`)!.click(),
+    );
+    const content = editor().contentDOM;
+    expect(content.getAttribute("aria-label")).toBe("セクション 2");
+    const describedBy = content.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)?.textContent).toBe("Esc で編集をやめる");
+  });
+
   it("選択がクリックしたセクションの中にあるときは編集に切り替えない", async () => {
     await mount([{ content: "- a" }]);
     const view = container.querySelector<HTMLElement>(`[aria-label^="セクション 1 ("]`)!;

@@ -130,9 +130,10 @@ export function SectionRow({
         />
       ) : (
         <SectionEditor
-          // Tab がインデントに使われて外へ出ないので、抜け方 (Esc) を読み上げでも案内する
-          // (MarkdownView の「(Enter で編集)」と対)
-          aria-label={`${label} (Esc で編集をやめる)`}
+          aria-label={label}
+          // Tab がインデントに使われて外へ出ないので、抜け方 (Esc) を読み上げでも案内する。
+          // 名前に入れるとフォーカスのたびに読まれるので説明 (aria-describedby) にする (#127)
+          description="Esc で編集をやめる"
           placeholder={placeholder}
           value={s.content}
           onChange={(value, cursor) => h.change(s.key, value, cursor)}
