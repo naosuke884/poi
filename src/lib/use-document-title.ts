@@ -1,9 +1,8 @@
+import { SITE_NAME, TOP_TITLE } from "@shared/site";
 import { useEffect } from "react";
 
-const APP_NAME = "poi";
-
-/** タブや履歴に出る文書のタイトル。トップ (板 / ランディング) は「poi」だけ、他は「利用規約 | poi」の形 */
-export const documentTitle = (page?: string) => (page ? `${page} | ${APP_NAME}` : APP_NAME);
+/** タブや履歴に出る文書のタイトル。トップ (板 / ランディング) は TOP_TITLE、他は「利用規約 | poi」の形 */
+export const documentTitle = (page?: string) => (page ? `${page} | ${SITE_NAME}` : TOP_TITLE);
 
 /**
  * 表示中のページに合わせて document.title を変える (#121)。

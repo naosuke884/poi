@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { TOP_DESCRIPTION, TOP_TITLE } from "@shared/site";
 import { getPlatformProxy } from "wrangler";
 import worker from "./index";
 
@@ -152,5 +153,18 @@ describe("セキュリティ関連のレスポンスヘッダー (issue #111)", 
       ([, attrs]) => !/\bsrc=/.test(attrs ?? ""),
     );
     expect(inlineScripts).toEqual([]);
+  });
+});
+
+describe("index.html の検索・カード向けの文言 (issue #145)", () => {
+  const html = readFileSync("index.html", "utf8");
+  const meta = (attr: string, key: string) =>
+    html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`))?.[1];
+
+  it("タイトルと説明文が shared/site.ts と同じ", () => {
+    expect(html.match(/<title>([^<]*)<\/title>/)?.[1]).toBe(TOP_TITLE);
+    expect(meta("property", "og:title")).toBe(TOP_TITLE);
+    expect(meta("name", "description")).toBe(TOP_DESCRIPTION);
+    expect(meta("property", "og:description")).toBe(TOP_DESCRIPTION);
   });
 });

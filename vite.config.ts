@@ -33,7 +33,7 @@ export default defineConfig({
       manifest: {
         name: "poi",
         short_name: "poi",
-        description: "30日で消えるメモ",
+        description: "30 日で消えるメモ帳",
         lang: "ja",
         display: "standalone",
         start_url: "/",

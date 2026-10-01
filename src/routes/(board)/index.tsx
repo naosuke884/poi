@@ -24,7 +24,7 @@ export const Route = createFileRoute("/(board)/")({
 
 function BoardPage() {
   const data = Route.useLoaderData();
-  // 板もランディングもタイトルは「poi」だけ (他のページから戻ってきたときに戻す)
+  // 板もランディングもトップのタイトル (他のページから戻ってきたときに戻す)
   useDocumentTitle();
   if (data.kind === "landing") return <Landing />;
   return <BoardView data={data} />;
