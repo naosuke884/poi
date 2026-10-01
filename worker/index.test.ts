@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
+import { SITE_NAME, SITE_ORIGIN, TOP_DESCRIPTION, TOP_TITLE } from "@shared/site";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { TOP_DESCRIPTION, TOP_TITLE } from "@shared/site";
 import { getPlatformProxy } from "wrangler";
 import worker from "./index";
 
@@ -149,8 +149,10 @@ describe("セキュリティ関連のレスポンスヘッダー (issue #111)", 
   it("index.html にインラインスクリプトが無い (CSP の script-src 'self' に引っかかるため)", () => {
     expect(staticHeader("Content-Security-Policy-Report-Only")).toContain("script-src 'self';");
     const html = readFileSync("index.html", "utf8");
+    // 構造化データ (application/ld+json) は実行されないので CSP の対象外
     const inlineScripts = [...html.matchAll(/<script\b([^>]*)>/g)].filter(
-      ([, attrs]) => !/\bsrc=/.test(attrs ?? ""),
+      ([, attrs]) =>
+        !/\bsrc=/.test(attrs ?? "") && !/type="application\/ld\+json"/.test(attrs ?? ""),
     );
     expect(inlineScripts).toEqual([]);
   });
@@ -166,5 +168,16 @@ describe("index.html の検索・カード向けの文言 (issue #145)", () => {
     expect(meta("property", "og:title")).toBe(TOP_TITLE);
     expect(meta("name", "description")).toBe(TOP_DESCRIPTION);
     expect(meta("property", "og:description")).toBe(TOP_DESCRIPTION);
+  });
+
+  it("構造化データが JSON として読め、名前・URL・説明文がサイトの値と同じ (issue #147)", () => {
+    const json = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+    const data = JSON.parse(json ?? "");
+    expect(data).toMatchObject({
+      "@type": "WebApplication",
+      name: SITE_NAME,
+      url: `${SITE_ORIGIN}/`,
+      description: TOP_DESCRIPTION,
+    });
   });
 });
