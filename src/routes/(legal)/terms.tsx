@@ -1,3 +1,4 @@
+import { SUB_PAGES } from "@shared/site";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ContactLink } from "@/components/ContactLink";
 import { LegalPage } from "./-components/LegalPage";
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/(legal)/terms")({
 
 function Terms() {
   return (
-    <LegalPage title="利用規約" updatedAt="2026 年 9 月 24 日">
+    <LegalPage title={SUB_PAGES["/terms"].name} updatedAt="2026 年 9 月 24 日">
       <p>
         この利用規約 (以下「本規約」) は、poi (以下「本サービス」) の利用条件を定めるものです。
         利用者は、本規約に同意したうえで本サービスを利用するものとします。

@@ -1,4 +1,5 @@
 import { PAGE_PATHS } from "@shared/site";
+import { applyPageHead, subPageHead } from "./head";
 
 /**
  * 廃止したページの転送先。旧 URL の評価を引き継ぐため、サーバー側で恒久的に転送する (issue #142)。
@@ -46,9 +47,13 @@ export async function servePage(request: Request, assets: Fetcher): Promise<Resp
     case "page": {
       const index = await assets.fetch(new URL("/", url));
       const headers = new Headers(index.headers);
-      // ETag は / の index.html のもの。別の URL・ステータスで使い回させない
+      // ETag は / の index.html のもの。別の URL・ステータスで使い回させない (本文も書き換えることがある)
       headers.delete("ETag");
-      return new Response(index.body, { status: resolution.status, headers });
+      headers.delete("Content-Length");
+      // 利用規約などは、初期 HTML の時点でページのタイトル・説明文・canonical にする (issue #144)
+      const head = resolution.status === 200 ? subPageHead(url.pathname) : undefined;
+      const body = head ? applyPageHead(await index.text(), head) : index.body;
+      return new Response(body, { status: resolution.status, headers });
     }
   }
 }

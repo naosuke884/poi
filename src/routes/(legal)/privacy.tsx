@@ -1,3 +1,4 @@
+import { SUB_PAGES } from "@shared/site";
 import { createFileRoute } from "@tanstack/react-router";
 import { ContactLink } from "@/components/ContactLink";
 import { LegalPage } from "./-components/LegalPage";
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/(legal)/privacy")({
 function Privacy() {
   return (
     <LegalPage
-      title="プライバシーポリシー"
+      title={SUB_PAGES["/privacy"].name}
       heading={
         // スマホ幅で 1 行に収まらないとき「…ポリシ / ー」ではなく「プライバシー / ポリシー」で折り返す
         <>

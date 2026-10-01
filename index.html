@@ -6,6 +6,8 @@
     <!-- タイトルと説明文は shared/site.ts と同じ文言 (worker/index.test.ts で検査) -->
     <title>poi - 30 日で消えるメモ帳</title>
     <meta name="description" content="書いたメモが 30 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown に対応し、スマホのホーム画面に追加しても使えます。" />
+    <!-- /terms などは Worker (worker/site/head.ts) が title・description・og:*・canonical をページのものに書き換える -->
+    <link rel="canonical" href="https://poinote.app/" />
     <!-- OGP / Twitter Card: X や Slack などでリンクを貼ったときのカード。og:image は絶対 URL 必須 -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="poi" />

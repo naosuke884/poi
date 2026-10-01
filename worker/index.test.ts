@@ -197,6 +197,17 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(await res.text()).toContain('<div id="root">');
   });
 
+  it("利用規約・プライバシーポリシーは初期 HTML のタイトルと canonical がそのページのもの (issue #144)", async () => {
+    const terms = await (await request("/terms")).text();
+    expect(terms).toContain("<title>利用規約 | poi</title>");
+    expect(terms).toContain('<link rel="canonical" href="https://poinote.app/terms" />');
+    const privacy = await (await request("/privacy")).text();
+    expect(privacy).toContain("<title>プライバシーポリシー | poi</title>");
+    // 知らないパスはトップの head のまま
+    const notFound = await (await request("/nope")).text();
+    expect(notFound).toContain(`<title>${TOP_TITLE}</title>`);
+  });
+
   it("知らないパスは index.html を 404 で返す (issue #141)", async () => {
     const res = await request("/nope");
     expect(res.status).toBe(404);
