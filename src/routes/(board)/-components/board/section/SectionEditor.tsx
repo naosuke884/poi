@@ -320,19 +320,40 @@ export function SectionEditor({
 
   // ソフトキーボードは focus より後に開くので、focus 時のスクロール (applyFocus) ではその裏に隠れることがある。
   // 画面 (visual viewport) が縮んだら、フォーカスがある間だけカーソルを見えるところへ出し直す (#45)。
-  // 広がるとき (キーボードが閉じるとき) は動かさない: 読んでいる場所を勝手にずらさないため
+  // 広がるとき (キーボードが閉じるとき) は動かさない: 読んでいる場所を勝手にずらさないため。
+  // 追うのはフォーカス / タップ / 入力の後だけで、指やホイールでスクロールし始めたら次にそれらがあるまで追わない。
+  // スマホではスクロール中もアドレスバーの伸縮やパンで visual viewport が動き、そのたびにカーソルへ
+  // 引き戻されて他の場所を読めなかった (#137)
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
+    const host = hostRef.current;
+    if (!vv || !host) return;
     let hidden = viewportInsets().bottom;
+    let follow = true;
     const onResize = () => {
       const { bottom } = viewportInsets();
       const grew = bottom > hidden + 1;
       hidden = bottom;
-      if (grew && viewRef.current?.hasFocus) viewRef.current.dispatch({ scrollIntoView: true });
+      if (grew && follow && viewRef.current?.hasFocus) {
+        viewRef.current.dispatch({ scrollIntoView: true });
+      }
     };
+    const arm = () => {
+      follow = true;
+    };
+    const disarm = () => {
+      follow = false;
+    };
+    const armOn = ["focusin", "click", "beforeinput"] as const;
+    const disarmOn = ["touchmove", "wheel"] as const;
     vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
+    for (const type of armOn) host.addEventListener(type, arm);
+    for (const type of disarmOn) window.addEventListener(type, disarm, { passive: true });
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      for (const type of armOn) host.removeEventListener(type, arm);
+      for (const type of disarmOn) window.removeEventListener(type, disarm);
+    };
   }, []);
 
   // value の同期。Board からの分割 / 結合 / 取り消しでしか起きない (自分の入力は onChange で Board に渡した
