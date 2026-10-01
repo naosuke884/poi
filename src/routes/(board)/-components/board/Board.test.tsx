@@ -186,7 +186,7 @@ beforeEach(() => {
   invalidate.mockClear();
   localStorage.clear();
   // ログイン中のユーザー (保存時にオフライン用キャッシュを書くのはこのユーザーのときだけ)
-  writeCachedUser({ id: "u", name: "U", email: "u@example.com" });
+  writeCachedUser({ id: "u", name: "U" });
 });
 afterEach(async () => {
   await act(async () => root.unmount());

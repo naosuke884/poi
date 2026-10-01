@@ -5,7 +5,7 @@ import { type CachedUser, readCachedUser, writeCachedUser } from "@/lib/session-
 
 // ログイン状態 (loadTopPageWithView が板の取得に使う)。
 // オンラインなら Better Auth のセッション、オフラインなら前回キャッシュしたユーザー情報 (未ログインなら null)。
-// どちらも user.id / name / email / image を持つので、loader や画面はこの形だけを見ればよい。
+// どちらも user.id / name / image を持つので、loader や画面はこの形だけを見ればよい。
 export type LoginContext = { session: { user: CachedUser } | null };
 
 // ログイン状態を調べる。未ログインでも redirect しない

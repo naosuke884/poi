@@ -14,7 +14,7 @@ const board = (content: string) =>
 describe("clearOfflineCaches で板のキャッシュを消す", () => {
   beforeEach(() => {
     localStorage.clear();
-    writeCachedUser({ id: "me", name: "Me", email: "me@example.com" });
+    writeCachedUser({ id: "me", name: "Me" });
     writeCachedBoard("me", board("mine"));
     writeCachedBoard("other", board("other"));
     writeCachedBoard("third", board("third"));

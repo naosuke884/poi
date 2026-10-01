@@ -85,7 +85,7 @@ export function UserMenu() {
             <Group gap="xs" wrap="nowrap">
               {/* 名前はボタンの aria-label で読み上げるので画像の代替テキストは空 (二重に読み上げない)。
                   狭い画面 (xs 未満) では名前を出す幅が無い (ヘッダーが折り返して 56px からはみ出す) ので
-                  アイコンだけにする (誰でログインしているかはメニューのメールで分かる) */}
+                  アイコンだけにする (誰でログインしているかはメニューのメール (オフライン中は名前) で分かる) */}
               <Avatar src={user.image} alt="" radius="xl" size="sm" />
               <Text size="sm" truncate maw={160} visibleFrom="xs">
                 {user.name}
@@ -94,7 +94,8 @@ export function UserMenu() {
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Label>{user.email}</Menu.Label>
+          {/* キャッシュから表示している間はメールアドレスが無い (端末に保存しない。session-cache.ts) ので名前を出す */}
+          <Menu.Label>{data?.user.email ?? user.name}</Menu.Label>
           {/* この端末でログイン中の他アカウント (multiSession)。押すとそのまま切り替わる */}
           {otherSessions.map((d) => (
             <Menu.Item
