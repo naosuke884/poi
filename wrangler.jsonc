@@ -6,7 +6,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
+    // 静的アセットに無いパスは Worker に渡す (worker/site/pages.ts が index.html を返し、知らないパスは 404 にする)。
+    // "single-page-application" だと存在しないパスにも index.html を 200 で返してしまう (ソフト 404。issue #141)
+    "not_found_handling": "none",
     // /__scheduled は `wrangler dev --test-scheduled` で Cron をローカル実行するための経路。
     // 静的アセット (SPA フォールバック) より先に Worker に渡さないと届かないのでここに含める
     // (本番では Worker の notFound → SPA フォールバックになるだけで動作は変わらない)

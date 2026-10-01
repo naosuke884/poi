@@ -5,6 +5,7 @@ import { authMiddleware } from "./auth/middleware";
 import { boardRoutes, settingsRoutes } from "./board/routes";
 import { deleteExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
+import { servePage } from "./site/pages";
 import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
@@ -29,12 +30,13 @@ const api = new Hono<AppEnv>().route("/board", boardRoutes).route("/settings", s
 
 app.route("/api", api);
 
-// 未定義の /api/* は 404 JSON、それ以外は SPA (index.html) にフォールバック
+// 未定義の /api/* は 404 JSON。それ以外 (静的アセットに無いパス = /terms などのページと存在しないパス) は
+// SPA の index.html を、知らないパスなら 404 で返す (site/pages.ts)
 app.notFound((c) => {
   if (c.req.path.startsWith("/api/")) {
     return c.json({ error: "Not Found" }, 404);
   }
-  return c.env.ASSETS.fetch(c.req.raw);
+  return servePage(c.req.raw, c.env.ASSETS);
 });
 
 export type ApiType = typeof api;

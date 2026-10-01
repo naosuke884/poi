@@ -22,7 +22,14 @@ beforeAll(async () => {
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
     GOOGLE_CLIENT_SECRET: "test-client-secret",
-  } as Env;
+    // 静的アセットの代わり。どのパスを聞かれても index.html を返す (本番の / と同じ中身)
+    ASSETS: {
+      fetch: async () =>
+        new Response(readFileSync("index.html", "utf8"), {
+          headers: { "Content-Type": "text/html" },
+        }),
+    },
+  } as unknown as Env;
   for (const file of readdirSync("drizzle")
     .filter((f) => f.endsWith(".sql"))
     .sort()) {
@@ -179,5 +186,32 @@ describe("index.html の検索・カード向けの文言 (issue #145)", () => {
       url: `${SITE_ORIGIN}/`,
       description: TOP_DESCRIPTION,
     });
+  });
+});
+
+describe("ページのリクエスト (静的アセットに無いパス)", () => {
+  it("公開しているページは index.html を 200 で返す", async () => {
+    const res = await request("/terms");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    expect(await res.text()).toContain('<div id="root">');
+  });
+
+  it("知らないパスは index.html を 404 で返す (issue #141)", async () => {
+    const res = await request("/nope");
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain('<div id="root">');
+  });
+
+  it("/login は / へ恒久的に転送する (issue #142)", async () => {
+    const res = await request("/login");
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe("/");
+  });
+
+  it("知らない /api/* は今までどおり 404 の JSON", async () => {
+    const res = await request("/api/nope");
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Not Found" });
   });
 });

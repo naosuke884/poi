@@ -19,6 +19,7 @@ worker/
   env.d.ts      secret types merged into the generated Env
   auth/         Better Auth: createAuth, authMiddleware / requireAuth, in-app-browser, clear-site-data, schema.ts (generated)
   board/        the board: routes (board + settings), board-sync (pure diffing), sweep (cron), schema.ts
+  site/         page requests that are not static assets (/terms, unknown paths): index.html with 200 / 404, redirects
 shared/         code used by both src and worker (constants, limits, pure helpers)
 ```
 
@@ -88,7 +89,7 @@ Two places set them, because Cloudflare serves static assets without running the
 | Responses | Where | What |
 |---|---|---|
 | `/api/*` (everything in `run_worker_first`) | `app.use("/api/*", secureHeaders(...))` in `worker/index.ts`, before `authMiddleware` so 401s, 404s and Better Auth's handler get it too | Hono defaults (nosniff, `Referrer-Policy: no-referrer`, COOP / CORP same-origin, ...) with `X-Frame-Options: DENY` and a short HSTS. No CSP (JSON only). |
-| Everything else (`index.html`, `/assets/*`, `sw.js`, images, video, the SPA fallback) | `public/_headers` (Vite copies it to `dist/client`; Cloudflare's asset server applies it and never serves the file) | `Content-Security-Policy-Report-Only`, `X-Frame-Options: DENY`, nosniff, HSTS, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
+| Everything else (`index.html`, `/assets/*`, `sw.js`, images, video, and the pages `site/pages.ts` serves, which pass on the headers of the `ASSETS.fetch("/")` response) | `public/_headers` (Vite copies it to `dist/client`; Cloudflare's asset server applies it and never serves the file) | `Content-Security-Policy-Report-Only`, `X-Frame-Options: DENY`, nosniff, HSTS, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
 
 - Keep HSTS and `X-Frame-Options` identical in both (a test in `worker/index.test.ts` compares them). HSTS starts at `max-age=86400`; raise it in both places once production has run without trouble.
 - The CSP is `script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'`, Report-Only: violations are only logged in the browser console as `[Report Only]` (there is no report endpoint). No `style-src` (Mantine injects inline styles) and no `default-src` (images from Google avatars, same-origin fetches and media are not restricted). `base-uri` is `'self'`, not `'none'`, because modern-screenshot (「画像にする」) sets a same-origin `<base>` to resolve fonts in CSS. `X-Frame-Options: DENY` blocks framing while the CSP is not enforced.
@@ -99,7 +100,13 @@ Two places set them, because Cloudflare serves static assets without running the
   curl -sI http://localhost:8788/ | grep -i content-security
   ```
   Then drive the pages with the Playwright sidecar (`verifying-in-app`, seed the session with `--origin http://localhost:8788`) and look for `securitypolicyviolation` events / `[Report Only]` console messages (Chromium logs them at `info` level, not `error`). Stop it afterwards; `--config dist/poi/...` without `--persist-to` uses an empty D1 in `dist/poi/.wrangler`.
-- A new header for `/api/*` goes in the `secureHeaders` options; for pages, in `_headers`. Don't set page headers from the Worker: pages never reach it.
+- A new header for `/api/*` goes in the `secureHeaders` options; for pages, in `_headers`. Don't set page headers from the Worker: `/` and other assets never reach it.
+
+## Pages (`site/`)
+
+`wrangler.jsonc` has `not_found_handling: "none"`, so a path with no static asset (`/terms`, `/privacy`, `/nope`, `/login`) reaches the Worker, and `app.notFound` hands non-`/api` paths to `servePage` (`site/pages.ts`).
+It returns index.html with 200 for `PAGE_PATHS` (`shared/site.ts`), 301 for `PAGE_REDIRECTS` and trailing slashes, a bare 404 for paths with an extension, and index.html with 404 for anything else (no soft 404s). `/` itself is a static asset and never reaches the Worker.
+When adding a route under `src/routes`, add its path to `PAGE_PATHS` (and `public/sitemap.xml` if public); `site/pages.test.ts` fails otherwise.
 
 ## Scheduled work (Cron)
 

@@ -11,3 +11,9 @@ export const TOP_TITLE = `${SITE_NAME} - ${MEMO_TTL_DAYS} 日で消えるメモ�
 
 /** トップの説明文 (meta description / og:description) */
 export const TOP_DESCRIPTION = `書いたメモが ${MEMO_TTL_DAYS} 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown に対応し、スマホのホーム画面に追加しても使えます。`;
+
+/**
+ * 公開しているページのパス (src/routes のルートと同じ)。Worker はこれ以外のパスを 404 で返す
+ * (ルートを足したらここにも足す。worker/site/pages.test.ts が routeTree.gen.ts と突き合わせる)
+ */
+export const PAGE_PATHS = ["/", "/terms", "/privacy"] as const;
