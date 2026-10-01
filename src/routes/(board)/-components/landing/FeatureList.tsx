@@ -1,20 +1,28 @@
 import { Box, Text } from "@mantine/core";
-import { MEMO_TTL_DAYS } from "@shared/constants";
+import { MEMO_TTL_CHOICES, MEMO_TTL_DAYS } from "@shared/constants";
 import classes from "./Landing.module.css";
 
-// 特徴。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける
+// 選べる保存期間の幅 (設定の選択肢と食い違わないよう定数から作る)
+const TTL_RANGE = `${MEMO_TTL_CHOICES[0]}〜${MEMO_TTL_CHOICES[MEMO_TTL_CHOICES.length - 1]} 日`;
+
+// 特徴。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける。
+// ヒーローの言い換えにならないよう、消え方の中身・まとめ・共有・どこからでも開けることの順に並べる
 const FEATURES: { title: string; body: string }[] = [
   {
-    title: `${MEMO_TTL_DAYS} 日たつと、勝手に消える`,
-    body: "セクションごとに期限が付く。日数は設定で変えられる。",
+    title: `書いてから ${MEMO_TTL_DAYS} 日で、ひとつずつ消える`,
+    body: `消えるのはセクションごとです。残りの日数はバーで見えるので、消える前に気づけます。日数は ${TTL_RANGE}から選べます。`,
   },
   {
-    title: "メモをシェアできる",
-    body: "セクションごとに、テキストをコピー、もしくは、画像にして共有。",
+    title: "見出しごとに、まとめて読める",
+    body: "# で見出しを付けると、同じ見出しのメモを日付をまたいで一か所に集めて表示します。箇条書きなどの Markdown も使えます。",
   },
   {
-    title: "Markdown で整えて書ける",
-    body: "見出しや箇条書きを Markdown で書くと、整って表示される。",
+    title: "コピーも画像も、ワンクリック",
+    body: "セクションごとに、テキストをコピーしたり、画像にしたりできます。チャットや SNS にそのまま貼れます。",
+  },
+  {
+    title: "ホーム画面から、すぐ書ける",
+    body: "アプリのようにホーム画面に追加できます。電波がないときも、前回の内容は読めます。",
   },
 ];
 
