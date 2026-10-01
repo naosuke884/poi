@@ -6,7 +6,7 @@
 **poi** is a note that disappears in 30 days.
 Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
-https://github.com/user-attachments/assets/7e02a665-a525-443a-9f4f-23def2e09f97
+https://github.com/user-attachments/assets/a6411dcb-c37c-418a-9a9a-fd912c0093eb
 
 ## Features
 
