@@ -4,53 +4,6 @@
 
 /* ---- ヒーロー ---- */
 
-/* 背景の光 (::before) とドット (::after) を中身の後ろに敷くための土台。
-   isolation: z-index: -1 の飾りを、ページの背景より手前・中身より奥に留める */
-/* 飾りは横には列の幅 (inset-inline: 0) までしか広げない: はみ出すとスマホで横スクロールが出る。
-   上下の余白は光が中身のすぐ外で切れないための分 */
-.hero {
-  position: relative;
-  isolation: isolate;
-  padding-block: 40px;
-}
-
-/* 藍の淡い光。closest-side で枠の内側だけで透明まで落とすので、列の端で光が切れて見えない */
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: -64px 0 -32px;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--mantine-primary-color-filled) 22%, transparent),
-    transparent
-  );
-}
-
-/* 方眼のようなドット。中央から外へ消えていくようマスクで薄める (mask の black は不透明度の指定で、色ではない) */
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: -64px 0 -32px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(
-    color-mix(in srgb, var(--mantine-color-text) 16%, transparent) 1px,
-    transparent 1.5px
-  );
-  background-size: 22px 22px;
-  mask-image: radial-gradient(closest-side, black 20%, transparent);
-}
-
-/* forced colors では背景の画像が文字の邪魔になりうるので、飾りは出さない */
-@media (forced-colors: active) {
-  .hero::before,
-  .hero::after {
-    display: none;
-  }
-}
-
 /* 画面幅に応じて伸びる見出し (Title の固定サイズより狭い画面で収まり、広い画面で映える)。
    折り返すときは語の途中で切らず文節の切れ目で (auto-phrase。FeatureList と同じ。未対応のブラウザは通常の折り返し) */
 .heroTitle {
