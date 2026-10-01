@@ -1,4 +1,4 @@
-import "@mantine/core/styles.css";
+import "./mantine-styles";
 import "./fonts.css";
 import { type CSSVariablesResolver, createTheme, MantineProvider } from "@mantine/core";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
