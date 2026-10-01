@@ -1,5 +1,6 @@
 import { Box, Stack, Text, Title } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
+import type { GoogleLogin } from "../../-lib/use-google-login";
 import classes from "./Landing.module.css";
 import { LoginCta } from "./LoginCta";
 
@@ -7,7 +8,7 @@ import { LoginCta } from "./LoginCta";
 const VANISHING = [..."消える"];
 
 /** 見出し + 一言の説明 + ログインの CTA (背景に藍の淡い光とドット) */
-export function LandingHero() {
+export function LandingHero({ googleLogin }: { googleLogin: GoogleLogin }) {
   return (
     <Box className={classes.hero} w="100%">
       <Stack gap="lg" align="center" ta="center">
@@ -35,7 +36,7 @@ export function LandingHero() {
           書いたメモは、日がたつと自動で消えます。片付けを気にせず、思いついたまま書けます。
         </Text>
         <Box mt="lg">
-          <LoginCta />
+          <LoginCta {...googleLogin} />
         </Box>
       </Stack>
     </Box>

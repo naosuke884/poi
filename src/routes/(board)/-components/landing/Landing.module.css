@@ -8,16 +8,14 @@
    isolation: z-index: -1 の飾りを、ページの背景より手前・中身より奥に留める */
 /* 飾りは横には列の幅 (inset-inline: 0) までしか広げない: はみ出すとスマホで横スクロールが出る。
    上下の余白は光が中身のすぐ外で切れないための分 */
-.hero,
-.closing {
+.hero {
   position: relative;
   isolation: isolate;
   padding-block: 40px;
 }
 
 /* 藍の淡い光。closest-side で枠の内側だけで透明まで落とすので、列の端で光が切れて見えない */
-.hero::before,
-.closing::before {
+.hero::before {
   content: "";
   position: absolute;
   inset: -64px 0 -32px;
@@ -48,8 +46,7 @@
 /* forced colors では背景の画像が文字の邪魔になりうるので、飾りは出さない */
 @media (forced-colors: active) {
   .hero::before,
-  .hero::after,
-  .closing::before {
+  .hero::after {
     display: none;
   }
 }
@@ -162,7 +159,7 @@
   border: 0;
 }
 
-/* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままに、下へ藍の光を落として浮かせる */
+/* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままにする */
 .videoZoomButton {
   display: block;
   width: 100%;
@@ -171,8 +168,6 @@
   background: none;
   cursor: zoom-in;
   border-radius: var(--mantine-radius-md);
-  box-shadow: 0 28px 72px -20px
-    color-mix(in srgb, var(--mantine-primary-color-filled) 50%, transparent);
 }
 
 .videoZoomButton:focus-visible {
@@ -301,7 +296,8 @@
     .lifeDemo {
       animation: age linear both;
       animation-timeline: view();
-      animation-range: cover 25% cover 75%;
+      /* 末尾までスクロールしたときに、画面の中ほどで残り 1 日まで減りきる範囲 */
+      animation-range: entry 100% cover 45%;
     }
   }
 }
@@ -334,13 +330,4 @@
   .lifeDemoRemaining {
     border-block-start-color: CanvasText;
   }
-}
-
-/* ---- 末尾の CTA ---- */
-
-/* 見出しの大きさはヒーローより一段控えめに */
-.closingTitle {
-  font-size: clamp(1.6rem, 3vw + 0.6rem, 2.25rem);
-  line-height: 1.3;
-  word-break: auto-phrase;
 }
