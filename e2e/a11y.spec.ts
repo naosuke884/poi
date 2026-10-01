@@ -28,6 +28,29 @@ async function expectNoViolations(page: Page, testInfo: TestInfo, name: string) 
   expect(summary, `${name} にアクセシビリティ違反があります`).toEqual([]);
 }
 
+/**
+ * ランディングの動きが落ち着くのを待つ。見出しの「消える」が一度消えて戻る途中や、
+ * スクロールで浮かび上がる特徴が半透明の間は、コントラストが実際より低く出る。
+ * 時間で進む動きは終わるまで待ち、スクロールで進む動きは末尾まで送って最後の状態にする
+ */
+async function settleLandingMotion(page: Page) {
+  // e2e の型にはブラウザの DOM が無いので、ページ内で動かす処理は文字列で渡す
+  await page.evaluate(`(async () => {
+    // 途中で取り消された動き (finished が reject される) は飛ばし、新しく始まった動きも待つ
+    for (;;) {
+      const running = document.getAnimations()
+        .filter((a) => a.timeline === document.timeline && a.playState === "running")
+        // 回り続ける動き (読み込み中のスピナーなど) は終わらないので待たない
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity);
+      if (running.length === 0) break;
+      await Promise.all(running.map((a) => a.finished.catch(() => {})));
+    }
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    // スクロールの後の描画を待つ
+    await new Promise((r) => requestAnimationFrame(r));
+  })()`);
+}
+
 test.describe("未ログイン", () => {
   for (const { name, path } of [
     { name: "ランディング", path: "/" },
@@ -38,6 +61,7 @@ test.describe("未ログイン", () => {
     test(name, async ({ page }, testInfo) => {
       await page.goto(path);
       await expect(page.locator("h1").first()).toBeAttached();
+      if (path === "/") await settleLandingMotion(page);
       await expectNoViolations(page, testInfo, name);
     });
   }

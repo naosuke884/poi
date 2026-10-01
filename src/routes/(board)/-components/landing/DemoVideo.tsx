@@ -45,8 +45,9 @@ export function DemoVideo() {
   return (
     // 動画は PC の画面 (1280×800、ヘッダーを含むページ全体) を撮っている (issue #138)。
     // 広い画面でもページの列 (Container md = 960px。余白を除くと 928px、0.73 倍で本文 12px 前後) に収める。
-    // スマホでは小さく映るので、クリックで全画面 (横向き) にして見てもらう
-    <Box maw={960} w="100%">
+    // スマホでは小さく映るので、クリックで全画面 (横向き) にして見てもらう。
+    // videoStage は奥行き (perspective) だけを持ち、傾きと光はボタン側 (Landing.module.css)
+    <Box maw={960} w="100%" className={classes.videoStage}>
       <button
         type="button"
         className={classes.videoZoomButton}

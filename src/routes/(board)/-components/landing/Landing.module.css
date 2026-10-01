@@ -1,16 +1,147 @@
-/* ランディング専用の見た目 (色は Mantine の変数だけを使い、ダーク配色に追従させる) */
+/* ランディング専用の見た目 (色は Mantine の変数だけを使い、ダーク配色に追従させる)。
+   動き (見出しの「消える」、動画の起き上がり、特徴の浮かび上がり) はどれも
+   prefers-reduced-motion: no-preference のときだけ付ける。「動きを減らす」の人には最後の状態だけを見せる */
+
+/* ---- ヒーロー ---- */
+
+/* 背景の光 (::before) とドット (::after) を中身の後ろに敷くための土台。
+   isolation: z-index: -1 の飾りを、ページの背景より手前・中身より奥に留める */
+/* 飾りは横には列の幅 (inset-inline: 0) までしか広げない: はみ出すとスマホで横スクロールが出る。
+   上下の余白は光が中身のすぐ外で切れないための分 */
+.hero,
+.closing {
+  position: relative;
+  isolation: isolate;
+  padding-block: 40px;
+}
+
+/* 藍の淡い光。closest-side で枠の内側だけで透明まで落とすので、列の端で光が切れて見えない */
+.hero::before,
+.closing::before {
+  content: "";
+  position: absolute;
+  inset: -64px 0 -32px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--mantine-primary-color-filled) 22%, transparent),
+    transparent
+  );
+}
+
+/* 方眼のようなドット。中央から外へ消えていくようマスクで薄める (mask の black は不透明度の指定で、色ではない) */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: -64px 0 -32px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--mantine-color-text) 16%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 22px 22px;
+  mask-image: radial-gradient(closest-side, black 20%, transparent);
+}
+
+/* forced colors では背景の画像が文字の邪魔になりうるので、飾りは出さない */
+@media (forced-colors: active) {
+  .hero::before,
+  .hero::after,
+  .closing::before {
+    display: none;
+  }
+}
 
 /* 画面幅に応じて伸びる見出し (Title の固定サイズより狭い画面で収まり、広い画面で映える)。
    折り返すときは語の途中で切らず文節の切れ目で (auto-phrase。FeatureList と同じ。未対応のブラウザは通常の折り返し) */
 .heroTitle {
-  font-size: clamp(1.9rem, 4vw + 0.6rem, 3rem);
-  line-height: 1.25;
+  font-size: clamp(2.1rem, 5vw + 0.6rem, 3.75rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   word-break: auto-phrase;
 }
 
 /* ページを移ったときにフォーカスを受けるだけの見出し (#121)。操作できる物ではないので枠を出さない */
 .heroTitle:focus {
   outline: none;
+}
+
+/* 「消える」の 3 文字。途中で折り返さない (文字ごとの inline-block の間で改行されないように) */
+.vanish {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* 藍のグラデーションで塗った文字。3 文字で 1 本のグラデーションに見えるよう、
+   幅 3em の背景を文字の位置 (--i) ずつずらして当てる。
+   ライトは 6〜8 番 (白地で十分濃い)、ダークは 2〜4 番 (暗い地で沈まない) */
+.vanishChar {
+  display: inline-block;
+  color: transparent;
+  background-image: linear-gradient(100deg, var(--mantine-color-ai-5), var(--mantine-color-ai-8));
+  background-size: 3em 100%;
+  background-position: calc(var(--i) * -1em) 0;
+  background-clip: text;
+}
+
+:where([data-mantine-color-scheme="dark"]) .vanishChar {
+  background-image: linear-gradient(100deg, var(--mantine-color-ai-2), var(--mantine-color-ai-4));
+}
+
+/* forced colors では文字色がシステムの色に置き換わる。背景のグラデーションは外して普通の文字にする */
+@media (forced-colors: active) {
+  .vanishChar {
+    background: none;
+    color: CanvasText;
+  }
+}
+
+/* 読み込んだ直後に一度だけ、一文字ずつぼやけて浮かび上がるように消え、滲むように戻る。
+   繰り返さず 3 秒ほどで終わる (5 秒を超えて動き続けるものには止める手段が要る。WCAG 2.2.2)。
+   終わった後は普通に読める状態に戻る (fill: both) */
+@media (prefers-reduced-motion: no-preference) {
+  .vanishChar {
+    animation: vanish 1.8s cubic-bezier(0.6, 0, 0.3, 1) both;
+    animation-delay: calc(0.9s + var(--i) * 0.18s);
+  }
+}
+
+@keyframes vanish {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+  40% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(-0.35em) scale(1.15);
+  }
+  60% {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(0.1em);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+/* 見出しの下の一言。行末に一文字だけ残らないよう pretty、文節で折り返す */
+.heroLead {
+  text-wrap: pretty;
+  word-break: auto-phrase;
+}
+
+/* ---- デモ動画 ---- */
+
+/* 起き上がる動き (.videoZoomButton) に奥行きを付ける */
+.videoStage {
+  perspective: 1600px;
 }
 
 /* aspect-ratio: ポスターや動画が読み込まれる前から動画の高さ分の場所を取る (無いと既定の 300×150 の比率で
@@ -31,7 +162,7 @@
   border: 0;
 }
 
-/* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままにする */
+/* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままに、下へ藍の光を落として浮かせる */
 .videoZoomButton {
   display: block;
   width: 100%;
@@ -40,12 +171,38 @@
   background: none;
   cursor: zoom-in;
   border-radius: var(--mantine-radius-md);
+  box-shadow: 0 28px 72px -20px
+    color-mix(in srgb, var(--mantine-primary-color-filled) 50%, transparent);
 }
 
 .videoZoomButton:focus-visible {
   outline: 2px solid var(--mantine-primary-color-filled);
   outline-offset: 2px;
 }
+
+/* スクロールに合わせて、奥へ倒れた画面が正面に起き上がる (scroll-driven animation。
+   未対応のブラウザは最初から正面のまま)。下端を軸にして、机に置いた画面を立てるように */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .videoZoomButton {
+      transform-origin: 50% 100%;
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 45%;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: rotateX(24deg) scale(0.92);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ---- 特徴 ---- */
 
 /* 特徴のリスト (FeatureList)。記号なしで縦に並べる。
    auto-phrase: 日本語を文節の切れ目で折り返す (「コピ/ー」のような切れ方をしない。未対応のブラウザは通常の折り返し) */
@@ -55,6 +212,135 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--mantine-spacing-lg);
+  gap: var(--mantine-spacing-xl);
+  word-break: auto-phrase;
+}
+
+/* 各項目の左に藍の細い線を引き、項目のまとまりを示す (forced colors でも残るよう枠線で) */
+.feature {
+  padding-inline-start: var(--mantine-spacing-md);
+  border-inline-start: 2px solid var(--mantine-primary-color-filled);
+}
+
+/* 画面に入ってくるにつれて、下から浮かび上がる */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .feature {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 30%;
+    }
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- 寿命のバーの飾り (FeatureList の LifeLineDemo) ---- */
+
+/* 残り日数。整数として登録すると、アニメーションで 30, 29, … と一日ずつ減る */
+@property --life-demo-left {
+  syntax: "<integer>";
+  inherits: true;
+  /* 値は使われない (.lifeDemo で保存期間の既定値 MEMO_TTL_DAYS に置き換える)。登録に初期値が要るので置いているだけ */
+  initial-value: 30;
+}
+
+/* 板の LifeLine と同じ並び (「あと N 日」+ バー)。色は文字とバーで共有する (currentColor) */
+.lifeDemo {
+  --life-demo-left: var(--life-demo-days);
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  max-width: 320px;
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-xs);
+}
+
+/* 「あと N 日」。数は CSS のカウンターで描く (アニメーション中の値をそのまま出せる)。
+   幅を揃えて、桁が減ってもバーの始まりが動かないようにする */
+.lifeDemoLabel {
+  white-space: nowrap;
+  min-width: 5.5em;
+  font-variant-numeric: tabular-nums;
+  counter-reset: life-demo var(--life-demo-left);
+}
+
+.lifeDemoLabel::before {
+  content: "あと " counter(life-demo) " 日";
+}
+
+/* 全幅の薄い線 (LifeLine.module.css と同じく、forced colors で消えないよう枠線で描く) */
+.lifeDemoTrack {
+  position: relative;
+  flex: 1;
+  border-block-start: 1px solid var(--mantine-color-default-border);
+}
+
+/* 残りの期間の濃い線。長さは残り日数の割合 */
+.lifeDemoRemaining {
+  position: absolute;
+  inset-inline-start: 0;
+  top: -1.5px;
+  width: calc(var(--life-demo-left) / var(--life-demo-days) * 100%);
+  border-block-start: 2px solid currentColor;
+  border-radius: 1px;
+}
+
+/* スクロールを時間に見立てて、日数とバーを減らす。残り 1 日で板と同じくオレンジにする */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .lifeDemo {
+      animation: age linear both;
+      animation-timeline: view();
+      animation-range: cover 25% cover 75%;
+    }
+  }
+}
+
+@keyframes age {
+  0% {
+    --life-demo-left: var(--life-demo-days);
+    color: var(--mantine-color-dimmed);
+  }
+  92% {
+    color: var(--mantine-color-dimmed);
+  }
+  100% {
+    --life-demo-left: 1;
+    color: var(--mantine-color-orange-text);
+  }
+}
+
+/* forced colors では区切り線と残りの線を濃淡で見分けられるようにする (LifeLine.module.css と同じ) */
+@media (forced-colors: active) {
+  .lifeDemoTrack,
+  .lifeDemoRemaining {
+    forced-color-adjust: none;
+  }
+
+  .lifeDemoTrack {
+    border-block-start-color: GrayText;
+  }
+
+  .lifeDemoRemaining {
+    border-block-start-color: CanvasText;
+  }
+}
+
+/* ---- 末尾の CTA ---- */
+
+/* 見出しの大きさはヒーローより一段控えめに */
+.closingTitle {
+  font-size: clamp(1.6rem, 3vw + 0.6rem, 2.25rem);
+  line-height: 1.3;
   word-break: auto-phrase;
 }

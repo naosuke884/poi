@@ -1,60 +1,43 @@
-import { Anchor, Button, Stack, Text, Title } from "@mantine/core";
+import { Box, Stack, Text, Title } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { startGoogleLogin } from "@/lib/auth-client";
 import classes from "./Landing.module.css";
+import { LoginCta } from "./LoginCta";
 
-/** 見出し + ログインの CTA + 規約への同意文 */
+// 見出しの中で、一文字ずつ消えてまた現れる語
+const VANISHING = [..."消える"];
+
+/** 見出し + 一言の説明 + ログインの CTA (背景に藍の淡い光とドット) */
 export function LandingHero() {
-  // Google へのリダイレクトが始まるまでの間、二度押しで OAuth を 2 回始めないようにする
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Google の同意画面からブラウザバックで戻ると、bfcache がページを busy=true のまま
-  // 復元して CTA が押せなくなるので、復元されたときは戻す
-  useEffect(() => {
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setBusy(false);
-    };
-    window.addEventListener("pageshow", onPageShow);
-    return () => window.removeEventListener("pageshow", onPageShow);
-  }, []);
-  const login = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await startGoogleLogin();
-      // 成功すると Google へ遷移するので busy は戻さない
-    } catch {
-      setError("ログインを開始できませんでした。接続を確認してもう一度お試しください");
-      setBusy(false);
-    }
-  };
   return (
-    <Stack gap="sm" align="center" ta="center">
-      {/* ページを移ったときのフォーカス先 (#121。枠を出さないのは heroTitle で) */}
-      <Title order={1} className={classes.heroTitle} tabIndex={-1}>
-        {MEMO_TTL_DAYS} 日で消えるメモ帳
-      </Title>
-      <Button size="md" mt={40} mb="lg" loading={busy} onClick={() => void login()}>
-        Google でログインして始める
-      </Button>
-      {error && (
-        <Text size="sm" c="red" role="alert">
-          {error}
+    <Box className={classes.hero} w="100%">
+      <Stack gap="lg" align="center" ta="center">
+        {/* ページを移ったときのフォーカス先 (#121。枠を出さないのは heroTitle で) */}
+        {/* 「消える」を一文字ずつ inline-block の span にすると、読み上げの名前が「消 え る」と区切られる。
+            見えない文字で別に読ませても、その前後で区切られる。名前は aria-label でひと続きに与える */}
+        <Title
+          order={1}
+          className={classes.heroTitle}
+          tabIndex={-1}
+          aria-label={`${MEMO_TTL_DAYS} 日で消えるメモ帳`}
+        >
+          {MEMO_TTL_DAYS} 日で
+          <span className={classes.vanish}>
+            {VANISHING.map((ch, i) => (
+              <Box component="span" key={ch} className={classes.vanishChar} style={{ "--i": i }}>
+                {ch}
+              </Box>
+            ))}
+          </span>
+          メモ帳
+        </Title>
+        {/* 幅は、広い画面で一文ずつ一行に収まる長さ */}
+        <Text size="lg" maw={420} className={classes.heroLead}>
+          書いたメモは、日がたつと自動で消えます。片付けを気にせず、思いついたまま書けます。
         </Text>
-      )}
-      <Text c="dimmed" size="xs">
-        ログインすると、
-        <Anchor component={Link} to="/terms" size="xs" underline="always">
-          利用規約
-        </Anchor>
-        と
-        <Anchor component={Link} to="/privacy" size="xs" underline="always">
-          プライバシーポリシー
-        </Anchor>
-        に同意したものとみなします。
-      </Text>
-    </Stack>
+        <Box mt="lg">
+          <LoginCta />
+        </Box>
+      </Stack>
+    </Box>
   );
 }
