@@ -1,5 +1,6 @@
-import { PAGE_PATHS } from "@shared/site";
+import { PAGE_PATHS, SITE_ORIGIN } from "@shared/site";
 import { applyPageHead, subPageHead } from "./head";
+import { buildSitemap } from "./sitemap";
 
 /**
  * 廃止したページの転送先。旧 URL の評価を引き継ぐため、サーバー側で恒久的に転送する (issue #142)。
@@ -13,6 +14,8 @@ export const PAGE_REDIRECTS: Record<string, string> = {
 export type PageResolution =
   | { kind: "page"; status: 200 | 404 }
   | { kind: "redirect"; location: string }
+  /** 公開ページの一覧から組み立てる sitemap.xml (issue #149) */
+  | { kind: "sitemap" }
   /** 拡張子付きのパス (消えたチャンクなど)。HTML を返すとスクリプトや画像として読まれてしまうので本文は付けない */
   | { kind: "missing" };
 
@@ -28,6 +31,7 @@ export function resolvePage(pathname: string, search = ""): PageResolution {
   const moved = PAGE_REDIRECTS[pathname];
   if (moved) return { kind: "redirect", location: `${moved}${search}` };
   if ((PAGE_PATHS as readonly string[]).includes(pathname)) return { kind: "page", status: 200 };
+  if (pathname === "/sitemap.xml") return { kind: "sitemap" };
   if (/\.[a-z0-9]+$/i.test(pathname)) return { kind: "missing" };
   return { kind: "page", status: 404 };
 }
@@ -42,6 +46,15 @@ export async function servePage(request: Request, assets: Fetcher): Promise<Resp
   switch (resolution.kind) {
     case "redirect":
       return new Response(null, { status: 301, headers: { Location: resolution.location } });
+    case "sitemap":
+      // 本番の URL で書く (検索エンジンに伝えるのは本番のページなので、ローカルで開いても同じ)
+      return new Response(buildSitemap(SITE_ORIGIN, PAGE_PATHS), {
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
     case "missing":
       return new Response("Not Found", { status: 404 });
     case "page": {

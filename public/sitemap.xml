@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- 検索エンジンに伝える公開ページ。ルートを増やしたら足す (/login は / への転送なので入れない) -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://poinote.app/</loc></url>
-  <url><loc>https://poinote.app/terms</loc></url>
-  <url><loc>https://poinote.app/privacy</loc></url>
-</urlset>

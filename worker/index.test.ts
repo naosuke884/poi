@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
-import { SITE_NAME, SITE_ORIGIN, TOP_DESCRIPTION, TOP_TITLE } from "@shared/site";
+import { PAGE_PATHS, SITE_NAME, SITE_ORIGIN, TOP_DESCRIPTION, TOP_TITLE } from "@shared/site";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import worker from "./index";
@@ -218,6 +218,14 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     const res = await request("/login");
     expect(res.status).toBe(301);
     expect(res.headers.get("Location")).toBe("/");
+  });
+
+  it("/sitemap.xml は公開ページをすべて載せた XML (issue #149)", async () => {
+    const res = await request("/sitemap.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("application/xml");
+    const xml = await res.text();
+    for (const path of PAGE_PATHS) expect(xml).toContain(`<loc>${SITE_ORIGIN}${path}</loc>`);
   });
 
   it("知らない /api/* は今までどおり 404 の JSON", async () => {

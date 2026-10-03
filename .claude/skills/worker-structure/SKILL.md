@@ -105,8 +105,8 @@ Two places set them, because Cloudflare serves static assets without running the
 ## Pages (`site/`)
 
 `wrangler.jsonc` has `not_found_handling: "none"`, so a path with no static asset (`/terms`, `/privacy`, `/nope`, `/login`) reaches the Worker, and `app.notFound` hands non-`/api` paths to `servePage` (`site/pages.ts`).
-It returns index.html with 200 for `PAGE_PATHS` (`shared/site.ts`), 301 for `PAGE_REDIRECTS` and trailing slashes, a bare 404 for paths with an extension, and index.html with 404 for anything else (no soft 404s). `/` itself is a static asset and never reaches the Worker.
-When adding a route under `src/routes`, add its path to `PAGE_PATHS` (and `public/sitemap.xml` if public); `site/pages.test.ts` fails otherwise.
+It returns index.html with 200 for `PAGE_PATHS` (`shared/site.ts`), `/sitemap.xml` built from `PAGE_PATHS` (`site/sitemap.ts`), 301 for `PAGE_REDIRECTS` and trailing slashes, a bare 404 for paths with an extension, and index.html with 404 for anything else (no soft 404s). `/` itself is a static asset and never reaches the Worker.
+When adding a route under `src/routes`, add its path to `PAGE_PATHS` (the sitemap follows), or to `PAGE_REDIRECTS` if it only redirects; `site/pages.test.ts` fails otherwise.
 
 ## Scheduled work (Cron)
 
