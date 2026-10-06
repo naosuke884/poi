@@ -3,13 +3,13 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentTitle } from "@/lib/use-document-title";
-import classes from "./LegalPage.module.css";
+import classes from "./DocPage.module.css";
 
 /**
- * 利用規約 / プライバシーポリシーの共通レイアウト。
+ * 文章だけのページ (利用規約 / プライバシーポリシー / 使い方 / よくある質問) の共通レイアウト。
  * 本文は Typography で見出し・リスト・段落の既定スタイルを当てる (ログイン不要で読める)。
  */
-export function LegalPage({
+export function DocPage({
   title,
   heading = title,
   updatedAt,
@@ -19,7 +19,8 @@ export function LegalPage({
   title: string;
   /** 見出しを title と変えたいときだけ渡す。長い語は折り返せる位置に <wbr /> を入れる (auto-phrase は複合語を 1 つの文節として扱うため) */
   heading?: ReactNode;
-  updatedAt: string;
+  /** 最終更新日。規約のように改定の日付が意味を持つページだけ渡す */
+  updatedAt?: string;
   children: ReactNode;
 }) {
   useDocumentTitle(title);
@@ -37,16 +38,18 @@ export function LegalPage({
       >
         {heading}
       </Title>
-      <Text c="dimmed" size="sm">
-        最終更新日: {updatedAt}
-      </Text>
+      {updatedAt && (
+        <Text c="dimmed" size="sm">
+          最終更新日: {updatedAt}
+        </Text>
+      )}
       <Typography className={classes.body} fz="md" lh={1.7}>
         {children}
       </Typography>
       <Anchor component={Link} to="/" size="sm">
         トップへ戻る
       </Anchor>
-      {/* 規約のページからも他のページ (もう一方の規約、GitHub) へ移れるように (#139) */}
+      {/* 文章のページからも他のページ (規約、GitHub など) へ移れるように (#139) */}
       <SiteFooter />
     </Stack>
   );

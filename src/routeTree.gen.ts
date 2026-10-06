@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as boardIndexRouteImport } from './routes/(board)/index'
-import { Route as legalPrivacyRouteImport } from './routes/(legal)/privacy'
-import { Route as legalTermsRouteImport } from './routes/(legal)/terms'
+import { Route as docsPrivacyRouteImport } from './routes/(docs)/privacy'
+import { Route as docsTermsRouteImport } from './routes/(docs)/terms'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -24,34 +24,34 @@ const boardIndexRoute = boardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const legalPrivacyRoute = legalPrivacyRouteImport.update({
-  id: '/(legal)/privacy',
+const docsPrivacyRoute = docsPrivacyRouteImport.update({
+  id: '/(docs)/privacy',
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const legalTermsRoute = legalTermsRouteImport.update({
-  id: '/(legal)/terms',
+const docsTermsRoute = docsTermsRouteImport.update({
+  id: '/(docs)/terms',
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
-  '/privacy': typeof legalPrivacyRoute
-  '/terms': typeof legalTermsRoute
+  '/privacy': typeof docsPrivacyRoute
+  '/terms': typeof docsTermsRoute
   '/': typeof boardIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/privacy': typeof legalPrivacyRoute
-  '/terms': typeof legalTermsRoute
+  '/privacy': typeof docsPrivacyRoute
+  '/terms': typeof docsTermsRoute
   '/': typeof boardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/login': typeof LoginRoute
-  '/(legal)/privacy': typeof legalPrivacyRoute
-  '/(legal)/terms': typeof legalTermsRoute
+  '/(docs)/privacy': typeof docsPrivacyRoute
+  '/(docs)/terms': typeof docsTermsRoute
   '/(board)/': typeof boardIndexRoute
 }
 export interface FileRouteTypes {
@@ -59,14 +59,13 @@ export interface FileRouteTypes {
   fullPaths: '/login' | '/privacy' | '/terms' | '/'
   fileRoutesByTo: FileRoutesByTo
   to: '/login' | '/privacy' | '/terms' | '/'
-  id:
-    '__root__' | '/login' | '/(legal)/privacy' | '/(legal)/terms' | '/(board)/'
+  id: '__root__' | '/login' | '/(docs)/privacy' | '/(docs)/terms' | '/(board)/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
-  legalPrivacyRoute: typeof legalPrivacyRoute
-  legalTermsRoute: typeof legalTermsRoute
+  docsPrivacyRoute: typeof docsPrivacyRoute
+  docsTermsRoute: typeof docsTermsRoute
   boardIndexRoute: typeof boardIndexRoute
 }
 
@@ -86,18 +85,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof boardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(legal)/privacy': {
-      id: '/(legal)/privacy'
+    '/(docs)/privacy': {
+      id: '/(docs)/privacy'
       path: '/privacy'
       fullPath: '/privacy'
-      preLoaderRoute: typeof legalPrivacyRouteImport
+      preLoaderRoute: typeof docsPrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(legal)/terms': {
-      id: '/(legal)/terms'
+    '/(docs)/terms': {
+      id: '/(docs)/terms'
       path: '/terms'
       fullPath: '/terms'
-      preLoaderRoute: typeof legalTermsRouteImport
+      preLoaderRoute: typeof docsTermsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -105,8 +104,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
-  legalPrivacyRoute: legalPrivacyRoute,
-  legalTermsRoute: legalTermsRoute,
+  docsPrivacyRoute: docsPrivacyRoute,
+  docsTermsRoute: docsTermsRoute,
   boardIndexRoute: boardIndexRoute,
 }
 export const routeTree = rootRouteImport

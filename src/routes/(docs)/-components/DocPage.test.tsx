@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-const { LegalPage } = await import("./LegalPage");
+const { DocPage } = await import("./DocPage");
 
 let root: Root;
 let container: HTMLDivElement;
@@ -40,14 +40,14 @@ afterEach(() => {
   act(() => root.unmount());
 });
 
-describe("LegalPage", () => {
+describe("DocPage", () => {
   it("フッターを出し、もう一方の規約や GitHub へ移れるようにする (issue #139)", () => {
     act(() =>
       root.render(
         <MantineProvider>
-          <LegalPage title="利用規約" updatedAt="2026 年 9 月 24 日">
+          <DocPage title="利用規約" updatedAt="2026 年 9 月 24 日">
             <p>本文</p>
-          </LegalPage>
+          </DocPage>
         </MantineProvider>,
       ),
     );

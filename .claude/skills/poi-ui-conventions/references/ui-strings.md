@@ -17,7 +17,7 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 | `コピー` / `スクショ` / `削除` | divider tooltips (`SectionActions`, `SectionRow`, `OrganizedView`) |
 | `元に戻す` | undo button in the delete toast |
 | `再試行` | `RouteErrorFallback`; `(クリックで再試行)` appended to save-status tooltips |
-| `トップへ戻る` | `RouteErrorFallback`, `NotFound`, `LegalPage` |
+| `トップへ戻る` | `RouteErrorFallback`, `NotFound`, `DocPage` |
 | `リロード` | `PwaUpdateBanner` |
 | `保存` / `キャンセル` | `TtlSettingModal` |
 | `削除する` / `キャンセル` | account-deletion confirm (`DeleteAccountConfirmModal`, dialog name `アカウント削除の確認`) |

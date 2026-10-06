@@ -1,16 +1,16 @@
 import { SUB_PAGES } from "@shared/site";
 import { createFileRoute } from "@tanstack/react-router";
 import { ContactLink } from "@/components/ContactLink";
-import { LegalPage } from "./-components/LegalPage";
+import { DocPage } from "./-components/DocPage";
 
 // プライバシーポリシー (ログイン不要)。Google OAuth 同意画面に登録する URL でもある
-export const Route = createFileRoute("/(legal)/privacy")({
+export const Route = createFileRoute("/(docs)/privacy")({
   component: Privacy,
 });
 
 function Privacy() {
   return (
-    <LegalPage
+    <DocPage
       title={SUB_PAGES["/privacy"].name}
       heading={
         // スマホ幅で 1 行に収まらないとき「…ポリシ / ー」ではなく「プライバシー / ポリシー」で折り返す
@@ -190,6 +190,6 @@ function Privacy() {
         請求の際は、本サービスにログインしている Google
         アカウントのメールアドレスから送信してください。本人確認の方法は運営者からメールで案内します。
       </p>
-    </LegalPage>
+    </DocPage>
   );
 }
