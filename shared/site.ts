@@ -20,6 +20,10 @@ export const pageTitle = (name?: string) => (name ? `${name} | ${SITE_NAME}` : T
  * Worker は初期 HTML の <title> などをこれで書き換える (JS を実行しないクローラーにも区別できるように。issue #144)
  */
 export const SUB_PAGES = {
+  "/guide": {
+    name: "使い方",
+    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方です。メモの書き方、メモが消えるしくみと保存期間の変え方、見出しごとのまとめ表示、スマホのホーム画面への追加を説明します。`,
+  },
   "/terms": {
     name: "利用規約",
     description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の利用規約です。`,

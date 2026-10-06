@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as boardIndexRouteImport } from './routes/(board)/index'
+import { Route as docsGuideRouteImport } from './routes/(docs)/guide'
 import { Route as docsPrivacyRouteImport } from './routes/(docs)/privacy'
 import { Route as docsTermsRouteImport } from './routes/(docs)/terms'
 
@@ -22,6 +23,11 @@ const LoginRoute = LoginRouteImport.update({
 const boardIndexRoute = boardIndexRouteImport.update({
   id: '/(board)/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const docsGuideRoute = docsGuideRouteImport.update({
+  id: '/(docs)/guide',
+  path: '/guide',
   getParentRoute: () => rootRouteImport,
 } as any)
 const docsPrivacyRoute = docsPrivacyRouteImport.update({
@@ -37,12 +43,14 @@ const docsTermsRoute = docsTermsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
+  '/guide': typeof docsGuideRoute
   '/privacy': typeof docsPrivacyRoute
   '/terms': typeof docsTermsRoute
   '/': typeof boardIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/guide': typeof docsGuideRoute
   '/privacy': typeof docsPrivacyRoute
   '/terms': typeof docsTermsRoute
   '/': typeof boardIndexRoute
@@ -50,20 +58,28 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/login': typeof LoginRoute
+  '/(docs)/guide': typeof docsGuideRoute
   '/(docs)/privacy': typeof docsPrivacyRoute
   '/(docs)/terms': typeof docsTermsRoute
   '/(board)/': typeof boardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login' | '/privacy' | '/terms' | '/'
+  fullPaths: '/login' | '/guide' | '/privacy' | '/terms' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/privacy' | '/terms' | '/'
-  id: '__root__' | '/login' | '/(docs)/privacy' | '/(docs)/terms' | '/(board)/'
+  to: '/login' | '/guide' | '/privacy' | '/terms' | '/'
+  id:
+    | '__root__'
+    | '/login'
+    | '/(docs)/guide'
+    | '/(docs)/privacy'
+    | '/(docs)/terms'
+    | '/(board)/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
+  docsGuideRoute: typeof docsGuideRoute
   docsPrivacyRoute: typeof docsPrivacyRoute
   docsTermsRoute: typeof docsTermsRoute
   boardIndexRoute: typeof boardIndexRoute
@@ -85,6 +101,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof boardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(docs)/guide': {
+      id: '/(docs)/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof docsGuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(docs)/privacy': {
       id: '/(docs)/privacy'
       path: '/privacy'
@@ -104,6 +127,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
+  docsGuideRoute: docsGuideRoute,
   docsPrivacyRoute: docsPrivacyRoute,
   docsTermsRoute: docsTermsRoute,
   boardIndexRoute: boardIndexRoute,

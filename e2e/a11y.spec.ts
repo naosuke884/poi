@@ -54,6 +54,7 @@ async function settleLandingMotion(page: Page) {
 test.describe("未ログイン", () => {
   for (const { name, path } of [
     { name: "ランディング", path: "/" },
+    { name: "使い方", path: "/guide" },
     { name: "利用規約", path: "/terms" },
     { name: "プライバシーポリシー", path: "/privacy" },
     { name: "404", path: "/no-such-page" },
