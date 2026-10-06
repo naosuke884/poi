@@ -19,18 +19,31 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="ja_JP" />
     <meta name="twitter:card" content="summary_large_image" />
-    <!-- 構造化データ: 検索エンジンにサービスの種類 (無料の Web アプリ) を伝える。データなので CSP の script-src は効かない -->
+    <!-- 構造化データ: 検索エンジンにサイト名 (WebSite。Google の検索結果のサイト名はこれで決まる。issue #154) と
+         サービスの種類 (無料の Web アプリ) を伝える。データなので CSP の script-src は効かない。
+         alternateName はドメイン名と同じ綴り: 「poi」は短い一般的な語なので、Google が使わなかったときの次の候補 -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "poi",
-        "url": "https://poinote.app/",
-        "description": "書いたメモが 30 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown に対応し、スマホのホーム画面に追加しても使えます。",
-        "applicationCategory": "ProductivityApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "ja",
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "poi",
+            "alternateName": "poinote",
+            "url": "https://poinote.app/",
+            "inLanguage": "ja"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "poi",
+            "url": "https://poinote.app/",
+            "description": "書いたメモが 30 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown に対応し、スマホのホーム画面に追加しても使えます。",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "ja",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
+          }
+        ]
       }
     </script>
     <!-- PWA: ブラウザ UI の色はページ背景 (Mantine の body 色: light #ffffff / dark #242424) に合わせる。

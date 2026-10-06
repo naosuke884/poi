@@ -179,12 +179,20 @@ describe("index.html の検索・カード向けの文言 (issue #145)", () => {
 
   it("構造化データが JSON として読め、名前・URL・説明文がサイトの値と同じ (issue #147)", () => {
     const json = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
-    const data = JSON.parse(json ?? "");
-    expect(data).toMatchObject({
-      "@type": "WebApplication",
+    const { "@graph": graph } = JSON.parse(json ?? "");
+    expect(graph.find((d: { "@type": string }) => d["@type"] === "WebApplication")).toMatchObject({
       name: SITE_NAME,
       url: `${SITE_ORIGIN}/`,
       description: TOP_DESCRIPTION,
+    });
+  });
+
+  it("構造化データの WebSite がサイト名とトップの URL を持つ (issue #154)", () => {
+    const json = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+    const { "@graph": graph } = JSON.parse(json ?? "");
+    expect(graph.find((d: { "@type": string }) => d["@type"] === "WebSite")).toMatchObject({
+      name: SITE_NAME,
+      url: `${SITE_ORIGIN}/`,
     });
   });
 });
