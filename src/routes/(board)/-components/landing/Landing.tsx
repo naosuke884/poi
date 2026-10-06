@@ -4,9 +4,10 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { DemoVideo } from "./DemoVideo";
 import { FeatureList } from "./FeatureList";
 import { LandingHero } from "./LandingHero";
+import { UseCaseList } from "./UseCaseList";
 
 /**
- * 未ログインで / に来た人向けのランディング。何ができるか + デモ動画 + ログイン導線。
+ * 未ログインで / に来た人向けのランディング。何ができるか + デモ動画 + 使い道の例 + ログイン導線。
  * ログイン専用ページは無く、CTA がそのまま Google OAuth を開始する (同意文もここに置く)
  */
 export function Landing() {
@@ -20,6 +21,7 @@ export function Landing() {
       <LandingHero />
       <DemoVideo />
       <FeatureList />
+      <UseCaseList />
       <SiteFooter />
     </Stack>
   );

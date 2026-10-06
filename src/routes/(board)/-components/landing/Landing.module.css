@@ -129,6 +129,13 @@
   }
 }
 
+/* ---- 使い道 (UseCaseList) ---- */
+
+/* 節の見出し。ヒーローの見出しと同じく文節の切れ目で折り返す */
+.sectionTitle {
+  word-break: auto-phrase;
+}
+
 /* ---- 寿命のバーの飾り (FeatureList の LifeLineDemo) ---- */
 
 /* 残り日数。整数として登録すると、アニメーションで 30, 29, … と一日ずつ減る */
