@@ -24,6 +24,10 @@ export const SUB_PAGES = {
     name: "使い方",
     description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方です。メモの書き方、メモが消えるしくみと保存期間の変え方、見出しごとのまとめ表示、スマホのホーム画面への追加を説明します。`,
   },
+  "/faq": {
+    name: "よくある質問",
+    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) についてのよくある質問です。消えたメモは戻せるか、保存期間は変えられるか、無料か、スマホで使えるかなどに答えます。`,
+  },
   "/terms": {
     name: "利用規約",
     description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の利用規約です。`,

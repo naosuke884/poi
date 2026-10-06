@@ -67,6 +67,6 @@ Note: sentence-final `。` is inconsistent today — the modal / inline errors i
 
 - Modals: `保存期間` (radio group label `削除までの日数`, options `<n> 日`; warning when shortening `保存すると、書いてから <n> 日を過ぎたセクション <m> 個がすぐに消えます (元に戻せません)。`), `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
 - Landing: `<n> 日で消えるメモ帳`; lead `書いたメモは、日がたつと自動で消えます。片付けを気にせず、思いついたまま書けます。`; consent line `ログインすると、利用規約とプライバシーポリシーに同意したものとみなします。`; features `書いてから <n> 日で、ひとつずつ消える`, `見出しごとに、まとめて読める`, `コピーも画像も、ワンクリック`, `ホーム画面から、すぐ書ける`
-- Document titles (`useDocumentTitle`): `poi` (top), `使い方 | poi`, `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
+- Document titles (`useDocumentTitle`): `poi` (top), `使い方 | poi`, `よくある質問 | poi`, `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
 - Legal: `最終更新日: <yyyy> 年 <m> 月 <d> 日`
-- Footer (`SiteFooter`, landing and text pages): links `GitHub` / `使い方` / `利用規約` / `プライバシーポリシー`, then `© <year> poi` on its own line
+- Footer (`SiteFooter`, landing and text pages): links `GitHub` / `使い方` / `よくある質問` / `利用規約` / `プライバシーポリシー`, then `© <year> poi` on its own line

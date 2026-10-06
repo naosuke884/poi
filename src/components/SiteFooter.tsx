@@ -2,7 +2,7 @@ import { Anchor, Group, Stack, Text } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
 /**
- * ページ下端のフッター (GitHub・使い方・利用規約・プライバシーポリシーへのリンクとコピーライト)。ランディングと文章のページで共通 (#139)。
+ * ページ下端のフッター (GitHub・使い方・よくある質問・利用規約・プライバシーポリシーへのリンクとコピーライト)。ランディングと文章のページで共通 (#139)。
  * リンクの行とコピーライトの行を分け、リンクは「・」でつながず間隔で区切る: 1 行に並べると、狭い画面で
  * 「・」が行末に残ったり、リンクだけが次の行に落ちたりして見た目が崩れていた (#140)
  */
@@ -32,6 +32,9 @@ export function SiteFooter() {
         </Anchor>
         <Anchor component={Link} to="/guide" size="xs">
           使い方
+        </Anchor>
+        <Anchor component={Link} to="/faq" size="xs">
+          よくある質問
         </Anchor>
         <Anchor component={Link} to="/terms" size="xs">
           利用規約
