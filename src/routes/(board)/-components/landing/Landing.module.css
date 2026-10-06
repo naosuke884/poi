@@ -1,5 +1,5 @@
 /* ランディング専用の見た目 (色は Mantine の変数だけを使い、ダーク配色に追従させる)。
-   動き (見出しの「消える」、動画の起き上がり、特徴の浮かび上がり) はどれも
+   動き (動画の起き上がり、特徴の浮かび上がり、寿命のバー) はどれも
    prefers-reduced-motion: no-preference のときだけ付ける。「動きを減らす」の人には最後の状態だけを見せる */
 
 /* ---- ヒーロー ---- */
@@ -16,69 +16,6 @@
 /* ページを移ったときにフォーカスを受けるだけの見出し (#121)。操作できる物ではないので枠を出さない */
 .heroTitle:focus {
   outline: none;
-}
-
-/* 「消える」の 3 文字。途中で折り返さない (文字ごとの inline-block の間で改行されないように) */
-.vanish {
-  display: inline-block;
-  white-space: nowrap;
-}
-
-/* 藍のグラデーションで塗った文字。3 文字で 1 本のグラデーションに見えるよう、
-   幅 3em の背景を文字の位置 (--i) ずつずらして当てる。
-   ライトは 6〜8 番 (白地で十分濃い)、ダークは 2〜4 番 (暗い地で沈まない) */
-.vanishChar {
-  display: inline-block;
-  color: transparent;
-  background-image: linear-gradient(100deg, var(--mantine-color-ai-5), var(--mantine-color-ai-8));
-  background-size: 3em 100%;
-  background-position: calc(var(--i) * -1em) 0;
-  background-clip: text;
-}
-
-:where([data-mantine-color-scheme="dark"]) .vanishChar {
-  background-image: linear-gradient(100deg, var(--mantine-color-ai-2), var(--mantine-color-ai-4));
-}
-
-/* forced colors では文字色がシステムの色に置き換わる。背景のグラデーションは外して普通の文字にする */
-@media (forced-colors: active) {
-  .vanishChar {
-    background: none;
-    color: CanvasText;
-  }
-}
-
-/* 読み込んだ直後に一度だけ、一文字ずつぼやけて浮かび上がるように消え、滲むように戻る。
-   繰り返さず 3 秒ほどで終わる (5 秒を超えて動き続けるものには止める手段が要る。WCAG 2.2.2)。
-   終わった後は普通に読める状態に戻る (fill: both) */
-@media (prefers-reduced-motion: no-preference) {
-  .vanishChar {
-    animation: vanish 1.8s cubic-bezier(0.6, 0, 0.3, 1) both;
-    animation-delay: calc(0.9s + var(--i) * 0.18s);
-  }
-}
-
-@keyframes vanish {
-  0% {
-    opacity: 1;
-    filter: blur(0);
-    transform: none;
-  }
-  40% {
-    opacity: 0;
-    filter: blur(10px);
-    transform: translateY(-0.35em) scale(1.15);
-  }
-  60% {
-    opacity: 0;
-    filter: blur(10px);
-    transform: translateY(0.1em);
-  }
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    transform: none;
-  }
 }
 
 /* 見出しの下の一言。行末に一文字だけ残らないよう pretty、文節で折り返す */
