@@ -1,7 +1,7 @@
 import { Alert, Stack, VisuallyHidden } from "@mantine/core";
 import { useRef } from "react";
 import { formatDateTime } from "../-lib/data/board";
-import type { TopPage } from "../-lib/data/board-loader";
+import type { BoardData } from "../-lib/data/board-loader";
 import { Board } from "./board/Board";
 
 /** ログイン済みのときの板 (オフラインでキャッシュしか無ければ閲覧専用の注意書きを添える) */
@@ -13,7 +13,7 @@ export function BoardView({
   // loader の userId なら sections と必ず同じアカウントで、板の到着と同時に key が変わる
   data: { sections, revision, ttlDays, offline, cachedAt, userId },
 }: {
-  data: Extract<TopPage, { kind: "board" }>;
+  data: BoardData;
 }) {
   // 一度でもオンラインで (最新の内容で) 開いたかどうか。
   // オンラインで開いた後にオフラインになり、復帰時の再取得 (OfflineBanner の router.invalidate) が

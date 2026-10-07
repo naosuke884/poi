@@ -39,7 +39,19 @@ export const SUB_PAGES = {
 } as const satisfies Record<string, { name: string; description: string }>;
 
 /**
- * 公開しているページのパス (src/routes のルートと同じ)。Worker はこれ以外のパスを 404 で返す
+ * ログインして使う画面のパス。検索結果に出しても未ログインの人はランディングへ戻されるだけなので、
+ * sitemap に載せず noindex にする (issue #156)
+ */
+export const APP_PATHS = ["/board"] as const;
+
+/** 検索エンジンに知らせるページのパス (sitemap.xml に載せる) */
+export const INDEXED_PAGE_PATHS = [
+  "/",
+  ...(Object.keys(SUB_PAGES) as (keyof typeof SUB_PAGES)[]),
+] as const;
+
+/**
+ * ページのパス (src/routes のルートと同じ)。Worker はこれ以外のパスを 404 で返す
  * (ルートを足したらここにも足す。worker/site/pages.test.ts が routeTree.gen.ts と突き合わせる)
  */
-export const PAGE_PATHS = ["/", ...(Object.keys(SUB_PAGES) as (keyof typeof SUB_PAGES)[])];
+export const PAGE_PATHS = [...INDEXED_PAGE_PATHS, ...APP_PATHS];

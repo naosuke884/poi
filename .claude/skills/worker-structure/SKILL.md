@@ -53,7 +53,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
 2. Mount it in `worker/index.ts` on the `api` chain: `new Hono<AppEnv>().route("/board", boardRoutes).route("/settings", settingsRoutes)`.
    Mounting on `api` (not `app`) is what puts it into `ApiType`, which the frontend client is typed from.
 3. Call it from src via `api` in `src/lib/api.ts` (`hc<ApiType>("/api")`): `api.foo.$get()`, `api.foo.$put({ json })`.
-   Derive response types with `InferResponseType<typeof api.foo.$get, 200>` instead of redeclaring them (see `BoardSection` in `src/routes/(board)/-lib/data/board.ts`).
+   Derive response types with `InferResponseType<typeof api.foo.$get, 200>` instead of redeclaring them (see `BoardSection` in `src/routes/board/-lib/data/board.ts`).
 
 ### Auth
 
@@ -68,7 +68,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
   It turns failures into `400 { error: "Bad Request", issues }`. Keep it a generic function: a pre-typed hook constant collapses the RPC type to `{}`.
   It currently lives in `board/routes.ts`; when a second context needs it, move it to the worker root rather than importing it across contexts.
 - Limits and choices the UI must also know (`BOARD_MAX_LENGTH`, `MEMO_TTL_CHOICES`, ...) come from `@shared/constants`, so client-side checks and server validation cannot drift.
-- Return JSON via `c.json(...)`. Errors are always `{ error: "<Code>" }` with a status: `400 Bad Request`, `401 Unauthorized`, `404 Not Found` (unknown `/api/*`, from `app.notFound`), `409` with a machine-readable code (`Stale`, `UserMismatch`) that the client branches on (see `putBoard` in `src/routes/(board)/-lib/sections/use-board-autosave.ts`). Pick a new PascalCase code for a new conflict rather than reusing one with different meaning.
+- Return JSON via `c.json(...)`. Errors are always `{ error: "<Code>" }` with a status: `400 Bad Request`, `401 Unauthorized`, `404 Not Found` (unknown `/api/*`, from `app.notFound`), `409` with a machine-readable code (`Stale`, `UserMismatch`) that the client branches on (see `putBoard` in `src/routes/board/-lib/sections/use-board-autosave.ts`). Pick a new PascalCase code for a new conflict rather than reusing one with different meaning.
 - Group writes that must succeed together in one `db.batch([...])` (D1 runs a batch as one transaction). Mind D1's limit of 100 bound parameters per statement; `PUT /api/board` binds rows as one JSON array and expands it with `json_each` for that reason.
 
 ## Keep logic pure and testable

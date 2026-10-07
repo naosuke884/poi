@@ -10,20 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as boardIndexRouteImport } from './routes/(board)/index'
 import { Route as docsFaqRouteImport } from './routes/(docs)/faq'
 import { Route as docsGuideRouteImport } from './routes/(docs)/guide'
 import { Route as docsPrivacyRouteImport } from './routes/(docs)/privacy'
 import { Route as docsTermsRouteImport } from './routes/(docs)/terms'
+import { Route as landingIndexRouteImport } from './routes/(landing)/index'
+import { Route as BoardIndexRouteImport } from './routes/board/index'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const boardIndexRoute = boardIndexRouteImport.update({
-  id: '/(board)/',
-  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const docsFaqRoute = docsFaqRouteImport.update({
@@ -46,6 +42,16 @@ const docsTermsRoute = docsTermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const landingIndexRoute = landingIndexRouteImport.update({
+  id: '/(landing)/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoardIndexRoute = BoardIndexRouteImport.update({
+  id: '/board/',
+  path: '/board/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
@@ -53,7 +59,8 @@ export interface FileRoutesByFullPath {
   '/guide': typeof docsGuideRoute
   '/privacy': typeof docsPrivacyRoute
   '/terms': typeof docsTermsRoute
-  '/': typeof boardIndexRoute
+  '/': typeof landingIndexRoute
+  '/board/': typeof BoardIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -61,7 +68,8 @@ export interface FileRoutesByTo {
   '/guide': typeof docsGuideRoute
   '/privacy': typeof docsPrivacyRoute
   '/terms': typeof docsTermsRoute
-  '/': typeof boardIndexRoute
+  '/': typeof landingIndexRoute
+  '/board': typeof BoardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,13 +78,15 @@ export interface FileRoutesById {
   '/(docs)/guide': typeof docsGuideRoute
   '/(docs)/privacy': typeof docsPrivacyRoute
   '/(docs)/terms': typeof docsTermsRoute
-  '/(board)/': typeof boardIndexRoute
+  '/(landing)/': typeof landingIndexRoute
+  '/board/': typeof BoardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login' | '/faq' | '/guide' | '/privacy' | '/terms' | '/'
+  fullPaths:
+    '/login' | '/faq' | '/guide' | '/privacy' | '/terms' | '/' | '/board/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/faq' | '/guide' | '/privacy' | '/terms' | '/'
+  to: '/login' | '/faq' | '/guide' | '/privacy' | '/terms' | '/' | '/board'
   id:
     | '__root__'
     | '/login'
@@ -84,7 +94,8 @@ export interface FileRouteTypes {
     | '/(docs)/guide'
     | '/(docs)/privacy'
     | '/(docs)/terms'
-    | '/(board)/'
+    | '/(landing)/'
+    | '/board/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,7 +104,8 @@ export interface RootRouteChildren {
   docsGuideRoute: typeof docsGuideRoute
   docsPrivacyRoute: typeof docsPrivacyRoute
   docsTermsRoute: typeof docsTermsRoute
-  boardIndexRoute: typeof boardIndexRoute
+  landingIndexRoute: typeof landingIndexRoute
+  BoardIndexRoute: typeof BoardIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -103,13 +115,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(board)/': {
-      id: '/(board)/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof boardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(docs)/faq': {
@@ -140,6 +145,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof docsTermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(landing)/': {
+      id: '/(landing)/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof landingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/board/': {
+      id: '/board/'
+      path: '/board'
+      fullPath: '/board/'
+      preLoaderRoute: typeof BoardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -149,7 +168,8 @@ const rootRouteChildren: RootRouteChildren = {
   docsGuideRoute: docsGuideRoute,
   docsPrivacyRoute: docsPrivacyRoute,
   docsTermsRoute: docsTermsRoute,
-  boardIndexRoute: boardIndexRoute,
+  landingIndexRoute: landingIndexRoute,
+  BoardIndexRoute: BoardIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

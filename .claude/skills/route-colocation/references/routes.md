@@ -12,9 +12,9 @@
 ## Keeping the first paint light (code splitting)
 
 `tanstackRouter({ autoCodeSplitting: true })` puts each route's `component` in its own chunk, but everything that component imports statically goes into that chunk too, and the chunk is only fetched after `beforeLoad` finishes (in parallel with `loader`). So (issue #110):
-- A route that renders one of several pages (the top page: `BoardView` when signed in, `Landing` otherwise) loads each page with `lazyRouteComponent(() => import("./-components/X"), "X")` instead of a static import, so signed-out visitors don't download the board's CodeMirror / react-markdown chunk.
-- Start those chunks from the `loader` (`X.preload?.()`; `preload` is removed once loaded, hence `?.`) and await them there together with the data, so the page never suspends on first render. `loadTopPageWithView` (`(board)/-lib/data/board-loader.ts`) also guesses the page from the cached user and starts that chunk before the session check returns.
-- Don't await network work in `beforeLoad` (such as the session check); do it in the `loader`, otherwise it delays the route's chunk. `beforeLoad` is for redirects / guards that must run before anything loads.
+- Give each page its own route rather than one route that switches between pages. The top page used to render `BoardView` or `Landing` depending on the session and had to lazy-load each by hand; since #156 the landing is `/` (`(landing)/index.tsx`) and the board is `/board` (`board/index.tsx`), so signed-out visitors never download the board's CodeMirror / react-markdown chunk and no manual `lazyRouteComponent` is needed.
+- If a route ever must render one of several heavy pages, load each with `lazyRouteComponent(() => import("./-components/X"), "X")`, start it from the `loader` (`X.preload?.()`; `preload` is removed once loaded, hence `?.`) and await it with the data so the page never suspends on first render.
+- Don't await network work in `beforeLoad` (such as the session check); do it in the `loader`, otherwise it delays the route's chunk. `beforeLoad` is for redirects / guards that must run before anything loads and need no network (e.g. `/` sending a device with a cached user straight to `/board`).
 - Every chunk is precached by the PWA (`globPatterns` in `vite.config.ts`), so lazy pages still work offline; keep them same-origin files (the CSP allows only `script-src 'self'`).
 - Check the effect with `npm run build` (chunk sizes) and in the production preview (`verifying-in-app`, "Production build") which chunks each page downloads.
 

@@ -8,6 +8,6 @@ export const authClient = createAuthClient({ plugins: [multiSessionClient()] });
 // Google OAuth を開始する (Landing のログインと UserMenu のアカウント追加で共通)。
 // 成功するとそのまま Google へ遷移する。開始できなかったとき (オフライン等) は throw する
 export async function startGoogleLogin(): Promise<void> {
-  const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+  const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/board" });
   if (error) throw error;
 }

@@ -3,7 +3,7 @@ import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { TopPage } from "../-lib/data/board-loader";
+import type { BoardData } from "../-lib/data/board-loader";
 
 // 板そのものはこのテストの対象外 (注意書きの出し方だけを見る)
 vi.mock("./board/Board", () => ({ Board: () => <div data-testid="board" /> }));
@@ -37,8 +37,7 @@ afterEach(() => {
 });
 
 const render = (offline: boolean) => {
-  const data: Extract<TopPage, { kind: "board" }> = {
-    kind: "board",
+  const data: BoardData = {
     sections: [],
     revision: null,
     ttlDays: offline ? undefined : 30,

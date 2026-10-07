@@ -72,7 +72,7 @@ The client must match the server's Playwright version; `pw.mjs` installs `playwr
 Quick screenshot:
 
 ```sh
-node <skill>/scripts/pw.mjs http://localhost:5173/ "$TMP/board.png" --state "$TMP/state.json"
+node <skill>/scripts/pw.mjs http://localhost:5173/board "$TMP/board.png" --state "$TMP/state.json"
 node <skill>/scripts/pw.mjs http://localhost:5173/ "$TMP/landing-mobile.png" --width 390 --height 844 --full   # signed out, phone width
 ```
 
@@ -88,7 +88,7 @@ const TMP = "<scratchpad dir>";
 
 const { browser, page } = await openPage({ storageState: `${TMP}/state.json` });
 try {
-  await page.goto("http://localhost:5173/");
+  await page.goto("http://localhost:5173/board");
   await page.getByRole("button", { name: "セクションを追加" }).click();
   const saved = page.waitForResponse((r) => r.url().endsWith("/api/board") && r.request().method() === "PUT");
   await page.keyboard.insertText("second section");

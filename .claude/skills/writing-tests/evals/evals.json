@@ -24,7 +24,7 @@
       "expected_output": "Pure unit test next to board.ts pinning the boundary with explicit time.",
       "files": [],
       "assertions": [
-        "The test is added to src/routes/(board)/-lib/data/board.test.ts (next to board.ts)",
+        "The test is added to src/routes/board/-lib/data/board.test.ts (next to board.ts)",
         "It is a pure unit test (no vi.mock, no jsdom environment added)",
         "Time is passed explicitly (no vi.useFakeTimers / Date.now stubbing)",
         "Pins expiresAt === now and expiresAt === now + 1ms (adjacent values, not a far-away fixture)",
@@ -41,7 +41,7 @@
       "expected_output": "Pure unit tests next to minimal-change.ts covering surrogate pairs.",
       "files": [],
       "assertions": [
-        "Tests are added to src/routes/(board)/-lib/editor/minimal-change.test.ts",
+        "Tests are added to src/routes/board/-lib/editor/minimal-change.test.ts",
         "Pure unit tests (no vi.mock, no jsdom environment added)",
         "At least one case edits next to or inside a surrogate-pair emoji and checks from/to/insert",
         "The test titles are in Japanese",

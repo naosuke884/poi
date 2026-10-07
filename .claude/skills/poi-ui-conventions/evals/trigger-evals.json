@@ -32,7 +32,7 @@
     "should_trigger": true
   },
   {
-    "query": "SectionRow.tsx を (board) から src/components に移して",
+    "query": "SectionRow.tsx を board から src/components に移して",
     "should_trigger": false
   },
   {

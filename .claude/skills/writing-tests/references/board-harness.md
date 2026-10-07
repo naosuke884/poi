@@ -1,6 +1,6 @@
 # The Board integration harness
 
-`src/routes/(board)/-components/board/Board.test.tsx` mounts the whole `Board` in jsdom and checks editor input → sections on screen → autosave PUT end to end. Add Board-level cases to this file instead of starting a second harness, because the fake server and stubs below took several fixes to get right.
+`src/routes/board/-components/board/Board.test.tsx` mounts the whole `Board` in jsdom and checks editor input → sections on screen → autosave PUT end to end. Add Board-level cases to this file instead of starting a second harness, because the fake server and stubs below took several fixes to get right.
 
 ## Fake server
 

@@ -12,7 +12,9 @@
     // /__scheduled は `wrangler dev --test-scheduled` で Cron をローカル実行するための経路。
     // 静的アセット (SPA フォールバック) より先に Worker に渡さないと届かないのでここに含める
     // (本番では Worker の notFound → SPA フォールバックになるだけで動作は変わらない)
-    "run_worker_first": ["/api/*", "/__scheduled"]
+    // / は、ログイン済み (セッション Cookie がある) なら板 (/board) へ 302 で転送するため Worker を通す
+    // (worker/site/pages.ts。issue #156)。パターンはパス全体との一致なので /* ではなく / だけに効く
+    "run_worker_first": ["/", "/api/*", "/__scheduled"]
   },
   "d1_databases": [
     {

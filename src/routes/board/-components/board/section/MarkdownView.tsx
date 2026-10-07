@@ -78,7 +78,7 @@ function selectionIntersects(el: Element): boolean {
  *   狭い画面で長い見出しの行の数が表示と編集で変わらないように。まとめ表示でも同じ見出しは同じに折り返す)
  * - リンクは別タブで開く (同じタブで開くと編集中の板から離れてしまうため)
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
- *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/(board)/-lib/markdown/markdown-source-offset.ts。
+ *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/board/-lib/markdown/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。
  *   role は button ではなく group: button の中身は読み上げで 1 つのボタン名にまとめられ、中のリンクが
  *   スクリーンリーダーから見えなくなる (操作できる要素の入れ子。axe の nested-interactive)

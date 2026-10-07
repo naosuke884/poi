@@ -36,7 +36,8 @@ export default defineConfig({
         description: "30 日で消えるメモ帳",
         lang: "ja",
         display: "standalone",
-        start_url: "/",
+        // 板から開く。この変更前にホーム画面に追加した人は / から開くが、ランディングが板へ転送する (issue #156)
+        start_url: "/board",
         scope: "/",
         // index.html の theme-color (light) と同じくページ背景 (白) に合わせる
         theme_color: "#ffffff",

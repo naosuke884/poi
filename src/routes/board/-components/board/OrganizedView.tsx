@@ -13,7 +13,7 @@ import { SectionActions, SectionDeleteButton } from "./section/SectionActions";
 
 /**
  * 見出しごとにまとめた表示 (#37)。タイムライン (通常の板) と切り替えて使う閲覧用のビュー。
- * - 同じ見出しのチャンクを 1 つの Markdown に連結して表示する (まとめ方は src/routes/(board)/-lib/sections/organized.ts)。
+ * - 同じ見出しのチャンクを 1 つの Markdown に連結して表示する (まとめ方は src/routes/board/-lib/sections/organized.ts)。
  *   連結で入れた空行は余白にしない (sourceBlankLines={false})。同じ見出しの箇条書きは連結で 1 つのリスト
  *   (項目が段落の loose list) になるが、段落の上下の余白は MarkdownView が消すので詰まったリストに見える
  * - 区切り線はタイムラインと同じ見た目で、右にコピー / スクショ。

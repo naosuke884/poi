@@ -1,7 +1,7 @@
 import { readJson, removeItem, writeJson } from "@/lib/local-storage";
 
 // オフライン起動時に「誰としてログインしていたか」を復元するためのキャッシュ。
-// optionalLogin ((board)/-lib/data/optional-login.ts) が getSession に成功するたびに上書きし、未ログイン判定 / ログアウトで消す。
+// getLoginState (board/-lib/data/login-state.ts) が getSession に成功するたびに上書きし、未ログイン判定 / ログアウトで消す。
 // セッショントークン自体は Cookie にあるので、ここには表示用のユーザー情報だけを置く。
 // メールアドレスは置かない (オフラインのヘッダー表示には名前とアイコンで足りる。端末に残す個人情報を減らす。issue #116)
 

@@ -32,7 +32,7 @@
     "should_trigger": true
   },
   {
-    "query": "src/routes/(board)/-components に置いてる SectionRow を別ページでも使いたい",
+    "query": "src/routes/board/-components に置いてる SectionRow を別ページでも使いたい",
     "should_trigger": false
   },
   {

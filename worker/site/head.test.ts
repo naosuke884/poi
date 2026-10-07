@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { TOP_TITLE } from "@shared/site";
 import { describe, expect, it } from "vitest";
 import { applyPageHead, subPageHead } from "./head";
 
@@ -13,6 +14,13 @@ describe("subPageHead", () => {
     expect(subPageHead("/privacy")).toMatchObject({
       title: "プライバシーポリシー | poi",
       url: "https://poinote.app/privacy",
+    });
+  });
+
+  it("板はタイトルがトップのままで、canonical は板 (noindex と食い違わないように。issue #156)", () => {
+    expect(subPageHead("/board")).toMatchObject({
+      title: TOP_TITLE,
+      url: "https://poinote.app/board",
     });
   });
 

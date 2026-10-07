@@ -87,7 +87,7 @@ test.describe("ログイン済み (板)", () => {
 
   test("空の板", async ({ page }, testInfo) => {
     await resetBoard(page, []);
-    await page.goto("/");
+    await page.goto("/board");
     await expect(page.getByRole("button", { name: "セクションを追加" })).toBeVisible();
     await expectNoViolations(page, testInfo, "空の板");
   });
@@ -98,7 +98,7 @@ test.describe("ログイン済み (板)", () => {
       "## メモ\n**太字** と `code` と [リンク](https://example.com)\n\n> 引用",
       "```\nconst x = 1;\n```",
     ]);
-    await page.goto("/");
+    await page.goto("/board");
     await expect(page.getByText("買い物").first()).toBeVisible();
     await expectNoViolations(page, testInfo, "セクションのある板");
 
@@ -111,7 +111,7 @@ test.describe("ログイン済み (板)", () => {
 
   test("ユーザーメニューとダイアログ", async ({ page }, testInfo) => {
     await resetBoard(page, []);
-    await page.goto("/");
+    await page.goto("/board");
     await page.getByRole("button", { name: "A11y Check" }).click();
     // 開くときのフェードの途中だと色が背景と混ざり、コントラストが低く出るので、終わるまで待つ
     await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");

@@ -32,7 +32,7 @@
     "should_trigger": true
   },
   {
-    "query": "テストファイルを src/lib から (board)/-lib に移したら import が壊れた。どこに置くのが正しい？",
+    "query": "テストファイルを src/lib から board/-lib に移したら import が壊れた。どこに置くのが正しい？",
     "should_trigger": false
   },
   {

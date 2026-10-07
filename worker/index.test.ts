@@ -1,6 +1,12 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
-import { PAGE_PATHS, SITE_NAME, SITE_ORIGIN, TOP_DESCRIPTION, TOP_TITLE } from "@shared/site";
+import {
+  INDEXED_PAGE_PATHS,
+  SITE_NAME,
+  SITE_ORIGIN,
+  TOP_DESCRIPTION,
+  TOP_TITLE,
+} from "@shared/site";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getPlatformProxy } from "wrangler";
 import worker from "./index";
@@ -233,7 +239,34 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/xml");
     const xml = await res.text();
-    for (const path of PAGE_PATHS) expect(xml).toContain(`<loc>${SITE_ORIGIN}${path}</loc>`);
+    for (const path of INDEXED_PAGE_PATHS) {
+      expect(xml).toContain(`<loc>${SITE_ORIGIN}${path}</loc>`);
+    }
+    // 板はログインして使う画面なので載せない (issue #156)
+    expect(xml).not.toContain("/board");
+  });
+
+  it("ログイン済みでトップを開いたら板へ 302 で転送し、キャッシュさせない (issue #156)", async () => {
+    const res = await request("/?from=pwa", { headers: { Cookie: await signIn() } });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/board?from=pwa");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("未ログインならトップはランディング (index.html) を返す", async () => {
+    const res = await request("/");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Vary")).toContain("Cookie");
+    expect(await res.text()).toContain('<div id="root">');
+  });
+
+  it("板は noindex で、canonical を板にする (issue #156)", async () => {
+    const res = await request("/board");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Robots-Tag")).toBe("noindex");
+    expect(await res.text()).toContain('<link rel="canonical" href="https://poinote.app/board" />');
+    // 公開ページには付けない
+    expect((await request("/terms")).headers.get("X-Robots-Tag")).toBeNull();
   });
 
   it("知らない /api/* は今までどおり 404 の JSON", async () => {
