@@ -7,7 +7,8 @@ import { Landing } from "./-components/Landing";
 
 // トップ: ランディング (何ができるか + ログイン導線)。誰が開いても同じ内容にする (issue #156)。
 // ログイン済みの人は板 (/board) へ転送する。Cookie があれば Worker が先に 302 で返す (worker/site/pages.ts) が、
-// ホーム画面に追加した後や 2 回目以降は Service Worker が index.html を返して Worker を通らないので、ここでも転送する
+// ホーム画面に追加した後や 2 回目以降は Service Worker が landing.html を返して Worker を通らないので、ここでも転送する
+// (この端末で前回ログインしていたときは、描画より前に public/boot.js も転送する)
 export const Route = createFileRoute("/(landing)/")({
   // この端末で前回ログインしていたら、ランディングを描かずに板へ (セッション切れなら板の loader がここへ戻す)
   beforeLoad: () => {

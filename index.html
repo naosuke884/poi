@@ -1,5 +1,7 @@
 <!doctype html>
-<html lang="ja">
+<!-- data-mantine-color-scheme: Mantine の配色。public/boot.js (と Mantine) が実際の配色に書き換える。
+     JS が動かないとき (クローラーなど) もランディング (landing.html) の色が付くよう、明るい配色を入れておく -->
+<html lang="ja" data-mantine-color-scheme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -54,6 +56,8 @@
          (無いとダークモードの起動時に一瞬白くなる)。color-scheme だけだとブラウザ既定の暗色
          (Chrome は #121212) になるので、背景は Mantine の body 色 (#242424) に揃える -->
     <meta name="color-scheme" content="light dark" />
+    <!-- 配色と、ログイン済みの人の板への転送を最初の描画より前に済ませる (トップは初期 HTML に本文があるため。issue #157) -->
+    <script src="/boot.js"></script>
     <style>
       @media (prefers-color-scheme: dark) {
         html {

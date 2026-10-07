@@ -9,6 +9,10 @@
     // 静的アセットに無いパスは Worker に渡す (worker/site/pages.ts が index.html を返し、知らないパスは 404 にする)。
     // "single-page-application" だと存在しないパスにも index.html を 200 で返してしまう (ソフト 404。issue #141)
     "not_found_handling": "none",
+    // /index.html・/landing.html を / や /landing へ転送しない (既定の auto-trailing-slash は転送する)。
+    // Service Worker の precache は /index.html を取りに行くが、転送されると / (Worker) がランディング
+    // (landing.html) を返し、板などのページの代わりに出る空の HTML がランディングになってしまう (issue #157)
+    "html_handling": "none",
     // /__scheduled は `wrangler dev --test-scheduled` で Cron をローカル実行するための経路。
     // 静的アセット (SPA フォールバック) より先に Worker に渡さないと届かないのでここに含める
     // (本番では Worker の notFound → SPA フォールバックになるだけで動作は変わらない)

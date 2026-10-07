@@ -5,6 +5,7 @@ import { readJson, removeItem, writeJson } from "@/lib/local-storage";
 // セッショントークン自体は Cookie にあるので、ここには表示用のユーザー情報だけを置く。
 // メールアドレスは置かない (オフラインのヘッダー表示には名前とアイコンで足りる。端末に残す個人情報を減らす。issue #116)
 
+// public/boot.js も同じキーを見る (ログイン済みならランディングを描く前に板へ)
 const KEY = "poi:session:v1";
 
 export type CachedUser = {

@@ -3,13 +3,21 @@ import { useReducedMotion } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 import classes from "./Landing.module.css";
 
+/**
+ * 配色が分かるか。ビルド時のプリレンダー (Node で描画する。src/prerender.tsx。issue #157) では分からない。
+ * ブラウザでは、プリレンダーした HTML はハイドレーションせずに描き直す (src/main.tsx) ので、最初から分かる
+ */
+const COLOR_SCHEME_KNOWN = typeof document !== "undefined";
+
 /** 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする */
 export function DemoVideo() {
   // OS で「動きを減らす」を選んでいる人にはデモ動画を自動再生しない (controls で再生してもらう)
   const reduceMotion = useReducedMotion();
   // ダーク配色では暗い板を撮った版を出す (明るい動画だけが浮かないように。issue #98)。
   // <source media> は再生中に配色が変わっても切り替わらないので、配色から src を選ぶ。
-  // SPA なので初回の描画から実際の配色を使う (効果の後に直すと明るい版を読みかけてしまう)
+  // 初回の描画から実際の配色を使う (効果の後に直すと明るい版を読みかけてしまう)。
+  // プリレンダーした HTML には動画もポスターも入れない (配色が分からず、明るい版を読み込ませてしまうため)。
+  // 場所は aspect-ratio で取ってある
   const dark = useComputedColorScheme("light", { getInitialValueInEffect: false }) === "dark";
   // デモ動画の拡大表示 (#54): クリックで video 要素をそのまま全画面にする。
   // 全画面の間だけ controls を出す (インラインに置くとクリックが再生操作と取り合いになる。
@@ -56,10 +64,12 @@ export function DemoVideo() {
       >
         <video
           ref={videoRef}
-          src={dark ? "/demo-dark.mp4" : "/demo.mp4"}
+          src={COLOR_SCHEME_KNOWN ? (dark ? "/demo-dark.mp4" : "/demo.mp4") : undefined}
           // 読み込み中や自動再生しないとき (動きを減らす) に見せる、内容の入った板 (issue #97)。
           // 動画と同じく配色に合わせる
-          poster={dark ? "/demo-poster-dark.webp" : "/demo-poster.webp"}
+          poster={
+            COLOR_SCHEME_KNOWN ? (dark ? "/demo-poster-dark.webp" : "/demo-poster.webp") : undefined
+          }
           className={classes.demoVideo}
           autoPlay={!reduceMotion}
           controls={videoFullscreen}

@@ -55,9 +55,19 @@ export function resolvePage(pathname: string, search = "", signedIn = false): Pa
 }
 
 /**
- * ページのレスポンスを作る。本文は静的アセットの index.html (/ で取る。/index.html は / へ転送される)。
+ * 本文にする静的アセット。トップはランディングを描いた landing.html (ビルド時に作る。issue #157)、
+ * それ以外は空の SPA の index.html。landing.html が無いとき (Vite の開発サーバー) は index.html にする。
  * 条件付きリクエストのヘッダーは渡さない (304 が返ると本文を返せない)
  */
+async function fetchPageHtml(pathname: string, origin: string, assets: Fetcher): Promise<Response> {
+  if (pathname === "/") {
+    const landing = await assets.fetch(new URL("/landing.html", origin));
+    if (landing.ok) return landing;
+  }
+  return assets.fetch(new URL("/index.html", origin));
+}
+
+/** ページのレスポンスを作る */
 export async function servePage(request: Request, assets: Fetcher): Promise<Response> {
   const url = new URL(request.url);
   const resolution = resolvePage(
@@ -84,11 +94,13 @@ export async function servePage(request: Request, assets: Fetcher): Promise<Resp
     case "missing":
       return new Response("Not Found", { status: 404 });
     case "page": {
-      const index = await assets.fetch(new URL("/", url));
+      const index = await fetchPageHtml(url.pathname, url.origin, assets);
       const headers = new Headers(index.headers);
-      // ETag は / の index.html のもの。別の URL・ステータスで使い回させない (本文も書き換えることがある)
+      // ETag は静的アセットのもの。別の URL・ステータスで使い回させない (本文も書き換えることがある)
       headers.delete("ETag");
       headers.delete("Content-Length");
+      // public/_headers が index.html・landing.html 自体に付ける noindex は、ページには引き継がない
+      headers.delete("X-Robots-Tag");
       // 利用規約などは、初期 HTML の時点でページのタイトル・説明文・canonical にする (issue #144)
       const head = resolution.status === 200 ? subPageHead(url.pathname) : undefined;
       const body = head ? applyPageHead(await index.text(), head) : index.body;

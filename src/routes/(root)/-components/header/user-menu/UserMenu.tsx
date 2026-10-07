@@ -140,7 +140,7 @@ export function UserMenu() {
           </Menu.Item>
           <Menu.Divider />
           {offline && <Menu.Label>オフライン (ログアウトはオンラインで)</Menu.Label>}
-          {/* 文字色は Menu.Item の color (red 6 固定) ではなく、コントラストを確保した red-text にする (main.tsx) */}
+          {/* 文字色は Menu.Item の color (red 6 固定) ではなく、コントラストを確保した red-text にする (app.tsx) */}
           <Menu.Item
             color="red"
             c="var(--mantine-color-red-text)"

@@ -16,6 +16,7 @@ import worker from "./index";
 // (.claude/skills/verifying-in-app/scripts/seed-session.mjs と同じ方法)
 
 const ORIGIN = "http://localhost";
+const LANDING_MARKER = "<h1>landing</h1>";
 const USER_ID = "u1";
 let proxy: Awaited<ReturnType<typeof getPlatformProxy<Env>>>;
 let env: Env;
@@ -28,12 +29,19 @@ beforeAll(async () => {
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
     GOOGLE_CLIENT_SECRET: "test-client-secret",
-    // 静的アセットの代わり。どのパスを聞かれても index.html を返す (本番の / と同じ中身)
+    // 静的アセットの代わり。/landing.html (ビルド時に作るランディング) は目印の入った HTML を、
+    // それ以外はどのパスを聞かれても index.html を返す。どちらにも public/_headers と同じく noindex を付ける
     ASSETS: {
-      fetch: async () =>
-        new Response(readFileSync("index.html", "utf8"), {
-          headers: { "Content-Type": "text/html" },
-        }),
+      fetch: async (input: Request | string | URL) => {
+        const { pathname } = new URL(input instanceof Request ? input.url : input);
+        const html = readFileSync("index.html", "utf8");
+        return new Response(
+          pathname === "/landing.html"
+            ? html.replace('<div id="root"></div>', `<div id="root">${LANDING_MARKER}</div>`)
+            : html,
+          { headers: { "Content-Type": "text/html", "X-Robots-Tag": "noindex" } },
+        );
+      },
     },
   } as unknown as Env;
   for (const file of readdirSync("drizzle")
@@ -253,11 +261,32 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("未ログインならトップはランディング (index.html) を返す", async () => {
+  it("未ログインならトップはランディングを描いた landing.html を返す (issue #157)", async () => {
     const res = await request("/");
     expect(res.status).toBe(200);
     expect(res.headers.get("Vary")).toContain("Cookie");
-    expect(await res.text()).toContain('<div id="root">');
+    expect(res.headers.get("X-Robots-Tag")).toBeNull();
+    expect(await res.text()).toContain(`<div id="root">${LANDING_MARKER}</div>`);
+    // トップ以外のページは空の index.html
+    expect(await (await request("/terms")).text()).toContain('<div id="root"></div>');
+  });
+
+  it("landing.html が無ければ (Vite の開発サーバー) トップは index.html を返す", async () => {
+    const res = await worker.fetch(
+      new Request(`${ORIGIN}/`),
+      {
+        ...env,
+        ASSETS: {
+          fetch: async (input: Request | string | URL) =>
+            new URL(input instanceof Request ? input.url : input).pathname === "/index.html"
+              ? new Response(readFileSync("index.html", "utf8"))
+              : new Response("Not Found", { status: 404 }),
+        },
+      } as unknown as Env,
+      {} as ExecutionContext,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('<div id="root"></div>');
   });
 
   it("板は noindex で、canonical を板にする (issue #156)", async () => {
