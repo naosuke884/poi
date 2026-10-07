@@ -20,6 +20,11 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 ## Conventions
 
 - Code comments and UI copy are in Japanese; identifiers are in English.
+- Each place records a different thing, so don't repeat one in another:
+  - Code says **how**: make it readable on its own (names, structure) rather than narrating it in comments.
+  - Tests say **what**: name each test after the behaviour it pins down, so the list of names reads as the spec.
+  - Commit messages say **why**: the reason for the change, which the diff cannot show.
+  - Code comments say **why not**: the obvious alternative and why it was not taken (a constraint, a bug it would cause, an issue number).
 - Commit messages are in English: a capitalised imperative subject (≤ 100 chars, no trailing period), a blank line,
   then a body explaining why. Reference issues with `Closes #N` / `Refs #N`. commitlint enforces this
   (`commitlint.config.js`, via a husky hook and CI).
