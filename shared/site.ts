@@ -51,6 +51,17 @@ export const INDEXED_PAGE_PATHS = [
 ] as const;
 
 /**
+ * ビルド時に本文まで描いておくページと、その HTML のファイル名 (issue #157)。JS を実行しないクローラーや
+ * リンクのプレビューにも本文を見せるため。vite-plugins/prerender-pages.ts が作り、Worker が初期 HTML として返す。
+ * 利用規約・プライバシーポリシーは入れない: 検索の入口にならず、precache する HTML を増やすだけ
+ */
+export const PRERENDERED_PAGES = {
+  "/": "landing.html",
+  "/guide": "guide.html",
+  "/faq": "faq.html",
+} as const satisfies Partial<Record<(typeof INDEXED_PAGE_PATHS)[number], string>>;
+
+/**
  * ページのパス (src/routes のルートと同じ)。Worker はこれ以外のパスを 404 で返す
  * (ルートを足したらここにも足す。worker/site/pages.test.ts が routeTree.gen.ts と突き合わせる)
  */

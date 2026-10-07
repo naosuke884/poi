@@ -1,4 +1,10 @@
-import { APP_PATHS, INDEXED_PAGE_PATHS, PAGE_PATHS, SITE_ORIGIN } from "@shared/site";
+import {
+  APP_PATHS,
+  INDEXED_PAGE_PATHS,
+  PAGE_PATHS,
+  PRERENDERED_PAGES,
+  SITE_ORIGIN,
+} from "@shared/site";
 import { applyPageHead, subPageHead } from "./head";
 import { buildSitemap } from "./sitemap";
 
@@ -55,14 +61,15 @@ export function resolvePage(pathname: string, search = "", signedIn = false): Pa
 }
 
 /**
- * 本文にする静的アセット。トップはランディングを描いた landing.html (ビルド時に作る。issue #157)、
- * それ以外は空の SPA の index.html。landing.html が無いとき (Vite の開発サーバー) は index.html にする。
+ * 本文にする静的アセット。ランディングや使い方などはビルド時に本文まで描いた HTML (landing.html・guide.html など。
+ * issue #157)、それ以外は空の SPA の index.html。描いた HTML が無いとき (Vite の開発サーバー) は index.html にする。
  * 条件付きリクエストのヘッダーは渡さない (304 が返ると本文を返せない)
  */
 async function fetchPageHtml(pathname: string, origin: string, assets: Fetcher): Promise<Response> {
-  if (pathname === "/") {
-    const landing = await assets.fetch(new URL("/landing.html", origin));
-    if (landing.ok) return landing;
+  if (Object.hasOwn(PRERENDERED_PAGES, pathname)) {
+    const file = PRERENDERED_PAGES[pathname as keyof typeof PRERENDERED_PAGES];
+    const prerendered = await assets.fetch(new URL(`/${file}`, origin));
+    if (prerendered.ok) return prerendered;
   }
   return assets.fetch(new URL("/index.html", origin));
 }
@@ -99,7 +106,7 @@ export async function servePage(request: Request, assets: Fetcher): Promise<Resp
       // ETag は静的アセットのもの。別の URL・ステータスで使い回させない (本文も書き換えることがある)
       headers.delete("ETag");
       headers.delete("Content-Length");
-      // public/_headers が index.html・landing.html 自体に付ける noindex は、ページには引き継がない
+      // public/_headers が index.html・landing.html など自体に付ける noindex は、ページには引き継がない
       headers.delete("X-Robots-Tag");
       // 利用規約などは、初期 HTML の時点でページのタイトル・説明文・canonical にする (issue #144)
       const head = resolution.status === 200 ? subPageHead(url.pathname) : undefined;

@@ -3,7 +3,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { LANDING_HTML, prerenderLanding } from "./vite-plugins/prerender-landing.ts";
+import { LANDING_HTML, prerenderPages } from "./vite-plugins/prerender-pages.ts";
 
 export default defineConfig({
   server: {
@@ -22,8 +22,9 @@ export default defineConfig({
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
     react(),
     cloudflare(),
-    // トップのランディングを HTML にした landing.html を dist/client に出す (issue #157)。VitePWA の precache に入るよう前に置く
-    prerenderLanding(),
+    // ランディングや使い方などを HTML にした landing.html・guide.html などを dist/client に出す (issue #157)。
+    // VitePWA の precache に入るよう前に置く
+    prerenderPages(),
     // PWA: manifest.webmanifest と Service Worker (sw.js) を dist/client に生成する。
     // cloudflare() がクライアントを dist/client に出力した後 (closeBundle) に動くので、この順で置く
     VitePWA({
@@ -66,7 +67,8 @@ export default defineConfig({
         // 拡張子付きのパス (/og.png をブラウザで直接開いたときなど) もフォールバックせずネットワークへ
         navigateFallback: "/index.html",
         // / (末尾が / の URL) は precache の landing.html で返す (ランディングを描いた HTML。issue #157)。
-        // precache の照合は navigateFallback より先なので、/ だけがこちらになる
+        // precache の照合は navigateFallback より先なので、/ だけがこちらになる。
+        // /guide などは Workbox の cleanURLs (既定で有効) が .html を補って precache の guide.html で返す
         directoryIndex: LANDING_HTML,
         navigateFallbackDenylist: [/^\/api\//, /^\/__scheduled/, /\.[a-z0-9]+$/i],
         // runtimeCaching は定義しない: precache 対象外 (= /api/* を含む) は SW がキャッシュせず

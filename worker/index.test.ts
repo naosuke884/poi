@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import {
   INDEXED_PAGE_PATHS,
+  PRERENDERED_PAGES,
   SITE_NAME,
   SITE_ORIGIN,
   TOP_DESCRIPTION,
@@ -16,7 +17,8 @@ import worker from "./index";
 // (.claude/skills/verifying-in-app/scripts/seed-session.mjs と同じ方法)
 
 const ORIGIN = "http://localhost";
-const LANDING_MARKER = "<h1>landing</h1>";
+/** テスト用の静的アセットが、ビルド時に描いた HTML の #root に入れる目印 */
+const prerenderedMarker = (assetPath: string) => `<h1>${assetPath}</h1>`;
 const USER_ID = "u1";
 let proxy: Awaited<ReturnType<typeof getPlatformProxy<Env>>>;
 let env: Env;
@@ -29,15 +31,21 @@ beforeAll(async () => {
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
     GOOGLE_CLIENT_SECRET: "test-client-secret",
-    // 静的アセットの代わり。/landing.html (ビルド時に作るランディング) は目印の入った HTML を、
+    // 静的アセットの代わり。ビルド時に本文まで描く HTML (/landing.html など) はファイル名の目印の入った HTML を、
     // それ以外はどのパスを聞かれても index.html を返す。どちらにも public/_headers と同じく noindex を付ける
     ASSETS: {
       fetch: async (input: Request | string | URL) => {
         const { pathname } = new URL(input instanceof Request ? input.url : input);
         const html = readFileSync("index.html", "utf8");
+        const prerendered = Object.values(PRERENDERED_PAGES).some(
+          (file) => pathname === `/${file}`,
+        );
         return new Response(
-          pathname === "/landing.html"
-            ? html.replace('<div id="root"></div>', `<div id="root">${LANDING_MARKER}</div>`)
+          prerendered
+            ? html.replace(
+                '<div id="root"></div>',
+                `<div id="root">${prerenderedMarker(pathname)}</div>`,
+              )
             : html,
           { headers: { "Content-Type": "text/html", "X-Robots-Tag": "noindex" } },
         );
@@ -159,6 +167,14 @@ describe("セキュリティ関連のレスポンスヘッダー (issue #111)", 
   const staticHeader = (name: string) =>
     headersFile.match(new RegExp(`^\\s+${name}: (.*)$`, "m"))?.[1];
 
+  it("本文を描いた HTML そのものは検索結果に出さない (public/_headers の noindex)", () => {
+    for (const file of Object.values(PRERENDERED_PAGES)) {
+      expect(headersFile).toMatch(
+        new RegExp(`^/${file.replace(".", "\\.")}\\n\\s+X-Robots-Tag: noindex$`, "m"),
+      );
+    }
+  });
+
   it("静的アセットの HSTS と iframe 埋め込みの禁止は API と同じ値", async () => {
     const res = await request("/api/nope");
     expect(staticHeader("Strict-Transport-Security")).toBe(
@@ -266,9 +282,25 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(res.status).toBe(200);
     expect(res.headers.get("Vary")).toContain("Cookie");
     expect(res.headers.get("X-Robots-Tag")).toBeNull();
-    expect(await res.text()).toContain(`<div id="root">${LANDING_MARKER}</div>`);
-    // トップ以外のページは空の index.html
+    expect(await res.text()).toContain(
+      `<div id="root">${prerenderedMarker("/landing.html")}</div>`,
+    );
+    // 本文を描いていないページは空の index.html
     expect(await (await request("/terms")).text()).toContain('<div id="root"></div>');
+  });
+
+  it("使い方とよくある質問は本文を描いた HTML を、そのページの head にして返す (issue #157)", async () => {
+    for (const [path, file] of [
+      ["/guide", "guide.html"],
+      ["/faq", "faq.html"],
+    ] as const) {
+      const res = await request(path);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("X-Robots-Tag")).toBeNull();
+      const html = await res.text();
+      expect(html).toContain(`<div id="root">${prerenderedMarker(`/${file}`)}</div>`);
+      expect(html).toContain(`<link rel="canonical" href="${SITE_ORIGIN}${path}" />`);
+    }
   });
 
   it("landing.html が無ければ (Vite の開発サーバー) トップは index.html を返す", async () => {

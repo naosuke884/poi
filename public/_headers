@@ -13,8 +13,12 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
 
-# ページの本文にする HTML そのもの。ページとしては /・/terms などで見せる (worker/site/pages.ts) ので、検索結果には出さない
+# ページの本文にする HTML そのもの。ページとしては /・/guide・/terms などで見せる (worker/site/pages.ts) ので、検索結果には出さない
 /index.html
   X-Robots-Tag: noindex
 /landing.html
+  X-Robots-Tag: noindex
+/guide.html
+  X-Robots-Tag: noindex
+/faq.html
   X-Robots-Tag: noindex
