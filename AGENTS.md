@@ -16,6 +16,7 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 - `npm test` / `npm run lint` / `npm run typecheck` / `npm run build` — run all four before committing (CI runs the same).
 - `npm run lint:fix` — Biome format and autofix.
 - `npm run test:a11y` — Playwright + axe accessibility check of the rendered pages (starts its own dev server on :5174; CI job `a11y`).
+- `npm run lint:jev` — jev-lint: asks a model whether names, comments and test names match the code (config `.jev-lint.yaml`). Sends the code to the typesafe.ai API and needs `TYPESAFE_API_KEY`; add `-- --dry-run` to see the cost without sending. Findings are candidates to judge, not verdicts; not part of CI.
 
 ## Conventions
 
