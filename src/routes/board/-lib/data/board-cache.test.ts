@@ -61,5 +61,4 @@ describe("readCachedBoard は期限切れのセクションを端末のキャッ
     expect(stored).toEqual({ sections: [sections[2]], cachedAt: 123 });
     expect(localStorage.getItem("poi:board-cache:v2:me")).not.toContain("ちょうど期限");
   });
-
 });
