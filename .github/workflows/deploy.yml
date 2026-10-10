@@ -45,7 +45,7 @@ jobs:
     environment: production
     steps:
       # workflow_run の既定のチェックアウトは main の最新なので、CI が通ったコミットそのものを明示する
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
