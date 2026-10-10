@@ -25,11 +25,14 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
   - Tests say **what**: name each test after the behaviour it pins down, so the list of names reads as the spec.
   - Commit messages say **why**: the reason for the change, which the diff cannot show.
   - Code comments say **why not**: the obvious alternative and why it was not taken (a constraint, a bug it would cause, an issue number).
-- Commit messages are in Japanese (identifiers stay as they are): a plain-form subject saying what the commit does
-  (≤ 100 chars, no trailing `。` or `.`, e.g. `ガイドと FAQ のページを事前レンダリングする`), a blank line,
-  then a body explaining why. Reference issues with `Closes #N` / `Refs #N`. commitlint checks only the shape
-  (length, trailing period, blank line; `commitlint.config.js`, via a husky hook and CI), not the language or wording.
-  Commits before 2026-10-10 are in English; don't copy that.
+- Commit messages follow Conventional Commits with a Japanese subject (identifiers stay as they are):
+  `type(scope): subject` where type is one of `feat` / `fix` / `docs` / `refactor` / `test` / `chore` / `ci` /
+  `build` / `perf` / `style` / `revert`, scope is optional (e.g. `board`, `auth`), and the subject is a plain-form
+  sentence saying what the commit does (header ≤ 100 chars, no trailing `。` or `.`,
+  e.g. `feat(board): セクションの並べ替えを追加する`). Then a blank line and a body explaining why.
+  Reference issues with `Closes #N` / `Refs #N`. commitlint checks the shape (`commitlint.config.js`,
+  `@commitlint/config-conventional`, via a husky hook and CI), not the language or wording.
+  Commits before 2026-10-10 don't use this format; don't copy them.
 - Bug fixes come with a regression test where practical.
 
 ## Topic guides

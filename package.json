@@ -59,6 +59,7 @@
     "@biomejs/biome": "2.5.14",
     "@cloudflare/vite-plugin": "^1.54.1",
     "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
     "@playwright/test": "~1.62.1",
     "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.35",
