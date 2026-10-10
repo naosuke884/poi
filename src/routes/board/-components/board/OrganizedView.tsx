@@ -41,7 +41,7 @@ export function OrganizedView({
   const viewsRef = useRef(new Map<string, HTMLDivElement>());
   const screenshot = (key: string) => {
     const el = viewsRef.current.get(key);
-    if (!el) throw new Error("まとめが空のため画像にできません");
+    if (!el) throw new Error("まとめの表示が見つからないため画像にできません");
     return deliverImage(renderSectionImage(el));
   };
   // 描画後にフォーカスを移すまとめの位置 (削除した場所。#112)。後ろが無ければ前のまとめへ
