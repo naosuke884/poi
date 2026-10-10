@@ -143,7 +143,6 @@ describe.concurrent("セキュリティ関連のレスポンスヘッダー (iss
     const res = await request(path);
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
-    expect(res.headers.get("Strict-Transport-Security")).toBe("max-age=86400");
     expect(res.headers.get("Referrer-Policy")).toBe("no-referrer");
   });
 
@@ -170,12 +169,17 @@ describe.concurrent("セキュリティ関連のレスポンスヘッダー (iss
     }
   });
 
-  it("静的アセットの HSTS と iframe 埋め込みの禁止は API と同じ値", async ({ request }) => {
+  it("静的アセットの iframe 埋め込みの禁止は API と同じ値", async ({ request }) => {
     const res = await request("/api/nope");
-    expect(staticHeader("Strict-Transport-Security")).toBe(
-      res.headers.get("Strict-Transport-Security"),
-    );
     expect(staticHeader("X-Frame-Options")).toBe(res.headers.get("X-Frame-Options"));
+  });
+
+  it("HSTS は API にも静的アセットにも付けない (Cloudflare のゾーン設定で付ける)", async ({
+    request,
+  }) => {
+    const res = await request("/api/nope");
+    expect(res.headers.get("Strict-Transport-Security")).toBeNull();
+    expect(staticHeader("Strict-Transport-Security")).toBeUndefined();
   });
 
   it("index.html にインラインスクリプトが無い (CSP の script-src 'self' に引っかかるため)", () => {
