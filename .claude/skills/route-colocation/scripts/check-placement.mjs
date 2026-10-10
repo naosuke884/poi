@@ -29,7 +29,8 @@ function walk(dir, out = []) {
 
 const SKIP = new Set(["src/routeTree.gen.ts", "src/vite-env.d.ts"]);
 const srcFiles = walk(join(ROOT, "src")).filter((f) => /\.(tsx?|css)$/.test(f) && !SKIP.has(f));
-const isTest = (f) => /\.test\.tsx?$/.test(f);
+// テスト用の部品 (`*-test.ts(x)`。worker/d1-test.ts と同じ名付け) もテスト側として扱う
+const isTest = (f) => /(\.test|-test)\.tsx?$/.test(f);
 const isCode = (f) => /\.tsx?$/.test(f);
 
 // --- Resolving imports ---

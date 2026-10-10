@@ -34,6 +34,7 @@ For an existing piece, pass it to the script above as `<file>` to see its users 
 | A file in `src/lib` (whether or not routes use it too) | `src/lib/` (`src/lib` cannot import from inside routes) |
 
 - Tests sit next to the file under test as `<name>.test.ts(x)` (move the test along with its target)
+- Helpers used only by tests are named `<name>-test.ts(x)` (e.g. `src/lib/router-test.tsx`, `worker/d1-test.ts`). Vitest does not collect them, and the placement check treats them as test files, so they may sit in `src/lib/` without production importers
 - CSS Modules sit in the same folder as the component that uses them and are imported as `./X.module.css`
 - Inside `-components/` / `-lib/`, you may nest further folders that mirror how the users are structured.
   Nested folder names need no `-` (the parent `-components/` already excludes everything under it from route generation). Once `-lib/` grows, group its files into folders by topic

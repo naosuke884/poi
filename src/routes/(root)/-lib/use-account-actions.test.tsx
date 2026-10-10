@@ -3,8 +3,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { boardCacheKey } from "@/lib/offline-caches";
+import { createTestRouter, WithRouter } from "@/lib/router-test";
 import { readCachedUser, writeCachedUser } from "@/lib/session-cache";
-import { createTestRouter, WithRouter } from "@/lib/test-router";
 
 type Reply = "ok" | "error" | "offline";
 

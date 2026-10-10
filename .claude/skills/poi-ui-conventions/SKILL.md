@@ -84,7 +84,7 @@ These came from dedicated fix commits; keep them when touching nearby code.
 Every keystroke updates `Board`'s state and re-renders it, so the cost of one render grows with the number of sections (#114: 40 sections cost ~50 ms of script per keystroke before the fix, ~3.5 ms after).
 - `SectionRow` is `memo`: only the row whose props changed re-renders. Keep its props unchanged for untouched rows: handlers go through `useStableHandlers` (`board/-lib/`, same object every render, calls the latest function), `refs` through `useMemo`, and a value that depends on *other* sections (like the character limit) is asked for through a handler at input time (`handlers.maxLength` → `SectionEditor`'s `getMaxLength`), never passed as a prop. A new prop that changes on every render for every row (an inline object or closure, a board-wide count) silently undoes this.
 - `MarkdownView` renders through the memoized `MarkdownBody`, which re-parses only when `content` / `sourceBlankLines` change; its remark / rehype plugin lists and `components` are module constants so the memo can hold. Keep new react-markdown options module-level too.
-- `Board.test.tsx` counts react-markdown renders (`markdownRenders`); the #114 case fails if typing or saving re-renders unchanged sections' Markdown.
+- No automated test guards this (the render-count test was removed because it pinned how often a library is called, an implementation detail). After touching `SectionRow`, `MarkdownView` or the props they get, measure typing with ~40 sections in the running app (`verifying-in-app` skill, browser Performance panel).
 
 ## Before finishing
 

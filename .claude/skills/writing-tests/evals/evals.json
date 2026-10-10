@@ -8,7 +8,7 @@
       "expected_output": "Route test in routes.test.ts on real local D1 with Japanese title.",
       "files": [],
       "assertions": [
-        "The test is added to worker/board/routes.test.ts using its existing getPlatformProxy / app.request harness (D1 not mocked)",
+        "The test is added to worker/board/routes.test.ts using its per-test D1 fixture (worker/d1-test.ts) and app.request harness (D1 not mocked, no beforeEach cleanup added)",
         "The test title is in Japanese",
         "The test asserts both the HTTP status and the rows remaining in the DB",
         "The test checks that the new revision differs from the previous one",
@@ -47,6 +47,41 @@
         "The test titles are in Japanese",
         "Ran the targeted test file and reports the result",
         "No production logic is changed (or, if a real bug was found, the report says so and a failing test came first)"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "usermenu-delete-account",
+      "prompt": "UserMenu にテストが無い。メニューからアカウント削除を選んで確認ダイアログで削除したら、トップ (/) に移って、この端末のそのユーザーの板のキャッシュが消えることをテストで押さえておいて。",
+      "expected_output": "jsdom test next to UserMenu.tsx that renders the real UserMenu with the real router (test-router helper) and real offline-caches, fakes only the auth server/API with state, and asserts location + localStorage, not calls.",
+      "files": [],
+      "assertions": [
+        "The test file is src/routes/(root)/-components/header/user-menu/UserMenu.test.tsx",
+        "Does not vi.mock @tanstack/react-router; uses a real router (createTestRouter / WithRouter from @/lib/router-test or a real createRouter)",
+        "Does not vi.mock @/lib/offline-caches, ./use-account-actions or any other module of our own; only @/lib/auth-client and/or @/lib/api are replaced",
+        "The auth/API replacement is a stateful fake (holds sessions/users) rather than bare vi.fn() stubs verified with toHaveBeenCalled*",
+        "Asserts navigation through router state (e.g. router.state.location.pathname === '/') rather than a navigate spy",
+        "Asserts the cache removal by reading localStorage (or readCachedBoard/readCachedUser), not by checking that clearOfflineCaches was called",
+        "Test titles are in Japanese and describe behaviour",
+        "Ran the targeted test file and reports it passing",
+        "Did not modify production code"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "settings-ttl-no-revive",
+      "prompt": "PUT /api/settings で保持日数を延ばしても、もう期限切れで Cron の削除待ちになっているセクションは復活しない、というのをテストで保証したい。書いて。",
+      "expected_output": "Route test in worker/board/routes.test.ts using the per-test D1 fixture, mounting settingsRoutes, asserting response and rows.",
+      "files": [],
+      "assertions": [
+        "The test is added to worker/board/routes.test.ts (or a sibling worker test) and uses the db fixture from worker/d1-test.ts (no getPlatformProxy in beforeAll, no beforeEach cleanup added)",
+        "D1 is not mocked; settingsRoutes is called through app.request (or worker.fetch) with the real local D1",
+        "Inserts an already-expired row and a still-visible row, then PUTs a longer memoTtlDays",
+        "Asserts the expired row's expires_at is unchanged (still in the past) and the visible row's expires_at moved to createdAt + new days, by reading rows back",
+        "Asserts the expired section is not returned by GET /api/board after the change",
+        "Test titles are in Japanese",
+        "Ran the targeted test file and reports it passing",
+        "Did not modify production code"
       ]
     }
   ]

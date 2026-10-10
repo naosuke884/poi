@@ -5,7 +5,7 @@ description: Launches poi locally (the Vite + Cloudflare Worker dev server on :5
 
 # Verifying a change in the running app
 
-Unit tests mock the router, the auth client and the API. They do not show whether the page renders, whether the editor saves, or whether a worker change is wired up.
+Unit tests replace the API and the auth client with in-memory fakes and run in jsdom without layout. They do not show whether the page renders, whether the editor saves, or whether a worker change is wired up.
 Before saying a change works, see it in the running app: the board page as a signed-in user, or the API it calls.
 
 Paths below are relative to the repository root. `<skill>` is `.claude/skills/verifying-in-app`.

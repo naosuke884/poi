@@ -3,7 +3,7 @@ import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createTestRouter, WithRouter } from "@/lib/test-router";
+import { createTestRouter, WithRouter } from "@/lib/router-test";
 import { OfflineBanner } from "./OfflineBanner";
 
 let root: Root;
