@@ -2,14 +2,13 @@
 import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
-const invalidate = vi.fn();
-vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ invalidate }) }));
-
-const { OfflineBanner } = await import("./OfflineBanner");
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createTestRouter, WithRouter } from "@/lib/test-router";
+import { OfflineBanner } from "./OfflineBanner";
 
 let root: Root;
+// 表示中のページのデータを取得した回数
+let loads = 0;
 let container: HTMLDivElement;
 let onLine = true;
 
@@ -29,15 +28,19 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
   onLine = true;
+  const router = createTestRouter({ loader: () => void loads++ });
+  await router.load();
+  loads = 0;
   container = document.createElement("div");
   root = createRoot(container);
   await act(async () =>
     root.render(
-      <MantineProvider>
-        <OfflineBanner />
-      </MantineProvider>,
+      <WithRouter router={router}>
+        <MantineProvider>
+          <OfflineBanner />
+        </MantineProvider>
+      </WithRouter>,
     ),
   );
 });
@@ -68,6 +71,7 @@ describe("OfflineBanner", () => {
     await goOnline(true);
     expect(container.querySelector('[role="status"]')).toBe(region);
     expect(region?.textContent).toBe("");
-    expect(invalidate).toHaveBeenCalledTimes(1);
+    // オンラインに戻ったら、表示中のページのデータを 1 回取り直す
+    expect(loads).toBe(1);
   });
 });

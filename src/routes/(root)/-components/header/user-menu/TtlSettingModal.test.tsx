@@ -4,21 +4,45 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({
-  settingsGet: vi.fn(),
-  settingsPut: vi.fn(),
-  boardGet: vi.fn(),
+type Res = { ok: boolean; status: number; json: () => Promise<unknown> };
+type Reply = "ok" | "error" | "offline";
+
+// API の向こうのサーバー (プロセスの外にあるので、ここだけ偽物にする)。今の設定と板を持ち、
+// endpoint ごとの返し方 (reply) を変えると、サーバが断った・通信できなかった場合を作れる
+const server = vi.hoisted(() => ({
+  memoTtlDays: 30,
+  sections: [] as { createdAt: string }[],
+  reply: {} as Partial<Record<"settingsGet" | "settingsPut" | "boardGet", Reply>>,
 }));
-vi.mock("@/lib/api", () => ({
-  api: {
-    settings: { $get: api.settingsGet, $put: api.settingsPut },
-    board: { $get: api.boardGet },
-  },
-}));
+
+vi.mock("@/lib/api", () => {
+  const respond = async (
+    endpoint: keyof typeof server.reply,
+    body: () => unknown,
+  ): Promise<Res> => {
+    const reply = server.reply[endpoint] ?? "ok";
+    if (reply === "offline") throw new TypeError("Failed to fetch");
+    if (reply === "error")
+      return { ok: false, status: 500, json: async () => ({ error: "Internal" }) };
+    const value = body();
+    return { ok: true, status: 200, json: async () => value };
+  };
+  return {
+    api: {
+      settings: {
+        $get: () => respond("settingsGet", () => ({ memoTtlDays: server.memoTtlDays })),
+        $put: ({ json }: { json: { memoTtlDays: number } }) =>
+          respond("settingsPut", () => {
+            server.memoTtlDays = json.memoTtlDays;
+            return { memoTtlDays: server.memoTtlDays };
+          }),
+      },
+      board: { $get: () => respond("boardGet", () => ({ sections: server.sections })) },
+    },
+  };
+});
 
 const { TtlSettingModal } = await import("./TtlSettingModal");
-
-const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
 
 let root: Root;
 const onClose = vi.fn();
@@ -45,9 +69,9 @@ beforeAll(() => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
-  api.settingsGet.mockResolvedValue(ok({ memoTtlDays: 30 }));
-  api.boardGet.mockResolvedValue(ok({ sections: [] }));
-  api.settingsPut.mockResolvedValue(ok({ memoTtlDays: 7 }));
+  server.memoTtlDays = 30;
+  server.sections = [];
+  server.reply = {};
   root = createRoot(document.createElement("div"));
 });
 
@@ -83,27 +107,30 @@ describe("TtlSettingModal", () => {
     // 保存ボタンが form の送信ボタンなので、Enter による暗黙の送信がこのボタンで行われる
     expect(form?.querySelector('button[type="submit"]')?.textContent).toBe("保存");
     await act(async () => form?.requestSubmit());
-    expect(api.settingsPut).toHaveBeenCalledWith({ json: { memoTtlDays: 7 } });
+    expect(server.memoTtlDays).toBe(7);
     expect(onSaved).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 
   it.each([
-    ["サーバが断った", () => api.settingsPut.mockResolvedValue({ ok: false, status: 500 })],
-    ["通信できなかった", () => api.settingsPut.mockRejectedValue(new TypeError("Failed to fetch"))],
-  ])("保存できなかった (%s) ときは閉じずにエラーを出し、onSaved を呼ばない", async (_, failPut) => {
-    failPut();
-    await open();
-    await act(async () => radioFor(7)?.click());
-    await act(async () => saveButton()?.click());
-    expect(api.settingsPut).toHaveBeenCalled();
-    expect(alertText()).toBe("保存できませんでした。接続を確認して、もう一度お試しください。");
-    expect(onSaved).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-  });
+    ["サーバが断った", "error"],
+    ["通信できなかった", "offline"],
+  ] as const)(
+    "保存できなかった (%s) ときは閉じずにエラーを出し、onSaved を呼ばない",
+    async (_, reply) => {
+      server.reply.settingsPut = reply;
+      await open();
+      await act(async () => radioFor(7)?.click());
+      await act(async () => saveButton()?.click());
+      expect(server.memoTtlDays).toBe(30);
+      expect(alertText()).toBe("保存できませんでした。接続を確認して、もう一度お試しください。");
+      expect(onSaved).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
 
   it("今の設定を取得できなければエラーを出し、保存させない", async () => {
-    api.settingsGet.mockResolvedValue({ ok: false, status: 500 });
+    server.reply.settingsGet = "error";
     await open();
     expect(alertText()).toBe("設定を取得できませんでした。接続を確認して、開き直してください。");
     expect(saveButton()?.disabled).toBe(true);
@@ -111,12 +138,12 @@ describe("TtlSettingModal", () => {
   });
 
   it("板を取得できなくても、エラーにせず保存できる", async () => {
-    api.boardGet.mockRejectedValue(new TypeError("Failed to fetch"));
+    server.reply.boardGet = "offline";
     await open();
     expect(alertText()).toBeUndefined();
     await act(async () => radioFor(7)?.click());
     await act(async () => saveButton()?.click());
-    expect(api.settingsPut).toHaveBeenCalledWith({ json: { memoTtlDays: 7 } });
+    expect(server.memoTtlDays).toBe(7);
     expect(onSaved).toHaveBeenCalled();
   });
 });

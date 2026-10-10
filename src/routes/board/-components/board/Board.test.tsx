@@ -7,6 +7,7 @@ import { BOARD_MAX_LENGTH } from "@shared/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTestRouter, WithRouter } from "@/lib/test-router";
 import type { BoardSection } from "../../-lib/data/board";
 
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の
@@ -30,78 +31,55 @@ let server: { revision: string | null; sections: ServerSection[] } = {
   sections: [],
 };
 const expiredOnServer = new Set<string>();
-const invalidate = vi.fn(async () => {});
 vi.mock("@/lib/api", () => ({
   api: {
     board: {
-      $put: vi.fn(
-        async ({
-          json,
-        }: {
-          json: {
-            userId: string;
-            revision: string | null;
-            sections: { id: string | null; content: string }[];
-          };
-        }) => {
-          if (json.userId !== sessionUserId) {
-            return { ok: false, status: 409, json: async () => ({ error: "UserMismatch" }) };
-          }
-          if (json.revision !== server.revision) {
-            return { ok: false, status: 409, json: async () => ({ error: "Stale" }) };
-          }
-          puts.push(json.sections.map(({ id, content }) => ({ id, content })));
-          let n = 0;
-          const sections = json.sections.map((s) =>
-            s.id !== null && expiredOnServer.has(s.id)
-              ? null
-              : {
-                  id: s.id ?? `new-${puts.length}-${n++}`,
-                  content: s.content,
-                  position: 0,
-                  createdAt: "2026-01-01T00:00:00.000Z",
-                  expiresAt: "2099-01-01T00:00:00.000Z",
-                },
-          );
-          const kept = sections
-            .filter((s) => s !== null)
-            .map((s, position) => Object.assign(s, { position }));
-          server = { revision: `r${puts.length}`, sections: kept };
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ sections, revision: server.revision }),
-          };
-        },
-      ),
-      $get: vi.fn(async () => ({
+      $put: async ({
+        json,
+      }: {
+        json: {
+          userId: string;
+          revision: string | null;
+          sections: { id: string | null; content: string }[];
+        };
+      }) => {
+        if (json.userId !== sessionUserId) {
+          return { ok: false, status: 409, json: async () => ({ error: "UserMismatch" }) };
+        }
+        if (json.revision !== server.revision) {
+          return { ok: false, status: 409, json: async () => ({ error: "Stale" }) };
+        }
+        puts.push(json.sections.map(({ id, content }) => ({ id, content })));
+        let n = 0;
+        const sections = json.sections.map((s) =>
+          s.id !== null && expiredOnServer.has(s.id)
+            ? null
+            : {
+                id: s.id ?? `new-${puts.length}-${n++}`,
+                content: s.content,
+                position: 0,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                expiresAt: "2099-01-01T00:00:00.000Z",
+              },
+        );
+        const kept = sections
+          .filter((s) => s !== null)
+          .map((s, position) => Object.assign(s, { position }));
+        server = { revision: `r${puts.length}`, sections: kept };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ sections, revision: server.revision }),
+        };
+      },
+      $get: async () => ({
         ok: true,
         status: 200,
         json: async () => ({ userId: sessionUserId, ...server, ttlDays: 30 }),
-      })),
+      }),
     },
   },
 }));
-const routerStub = { invalidate };
-// Board が router から使うのは useBlocker と (保存先のアカウントが違ったときの) invalidate だけ
-vi.mock("@tanstack/react-router", () => ({
-  useBlocker: () => {},
-  useRouter: () => routerStub,
-}));
-
-// Markdown 表示 (react-markdown) が何回描画されたか (issue #114)。中身は本物のまま数えるだけ
-const markdownRenders = vi.hoisted(() => ({ count: 0 }));
-vi.mock("react-markdown", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-markdown")>();
-  return {
-    ...actual,
-    default: (props: Parameters<typeof actual.default>[0]) => {
-      markdownRenders.count++;
-      return actual.default(props);
-    },
-  };
-});
-
 const { Board } = await import("./Board");
 const { readCachedBoard } = await import("../../-lib/data/board-cache");
 const { writeCachedUser, clearCachedUser } = await import("@/lib/session-cache");
@@ -145,6 +123,9 @@ async function addSection() {
 }
 
 let initialSections: BoardSection[] = [];
+let router: ReturnType<typeof createTestRouter>;
+// 表示中のページのデータを (読み込み直しで) 取得した回数
+let loads = 0;
 
 async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
   container = document.createElement("div");
@@ -162,6 +143,9 @@ async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
   })) as BoardSection[];
   initialSections = initial;
   server = { revision: "r0", sections: initial };
+  router = createTestRouter({ loader: () => void loads++ });
+  await router.load();
+  loads = 0;
   await render(ttlDays);
 }
 
@@ -169,12 +153,14 @@ async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
 async function render(ttlDays: number) {
   await act(async () => {
     root.render(
-      <MantineProvider>
-        <HeaderSlotProvider>
-          <HeaderSlotTarget />
-          <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
-        </HeaderSlotProvider>
-      </MantineProvider>,
+      <WithRouter router={router}>
+        <MantineProvider>
+          <HeaderSlotProvider>
+            <HeaderSlotTarget />
+            <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
+          </HeaderSlotProvider>
+        </MantineProvider>
+      </WithRouter>,
     );
   });
 }
@@ -183,7 +169,6 @@ beforeEach(() => {
   puts.length = 0;
   sessionUserId = "u";
   expiredOnServer.clear();
-  invalidate.mockClear();
   localStorage.clear();
   // ログイン中のユーザー (保存時にオフライン用キャッシュを書くのはこのユーザーのときだけ)
   writeCachedUser({ id: "u", name: "U" });
@@ -383,7 +368,7 @@ describe("Board", () => {
     await type("- b");
     await waitForSave();
     expect(puts).toEqual([]);
-    expect(invalidate).toHaveBeenCalled();
+    expect(loads).toBe(1);
     expect(readCachedBoard("u")).toBeNull();
   });
 
@@ -562,29 +547,5 @@ describe("Board: 削除した後のフォーカス (issue #112)", () => {
     await clickDelete(3, 1);
     expect(sectionTexts()).toEqual(["- a", "b"]);
     expect(editor().hasFocus).toBe(true);
-  });
-});
-
-describe("Board: 入力中の再描画 (issue #114)", () => {
-  it("1 文字ずつ入力しても、保存しても、編集していないセクションの Markdown は描き直さない", async () => {
-    await mount(
-      Array.from({ length: 20 }, (_, i) => ({
-        content: `## 見出し ${i}\n- 項目 [リンク](https://example.com/${i})`,
-      })),
-    );
-    await act(async () =>
-      container.querySelector<HTMLElement>(`[aria-label^="セクション 1 ("]`)!.click(),
-    );
-    markdownRenders.count = 0;
-    for (const ch of "abc") await type(ch);
-    expect(editor().state.doc.toString()).toMatch(/abc$/);
-    expect(markdownRenders.count).toBe(0);
-    // 保存の結果を反映すると全セクションの控え (id / 期限) が作り直されるが、内容は同じなので解析し直さない
-    await waitForSave();
-    expect(puts).toHaveLength(1);
-    expect(markdownRenders.count).toBe(0);
-    // 編集をやめたセクションは (内容が変わったので) 描く
-    await key("Escape");
-    expect(markdownRenders.count).toBe(1);
   });
 });

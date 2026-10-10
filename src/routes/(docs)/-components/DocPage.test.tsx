@@ -1,20 +1,10 @@
 // @vitest-environment jsdom
 import { MantineProvider } from "@mantine/core";
-import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
-// ルーターは立てず、Link は行き先を href にしただけの <a> にする
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, children, ...props }: { to: string; children: ReactNode }) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
-}));
-
-const { DocPage } = await import("./DocPage");
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createTestRouter, WithRouter } from "@/lib/test-router";
+import { DocPage } from "./DocPage";
 
 let root: Root;
 let container: HTMLDivElement;
@@ -44,11 +34,13 @@ describe("DocPage", () => {
   it("フッターを出し、もう一方の規約や GitHub へ移れるようにする (issue #139)", () => {
     act(() =>
       root.render(
-        <MantineProvider>
-          <DocPage title="利用規約" updatedAt="2026 年 9 月 24 日">
-            <p>本文</p>
-          </DocPage>
-        </MantineProvider>,
+        <WithRouter router={createTestRouter()}>
+          <MantineProvider>
+            <DocPage title="利用規約" updatedAt="2026 年 9 月 24 日">
+              <p>本文</p>
+            </DocPage>
+          </MantineProvider>
+        </WithRouter>,
       ),
     );
     const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
