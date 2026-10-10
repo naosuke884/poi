@@ -43,7 +43,7 @@
     "@tanstack/react-router": "^1.170.32",
     "better-auth": "^1.7.2",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.13.5",
+    "hono": "^4.13.13",
     "modern-screenshot": "^4.7.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
