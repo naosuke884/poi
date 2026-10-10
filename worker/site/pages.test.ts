@@ -18,7 +18,7 @@ describe("resolvePage", () => {
     expect(resolvePage("/robots2.txt")).toEqual({ kind: "missing" });
   });
 
-  it("/sitemap.xml は公開ページの一覧から作る (issue #149)", () => {
+  it("/sitemap.xml はサイトマップとして返す (issue #149)", () => {
     expect(resolvePage("/sitemap.xml")).toEqual({ kind: "sitemap" });
   });
 

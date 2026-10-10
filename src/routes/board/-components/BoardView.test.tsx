@@ -72,6 +72,8 @@ describe("BoardView", () => {
     const headings = container.querySelectorAll("h1");
     expect(headings).toHaveLength(1);
     expect(headings[0]?.textContent).toBe("板");
+    // jsdom はスタイルを計算しないので、画面から隠す VisuallyHidden で描いていることを見る
+    expect(headings[0]?.className).toMatch(/VisuallyHidden/);
   });
 
   it("オンラインで開いた板にも空のライブリージョンを置いておく (issue #126)", async () => {

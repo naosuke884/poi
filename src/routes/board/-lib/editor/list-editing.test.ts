@@ -153,6 +153,18 @@ describe("Backspace / Delete (deleteListMarkerBackward / Forward)", () => {
   it("行末の Delete は次の項目の記号ごと結合する", () => {
     expect(run(deleteListMarkerForward, "- a|\n- b")).toBe("- a|b");
   });
+
+  it("行末でない・最後の行・次の行が項目でない・範囲を選んでいるときは Delete で何もしない", () => {
+    for (const doc of ["- |a\n- b", "- a\n- b|", "- a|\nb"]) {
+      const view = editor(doc);
+      expect(deleteListMarkerForward(view)).toBe(false);
+      expect(text(view)).toBe(doc);
+    }
+    const view = editor("- a\n- b");
+    view.dispatch({ selection: EditorSelection.range(2, 3) });
+    expect(deleteListMarkerForward(view)).toBe(false);
+    expect(view.state.doc.toString()).toBe("- a\n- b");
+  });
 });
 
 describe("記号を自動で足さない (#104)", () => {

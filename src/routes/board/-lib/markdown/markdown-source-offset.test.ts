@@ -52,4 +52,24 @@ describe("sourceOffsetAt", () => {
     expect(offsetOf(root, "太字", 1, source)).toBe(source.indexOf("字"));
     expect(offsetOf(root, " 後", 2, source)).toBe(source.length);
   });
+
+  it("文字の間ではなく要素そのものに当たったら、その前にある本文の終わり (前に無ければ要素の先頭)", () => {
+    const source = "前 **太字** 後";
+    const p = render(source).querySelector("p")!;
+    expect(sourceOffsetAt(p, 2, source)).toBe(source.indexOf("字") + 1);
+    expect(sourceOffsetAt(p, 0, source)).toBe(0);
+  });
+
+  it("対応が取れなければ null", () => {
+    const outside = document.createElement("div");
+    outside.textContent = "範囲の外";
+    expect(sourceOffsetAt(outside.firstChild!, 0, "範囲の外")).toBeNull();
+
+    const source = "- 項目";
+    const root = render(source);
+    expect(offsetOf(root, "項目", 0, "- 別の文")).toBeNull();
+    const broken = root.querySelector("li")!;
+    broken.setAttribute("data-pos", "x-y");
+    expect(offsetOf(root, "項目", 0, source)).toBeNull();
+  });
 });

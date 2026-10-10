@@ -49,6 +49,9 @@ beforeEach(async () => {
   api.boardGet.mockResolvedValue(ok({ sections: [] }));
   api.settingsPut.mockResolvedValue(ok({ memoTtlDays: 7 }));
   root = createRoot(document.createElement("div"));
+});
+
+async function open() {
   // Modal は body へのポータルに描かれる
   await act(async () =>
     root.render(
@@ -57,7 +60,13 @@ beforeEach(async () => {
       </MantineProvider>,
     ),
   );
-});
+}
+
+const radioFor = (days: number) =>
+  document.querySelector<HTMLInputElement>(`input[type="radio"][value="${days}"]`);
+const saveButton = () =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent === "保存");
+const alertText = () => document.querySelector('[role="alert"]')?.textContent;
 
 afterEach(() => {
   act(() => root.unmount());
@@ -65,7 +74,8 @@ afterEach(() => {
 
 describe("TtlSettingModal", () => {
   it("ラジオで Enter を押したとき (= form の送信) も保存する (issue #129)", async () => {
-    const radio = document.querySelector<HTMLInputElement>('input[type="radio"][value="7"]');
+    await open();
+    const radio = radioFor(7);
     expect(radio).not.toBeNull();
     await act(async () => radio?.click());
     const form = radio?.closest("form");
@@ -76,5 +86,37 @@ describe("TtlSettingModal", () => {
     expect(api.settingsPut).toHaveBeenCalledWith({ json: { memoTtlDays: 7 } });
     expect(onSaved).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["サーバが断った", () => api.settingsPut.mockResolvedValue({ ok: false, status: 500 })],
+    ["通信できなかった", () => api.settingsPut.mockRejectedValue(new TypeError("Failed to fetch"))],
+  ])("保存できなかった (%s) ときは閉じずにエラーを出し、onSaved を呼ばない", async (_, failPut) => {
+    failPut();
+    await open();
+    await act(async () => radioFor(7)?.click());
+    await act(async () => saveButton()?.click());
+    expect(api.settingsPut).toHaveBeenCalled();
+    expect(alertText()).toBe("保存できませんでした。接続を確認して、もう一度お試しください。");
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("今の設定を取得できなければエラーを出し、保存させない", async () => {
+    api.settingsGet.mockResolvedValue({ ok: false, status: 500 });
+    await open();
+    expect(alertText()).toBe("設定を取得できませんでした。接続を確認して、開き直してください。");
+    expect(saveButton()?.disabled).toBe(true);
+    expect(radioFor(7)?.disabled).toBe(true);
+  });
+
+  it("板を取得できなくても、エラーにせず保存できる", async () => {
+    api.boardGet.mockRejectedValue(new TypeError("Failed to fetch"));
+    await open();
+    expect(alertText()).toBeUndefined();
+    await act(async () => radioFor(7)?.click());
+    await act(async () => saveButton()?.click());
+    expect(api.settingsPut).toHaveBeenCalledWith({ json: { memoTtlDays: 7 } });
+    expect(onSaved).toHaveBeenCalled();
   });
 });
