@@ -1,6 +1,7 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 import { multiSession } from "better-auth/plugins/multi-session";
+
 import { createDb, schema } from "../db";
 import { isInAppBrowser } from "./in-app-browser";
 

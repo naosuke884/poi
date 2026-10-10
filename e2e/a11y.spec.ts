@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
+
 import { STORAGE_STATE } from "./global-setup";
 
 // 検査する基準: WCAG 2.2 AA までと axe のベストプラクティス

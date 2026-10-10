@@ -1,5 +1,6 @@
 import type { Line, Text } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
+
 import { LIST_ITEM_RE } from "../markdown/markdown-syntax";
 import { cursorOf } from "./list-continue";
 
@@ -34,7 +35,7 @@ function coveredLines(view: EditorView): Line[] {
   const lines = new Map<number, Line>();
   for (const range of view.state.selection.ranges) {
     const to = !range.empty && doc.lineAt(range.to).from === range.to ? range.to - 1 : range.to;
-    for (let pos = range.from; ; ) {
+    for (let pos = range.from; ;) {
       const line = doc.lineAt(pos);
       lines.set(line.number, line);
       if (line.to >= to) break;

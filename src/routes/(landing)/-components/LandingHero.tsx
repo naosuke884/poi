@@ -1,7 +1,9 @@
 import { Box, Stack, Text, Title } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
-import classes from "./Landing.module.css";
+
 import { LoginCta } from "./LoginCta";
+
+import classes from "./Landing.module.css";
 
 /** 見出し + 一言の説明 + ログインの CTA */
 export function LandingHero() {

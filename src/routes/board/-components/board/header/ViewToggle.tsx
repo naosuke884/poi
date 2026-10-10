@@ -1,6 +1,7 @@
 import { Center, SegmentedControl, Tooltip, VisuallyHidden } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
+
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import type { BoardViewMode } from "../../../-lib/view-mode";
 import { Svg } from "../TablerIcon";

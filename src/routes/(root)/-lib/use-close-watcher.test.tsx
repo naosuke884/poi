@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { useCloseWatcher } from "./use-close-watcher";
 
 /** ブラウザの CloseWatcher の代わり。作られたものを記録し、戻る操作は requestClose で真似る */

@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite-plus";
 
 // 単体テスト (npm test)。アプリのビルド設定 (vite.config.ts) の cloudflare / PWA プラグインは要らないので、
 // パスの解決だけ揃えた別設定にする。既定の環境は node で、DOM が要るテストはファイル先頭の
@@ -9,6 +9,11 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
-    include: ["src/**/*.test.{ts,tsx}", "worker/**/*.test.ts", "shared/**/*.test.ts"],
+    include: [
+      "src/**/*.test.{ts,tsx}",
+      "worker/**/*.test.ts",
+      "shared/**/*.test.ts",
+      "lint-plugins/**/*.test.ts",
+    ],
   },
 });

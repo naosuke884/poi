@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { readCachedUser, writeCachedUser } from "./session-cache";
 
 const KEY = "poi:session:v1";

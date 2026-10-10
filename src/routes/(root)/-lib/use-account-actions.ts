@@ -1,5 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+
 import { authClient, startGoogleLogin } from "@/lib/auth-client";
 import { clearOfflineCaches } from "@/lib/offline-caches";
 
@@ -23,6 +24,7 @@ export type RunningAction = keyof typeof RUNNING_LABELS;
  * 操作の試行の結果。null は成功、文字列は失敗 (その文言を出す)、
  * "leaving" は成功してページを離れる (実行中の表示のまま戻さない)
  */
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- "leaving" は string に含まれるが、特別な値として型にも書いておく
 type Attempt = string | null | "leaving";
 
 /**

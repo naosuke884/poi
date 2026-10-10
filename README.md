@@ -25,8 +25,9 @@ https://github.com/user-attachments/assets/a6411dcb-c37c-418a-9a9a-fd912c0093eb
 | Auth      | [Better Auth](https://www.better-auth.com/) (Google OAuth)                  |
 | DB        | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit migrations           |
 | Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
-| Build     | [Vite](https://vite.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa`  |
-| Test      | [Vitest](https://vitest.dev/) (+ jsdom)                                     |
+| Build     | [Vite+](https://viteplus.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa` |
+| Test      | [Vitest](https://vitest.dev/) via Vite+ (+ jsdom)                           |
+| Lint      | [Oxlint](https://oxc.rs/) + Oxfmt via `vp check`                            |
 
 ## Contributing
 

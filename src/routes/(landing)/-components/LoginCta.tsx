@@ -1,6 +1,7 @@
 import { Anchor, Button, Stack, Text } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+
 import { startGoogleLogin } from "@/lib/auth-client";
 
 /** ログインの CTA + 規約への同意文 (同意文は押す場所の近くに添える) */

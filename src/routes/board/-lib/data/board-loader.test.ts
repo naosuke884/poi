@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 type Res = { ok: boolean; status: number; json: () => Promise<unknown> };
 type Reply = "ok" | "error" | "offline";

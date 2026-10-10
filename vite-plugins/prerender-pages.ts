@@ -1,6 +1,7 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+
 import react from "@vitejs/plugin-react";
 import { build, type Plugin } from "vite";
 

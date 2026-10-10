@@ -3,6 +3,7 @@ import { type KeyboardEvent, type MouseEvent, memo, type Ref } from "react";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+
 import { rehypeBlankLines } from "../../../-lib/markdown/markdown-blank-lines";
 import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "../../../-lib/markdown/markdown-disable";
 import { rehypeHeadingMarks } from "../../../-lib/markdown/markdown-heading-marks";
@@ -10,6 +11,7 @@ import {
   rehypeSourcePositions,
   sourceOffsetAtPoint,
 } from "../../../-lib/markdown/markdown-source-offset";
+
 import classes from "./MarkdownView.module.css";
 
 const REMARK_PLUGINS: Options["remarkPlugins"] = [
@@ -27,6 +29,8 @@ const REHYPE_PLUGINS_FIXED_GAPS: Options["rehypePlugins"] = [
   rehypeHeadingMarks,
 ];
 const COMPONENTS: Components = {
+  // 中身 (children) は props ごと渡しているが、規則からは見えない
+  // oxlint-disable-next-line jsx-a11y/anchor-has-content
   a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
 };
 

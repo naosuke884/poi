@@ -1,5 +1,6 @@
 import { Alert, Stack, VisuallyHidden } from "@mantine/core";
 import { useRef } from "react";
+
 import { formatDateTime } from "../-lib/data/board";
 import type { BoardData } from "../-lib/data/board-loader";
 import { Board } from "./board/Board";

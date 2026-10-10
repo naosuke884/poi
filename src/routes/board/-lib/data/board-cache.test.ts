@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { clearOfflineCaches } from "@/lib/offline-caches";
 import { readCachedUser, writeCachedUser } from "@/lib/session-cache";
+
 import { readCachedBoard, writeCachedBoard } from "./board-cache";
 
 const board = (content: string) =>

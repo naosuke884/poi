@@ -1,6 +1,8 @@
 import { SUB_PAGES } from "@shared/site";
 import { createFileRoute } from "@tanstack/react-router";
+
 import { ContactLink } from "@/components/ContactLink";
+
 import { DocPage } from "./-components/DocPage";
 
 // プライバシーポリシー (ログイン不要)。Google OAuth 同意画面に登録する URL でもある

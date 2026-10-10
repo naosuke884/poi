@@ -5,6 +5,7 @@ import {
   PRERENDERED_PAGES,
   SITE_ORIGIN,
 } from "@shared/site";
+
 import { applyPageHead, subPageHead } from "./head";
 import { buildSitemap } from "./sitemap";
 

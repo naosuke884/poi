@@ -2,7 +2,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Markdown from "react-markdown";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { rehypeSourcePositions, sourceOffsetAt } from "./markdown-source-offset";
 
 /** source を react-markdown で描画し (data-pos 付き)、DOM にして返す */

@@ -2,7 +2,8 @@
 import { EditorView } from "@codemirror/view";
 import { act, createRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { SectionEditor, type SectionEditorHandle } from "./SectionEditor";
 
 // visual viewport の resize でカーソルへスクロールし直す処理 (#45) が、指でスクロールしている間は

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { withClearSiteData } from "./clear-site-data";
 
 const call = (path: string, init: { method?: string; status?: number } = {}) =>

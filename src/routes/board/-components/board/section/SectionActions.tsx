@@ -1,7 +1,9 @@
 import { ActionIcon, CloseButton, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { Svg } from "../TablerIcon";
+
 import classes from "./SectionActions.module.css";
 
 // 結果の表示 (チェック / ×) を出しておく時間

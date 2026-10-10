@@ -2,9 +2,11 @@ import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { HeaderSlot } from "@/components/HeaderSlot";
 import { affixInset } from "@/lib/affix";
+
 import type { BoardSection } from "../../-lib/data/board";
 import { keepEditorFocus } from "../../-lib/keep-editor-focus";
 import { deliverImage, renderSectionImage } from "../../-lib/section-export";

@@ -1,4 +1,5 @@
 import { Affix, Notification, type NotificationProps } from "@mantine/core";
+
 import { affixInset } from "@/lib/affix";
 
 /**

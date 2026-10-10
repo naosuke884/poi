@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+
 import { PAGE_PATHS } from "@shared/site";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { hasSessionCookie, PAGE_REDIRECTS, resolvePage } from "./pages";
 
 describe("resolvePage", () => {

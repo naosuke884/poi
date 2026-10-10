@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+
 import {
   INDEXED_PAGE_PATHS,
   PRERENDERED_PAGES,
@@ -8,7 +9,8 @@ import {
   TOP_DESCRIPTION,
   TOP_TITLE,
 } from "@shared/site";
-import { describe, expect } from "vitest";
+import { describe, expect } from "vite-plus/test";
+
 import { test } from "./d1-test";
 import worker from "./index";
 
@@ -66,7 +68,10 @@ const it = test
   .extend(
     "request",
     ({ env }) =>
-      (path: string, init: RequestInit = {}) =>
+      (
+        path: string,
+        init: Omit<RequestInit, "headers"> & { headers?: Record<string, string> } = {},
+      ) =>
         worker.fetch(
           new Request(`${ORIGIN}${path}`, {
             ...init,

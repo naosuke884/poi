@@ -141,14 +141,14 @@ Visual, CSS and scroll/layout fixes are the accepted exceptions, because jsdom h
 ## Commands
 
 ```sh
-npm test                                   # all files once (vitest run), ~18 s
-npx vitest run worker/board/board-sync     # one file (path substring filter)
-npx vitest run Board.test.tsx -t "issue #94"  # tests whose name matches
-npx vitest worker/board                    # watch mode (reruns on save)
+npm test                                   # all files once (vp test run), ~18 s
+npx vp test run worker/board/board-sync    # one file (path substring filter)
+npx vp test run Board.test.tsx -t "issue #94"  # tests whose name matches
+npx vp test worker/board                   # watch mode (reruns on save)
 npm test -- worker/board/routes            # same filter through the npm script
 ```
 
-File filters are case-insensitive substrings of the path: `npx vitest run Board` picks up many files, and `Board.test` also matches `board.test.ts`. Be specific.
+File filters are case-insensitive substrings of the path: `npx vp test run Board` picks up many files, and `Board.test` also matches `board.test.ts`. Be specific.
 
 Before committing, run the same checks as CI (`.github/workflows/ci.yml` runs lint, typecheck, test, build):
 
@@ -156,4 +156,4 @@ Before committing, run the same checks as CI (`.github/workflows/ci.yml` runs li
 npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-`npm run lint` is Biome over the whole repo (including `.claude/`), and formatting counts. Run `npm run lint:fix` for format-only findings.
+`npm run lint` is `vp check` (Oxfmt + Oxlint + type check) over the whole repo (including `.claude/`), and formatting counts. Run `npm run lint:fix` for format-only findings.

@@ -1,8 +1,10 @@
 import { useBlocker, useRouter } from "@tanstack/react-router";
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+
 import { api } from "@/lib/api";
 import { fetchOrOffline, isOffline, OfflineError } from "@/lib/offline";
 import { readCachedUser } from "@/lib/session-cache";
+
 import {
   applySaved,
   applyTtlDays,

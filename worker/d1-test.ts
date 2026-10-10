@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { test as base } from "vitest";
+
+import { test as base } from "vite-plus/test";
 import { getPlatformProxy } from "wrangler";
 
 /** drizzle/ の migration をファイル名の順にすべて流す */
@@ -18,7 +19,7 @@ async function applyMigrations(db: D1Database) {
  * ファイルで 1 つを共有して beforeEach で消す形だと、消し忘れた表の行が次のテストに残り、テストの順で結果が変わる。
  * 立てて migration を流すのは 1 回 0.3 秒ほど
  */
-// biome-ignore lint/correctness/noEmptyPattern: Vitest はフィクスチャの依存を第 1 引数の分割代入から読むので、依存が無くても {} が要る
+// oxlint-disable-next-line no-empty-pattern -- Vitest はフィクスチャの依存を第 1 引数の分割代入から読むので、依存が無くても {} が要る
 export const test = base.extend("db", async ({}, { onCleanup }) => {
   const proxy = await getPlatformProxy<Env>({ persist: false });
   onCleanup(() => proxy.dispose());

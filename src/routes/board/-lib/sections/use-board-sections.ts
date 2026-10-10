@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+
 import { type BoardSection, type EditableSection, newSection, toEditable } from "../data/board";
 import { useBoardAutosave } from "./use-board-autosave";
 

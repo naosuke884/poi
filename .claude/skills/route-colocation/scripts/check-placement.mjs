@@ -150,7 +150,7 @@ function check(f) {
   const all = [...(importers.get(f) ?? [])];
   const users = all.filter((u) => !isTest(u));
   if (!home || isTest(f) || isRouteFile(f)) return { f, users, skip: true };
-  if (/\.css$/.test(f)) {
+  if (f.endsWith(".css")) {
     // CSS lives in the same folder as the component using it
     const bad = users.filter((u) => posix.dirname(u) !== posix.dirname(f));
     return {
@@ -244,6 +244,7 @@ for (const f of textFiles) {
   });
 }
 
+/** @type {[string, string[]][]} */
 const sections = [
   ["Placement does not match users", problems.placement],
   ["Pieces directly in a route directory (generated as routes)", problems.stray],

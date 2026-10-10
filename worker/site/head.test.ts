@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+
 import { TOP_TITLE } from "@shared/site";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { applyPageHead, subPageHead } from "./head";
 
 const indexHtml = readFileSync("index.html", "utf8");

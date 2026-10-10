@@ -1,8 +1,10 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+
 import { authClient } from "@/lib/auth-client";
 import { readCachedUser } from "@/lib/session-cache";
 import { useDocumentTitle } from "@/lib/use-document-title";
+
 import { Landing } from "./-components/Landing";
 
 // トップ: ランディング (何ができるか + ログイン導線)。誰が開いても同じ内容にする (issue #156)。

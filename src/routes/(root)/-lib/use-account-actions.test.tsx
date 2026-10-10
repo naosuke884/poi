@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { boardCacheKey } from "@/lib/offline-caches";
 import { createTestRouter, WithRouter } from "@/lib/router-test";
 import { readCachedUser, writeCachedUser } from "@/lib/session-cache";

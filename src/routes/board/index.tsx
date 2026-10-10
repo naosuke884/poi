@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+
 import { useDocumentTitle } from "@/lib/use-document-title";
+
 import { BoardView } from "./-components/BoardView";
 import { loadBoardPage } from "./-lib/data/board-loader";
 

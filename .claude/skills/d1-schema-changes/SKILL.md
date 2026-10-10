@@ -14,7 +14,7 @@ Getting this wrong breaks production for everyone, and a pushed migration cannot
 | File | What | Edit by hand? |
 |---|---|---|
 | `worker/board/schema.ts` | App tables: `memo` (one row per board section), `user_setting`, `board` | Yes — put every app table here |
-| `worker/auth/schema.ts` | Better Auth tables (`user`, `session`, `account`, `verification`) | **No.** `npm run auth:schema` overwrites it (it is also excluded from Biome) |
+| `worker/auth/schema.ts` | Better Auth tables (`user`, `session`, `account`, `verification`) | **No.** `npm run auth:schema` overwrites it (it is also excluded from lint and format in `vite.config.ts`) |
 | `drizzle.config.ts` | Points drizzle-kit at both schema files, output `./drizzle` | Rarely |
 | `drizzle/NNNN_<name>.sql` + `drizzle/meta/` | Generated migrations, snapshots, `_journal.json` | Only the `.sql`, only before it is pushed (see below) |
 | `wrangler.jsonc` `d1_databases` | `migrations_dir: "drizzle"` — wrangler reads the same files | No |

@@ -1,5 +1,6 @@
 import { Anchor, Stack, Text, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
+
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 export function NotFound() {

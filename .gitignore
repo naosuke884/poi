@@ -16,3 +16,4 @@ e2e/.auth
 
 # jev-lint の判定キャッシュ (npm run lint:jev)。.jev-lint/rules/ に置く独自ルールはコミットするので、ディレクトリごとは無視しない
 .jev-lint/baseline.json
+.vitest/

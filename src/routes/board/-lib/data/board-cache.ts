@@ -1,5 +1,6 @@
 import { readJson, writeJson } from "@/lib/local-storage";
 import { boardCacheKey, pruneBoardCache } from "@/lib/offline-caches";
+
 import type { BoardSection } from "./board";
 
 // オフライン閲覧用の板のキャッシュ (localStorage)。

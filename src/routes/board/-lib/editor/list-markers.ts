@@ -1,5 +1,6 @@
 import { EditorSelection, type Extension, type SelectionRange } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
+
 import { LIST_ITEM_RE, LIST_MARKER_SOURCE } from "../markdown/markdown-syntax";
 import { cursorOf } from "./list-continue";
 import { dedentChange } from "./list-indent";

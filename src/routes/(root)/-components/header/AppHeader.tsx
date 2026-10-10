@@ -1,6 +1,8 @@
 import { Anchor, AppShell, Container, Group } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
+
 import { HeaderSlotTarget } from "@/components/HeaderSlot";
+
 import { UserMenu } from "./user-menu/UserMenu";
 
 // ノッチのある端末 (viewport-fit=cover) を横向きにしたとき、左右の内容が隠れないようにする

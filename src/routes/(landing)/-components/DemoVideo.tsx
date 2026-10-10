@@ -1,6 +1,7 @@
 import { Box, useComputedColorScheme } from "@mantine/core";
 import { useReducedMotion } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
+
 import classes from "./Landing.module.css";
 
 /**

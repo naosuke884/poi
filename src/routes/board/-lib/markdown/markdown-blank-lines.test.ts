@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { rehypeBlankLines } from "./markdown-blank-lines";
 import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "./markdown-disable";
 

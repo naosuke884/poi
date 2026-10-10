@@ -2,7 +2,8 @@
 import { MantineProvider } from "@mantine/core";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { BottomLeftNotice } from "./BottomLeftNotice";
 
 let root: Root;

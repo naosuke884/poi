@@ -1,5 +1,7 @@
 import { Stack } from "@mantine/core";
+
 import { SiteFooter } from "@/components/SiteFooter";
+
 import { DemoVideo } from "./DemoVideo";
 import { FeatureList } from "./FeatureList";
 import { LandingHero } from "./LandingHero";

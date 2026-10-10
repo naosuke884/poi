@@ -1,5 +1,6 @@
 import type { Element, Root } from "hast";
 import type { Plugin } from "unified";
+
 import { LIST_MARKER_SOURCE } from "./markdown-syntax";
 
 /**

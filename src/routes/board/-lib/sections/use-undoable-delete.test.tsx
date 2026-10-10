@@ -2,7 +2,8 @@
 
 import { act, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import type { EditableSection } from "../data/board";
 import { UNDO_DELETE_MS, useUndoableDelete } from "./use-undoable-delete";
 

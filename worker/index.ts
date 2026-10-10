@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
+
 import { withClearSiteData } from "./auth/clear-site-data";
 import { authMiddleware } from "./auth/middleware";
 import { boardRoutes, settingsRoutes } from "./board/routes";

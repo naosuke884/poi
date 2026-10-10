@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { type ExistingSection, type IncomingSection, planBoardSync } from "./board-sync";
 
 const row = (id: string, content: string, position: number) => ({ id, content, position });

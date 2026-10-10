@@ -1,5 +1,6 @@
 import { Box, Divider, Group, Text } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
+
 import type { EditableSection } from "../../-lib/data/board";
 import { copySectionText, deliverImage, renderSectionImage } from "../../-lib/section-export";
 import {

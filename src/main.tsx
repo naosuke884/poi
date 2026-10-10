@@ -1,10 +1,12 @@
 import { createRoot } from "react-dom/client";
-import { App, createAppRouter } from "./app";
+
+import { removeByPrefix } from "@/lib/local-storage";
 // ホーム画面への追加 (beforeinstallprompt) は React のマウントより先に飛んでくることがあるので、
 // 受け取り口をここで先に用意しておく (副作用だけの import)
 import "@/lib/install-prompt";
-import { removeByPrefix } from "@/lib/local-storage";
 import { pruneBoardCaches } from "@/lib/offline-caches";
+
+import { App, createAppRouter } from "./app";
 
 // セクションの折り畳み機能は 2026-09 に廃止した (#51)。端末ごとに localStorage へ
 // 記録していた頃の残りを消す (しばらく経ったらこの行ごと消してよい)

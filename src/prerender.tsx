@@ -1,6 +1,7 @@
 import { PRERENDERED_PAGES } from "@shared/site";
 import { createMemoryHistory } from "@tanstack/react-router";
 import { renderToString } from "react-dom/server";
+
 import { App, createAppRouter } from "./app";
 
 export type PrerenderedPage = {

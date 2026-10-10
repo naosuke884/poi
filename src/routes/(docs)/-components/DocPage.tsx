@@ -1,8 +1,10 @@
 import { Anchor, Stack, Text, Title, Typography } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+
 import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentTitle } from "@/lib/use-document-title";
+
 import classes from "./DocPage.module.css";
 
 /**

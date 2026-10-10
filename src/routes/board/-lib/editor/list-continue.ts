@@ -1,6 +1,7 @@
 import { insertNewline } from "@codemirror/commands";
 import { EditorSelection } from "@codemirror/state";
 import type { Command, EditorView } from "@codemirror/view";
+
 import { LIST_ITEM_RE } from "../markdown/markdown-syntax";
 import { dedentChange } from "./list-indent";
 

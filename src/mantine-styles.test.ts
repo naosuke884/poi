@@ -1,7 +1,8 @@
 /// <reference types="node" />
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+
+import { describe, expect, it } from "vite-plus/test";
 
 // mantine-styles.ts が、src で使っている Mantine のコンポーネントの CSS を過不足なく、
 // Mantine の styles.css と同じ順で読み込んでいるかを確かめる (issue #135)。

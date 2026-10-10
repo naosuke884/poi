@@ -1,7 +1,9 @@
 import { AppShell, Container } from "@mantine/core";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+
 import { HeaderSlotProvider } from "@/components/HeaderSlot";
+
 import { AppHeader } from "./(root)/-components/header/AppHeader";
 import { NotFound } from "./(root)/-components/NotFound";
 import { OfflineBanner } from "./(root)/-components/OfflineBanner";

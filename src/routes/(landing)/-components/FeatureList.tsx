@@ -1,5 +1,6 @@
 import { Box, Text } from "@mantine/core";
 import { MEMO_TTL_CHOICES, MEMO_TTL_DAYS } from "@shared/constants";
+
 import classes from "./Landing.module.css";
 
 // 選べる保存期間の幅 (設定の選択肢と食い違わないよう定数から作る)

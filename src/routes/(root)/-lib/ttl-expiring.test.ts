@@ -1,5 +1,6 @@
 import { DAY_MS } from "@shared/constants";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { countExpiring } from "./ttl-expiring";
 
 describe("countExpiring", () => {

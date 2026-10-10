@@ -3,6 +3,7 @@ import "./fonts.css";
 import { type CSSVariablesResolver, createTheme, MantineProvider } from "@mantine/core";
 import { createRouter, type RouterHistory, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
+
 import { RouteErrorFallback } from "./RouteErrorFallback";
 import { routeTree } from "./routeTree.gen";
 

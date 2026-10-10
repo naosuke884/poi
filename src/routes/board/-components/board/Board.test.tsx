@@ -6,8 +6,10 @@ import { MantineProvider } from "@mantine/core";
 import { BOARD_MAX_LENGTH } from "@shared/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { createTestRouter, WithRouter } from "@/lib/router-test";
+
 import type { BoardSection } from "../../-lib/data/board";
 
 // Board をまるごと jsdom にマウントし、エディタ (CodeMirror) の操作 → 画面のセクション → 自動保存の

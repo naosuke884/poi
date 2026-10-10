@@ -1,6 +1,7 @@
 import { Box, Group, Text } from "@mantine/core";
 import { DAY_MS } from "@shared/constants";
 import type { ReactNode } from "react";
+
 import classes from "./LifeLine.module.css";
 
 /**

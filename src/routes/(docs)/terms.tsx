@@ -1,6 +1,8 @@
 import { SUB_PAGES } from "@shared/site";
 import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { ContactLink } from "@/components/ContactLink";
+
 import { DocPage } from "./-components/DocPage";
 
 // 利用規約 (ログイン不要)

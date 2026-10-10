@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-// biome-ignore lint/suspicious/noExplicitAny: 引数の型は handlers ごとに違うので、ここでは問わない
+// any にしている: 引数の型は handlers ごとに違うので、ここでは問わない
 type Handlers = Record<string, (...args: any[]) => unknown>;
 
 /**

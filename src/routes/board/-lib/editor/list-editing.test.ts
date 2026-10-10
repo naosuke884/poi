@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import { type Command, EditorView } from "@codemirror/view";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
+
 import { insertNewlineContinueList } from "./list-continue";
 import { indentLess, indentMoreOrInsertTab, spaceIndentsListItem } from "./list-indent";
 import {

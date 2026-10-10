@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import { minimalChange } from "./minimal-change";
 
 /** 置換を当てた結果 */

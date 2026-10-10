@@ -1,7 +1,9 @@
 import { List, Modal, Stack, Text } from "@mantine/core";
 import { useMediaQuery, useOs } from "@mantine/hooks";
 import { useState } from "react";
+
 import { promptInstall, useInstallState } from "@/lib/install-prompt";
+
 import { useCloseWatcher } from "../../../-lib/use-close-watcher";
 
 /**

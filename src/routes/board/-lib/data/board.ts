@@ -6,6 +6,7 @@ import {
   SECTION_SEPARATOR,
 } from "@shared/constants";
 import type { InferResponseType } from "hono/client";
+
 import type { api } from "@/lib/api";
 
 // GET /api/board のレスポンスの 1 セクション。Date は JSON 経由で ISO 文字列になる

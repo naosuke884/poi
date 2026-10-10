@@ -1,5 +1,6 @@
 import { Alert, Anchor, Button, Group, Stack } from "@mantine/core";
 import { type ErrorComponentProps, Link, useRouter } from "@tanstack/react-router";
+
 import { OfflineError } from "@/lib/offline";
 import { useDocumentTitle } from "@/lib/use-document-title";
 

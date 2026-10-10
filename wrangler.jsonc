@@ -18,7 +18,7 @@
     // (本番では Worker の notFound → SPA フォールバックになるだけで動作は変わらない)
     // / は、ログイン済み (セッション Cookie がある) なら板 (/board) へ 302 で転送するため Worker を通す
     // (worker/site/pages.ts。issue #156)。パターンはパス全体との一致なので /* ではなく / だけに効く
-    "run_worker_first": ["/", "/api/*", "/__scheduled"]
+    "run_worker_first": ["/", "/api/*", "/__scheduled"],
   },
   "d1_databases": [
     {
@@ -29,18 +29,18 @@
       // GOOGLE_CLIENT_SECRET。.dev.vars.example と同じ名前) は `npx wrangler secret put <名前>` で登録し、
       // Google の OAuth クライアントに `https://<ドメイン>/api/auth/callback/google` を redirect URI として追加する
       "database_id": "95b1e126-5ae4-418a-8b4f-0c9de8c4533d",
-      "migrations_dir": "drizzle"
-    }
+      "migrations_dir": "drizzle",
+    },
   ],
   // 期限切れメモの物理削除 (worker/index.ts の scheduled ハンドラ) を毎時 0 分に実行する
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["0 * * * *"],
   },
   // メンテナの本番ドメイン (ゾーンが同じアカウントにあること)。入口を 1 つにするため workers.dev の URL は無効化している。
   // セルフホストするときは自分のドメインに置き換えるか、routes を消して workers_dev を true にする
   "routes": [{ "pattern": "poinote.app", "custom_domain": true }],
   "workers_dev": false,
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

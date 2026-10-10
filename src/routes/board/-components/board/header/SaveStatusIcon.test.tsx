@@ -2,7 +2,8 @@
 import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
+
 import type { SaveState, SaveStatus } from "../../../-lib/sections/save-status";
 import { SaveStatusIcon } from "./SaveStatusIcon";
 

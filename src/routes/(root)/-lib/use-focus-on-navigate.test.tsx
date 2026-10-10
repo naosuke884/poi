@@ -9,7 +9,8 @@ import {
 } from "@tanstack/react-router";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
+
 import { useFocusOnNavigate } from "./use-focus-on-navigate";
 
 // __root.tsx と同じく、#main (tabIndex={-1}) の中にページを描画する最小のルーター

@@ -2,7 +2,7 @@
 import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 type Res = { ok: boolean; status: number; json: () => Promise<unknown> };
 type Reply = "ok" | "error" | "offline";

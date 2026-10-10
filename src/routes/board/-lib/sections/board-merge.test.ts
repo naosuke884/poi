@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import type { BoardSection, EditableSection } from "../data/board";
 import { mergeBoard } from "./board-merge";
 

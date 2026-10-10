@@ -136,7 +136,7 @@ When adding a route under `src/routes`, add its path to `PAGE_PATHS` (the sitema
 | worker | shared | `@shared/...` |
 | src | worker | **types only**: `import type { ApiType } from "@worker/index"` in `src/lib/api.ts` |
 | src | shared | `@shared/...` |
-| shared | src / worker | never (Biome `noRestrictedImports` override on `shared/**`) |
+| shared | src / worker | never (Oxlint `no-restricted-imports` override on `shared/**` in `vite.config.ts`) |
 
 - Values from worker must not reach src: a value import would bundle Worker code (Drizzle, Better Auth) into the browser. Nothing lints this; `import type` is the guard, so keep it.
   If src needs a worker value (a constant, a limit, a pure function), move it to `shared/` instead.

@@ -1,11 +1,82 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { defineConfig, lazyPlugins } from "vite-plus";
+
 import { LANDING_HTML, prerenderPages } from "./vite-plugins/prerender-pages.ts";
 
 export default defineConfig({
+  fmt: {
+    printWidth: 100,
+    sortImports: {},
+    // Markdown は整形しない (表の桁揃えなどで文書の差分が大きくなるため。Biome のときも対象外だった)
+    ignorePatterns: [
+      "**/*.md",
+      // worker/site/head.ts が 1 行の <meta> を前提に書き換えるので、属性ごとに折り返させない
+      "index.html",
+      "src/routeTree.gen.ts",
+      "worker/auth/schema.ts",
+      "drizzle/**",
+      "public/**",
+    ],
+  },
+  lint: {
+    plugins: ["typescript", "unicorn", "oxc", "react", "jsx-a11y"],
+    jsPlugins: [
+      { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
+      "./lint-plugins/route-colocation.ts",
+    ],
+    ignorePatterns: ["src/routeTree.gen.ts", "worker/auth/schema.ts", "drizzle/**", "public/**"],
+    rules: {
+      "vite-plus/prefer-vite-plus-imports": "error",
+      "poi/no-cross-route-import": "error",
+      // 依存配列は意図して絞っている (ref 経由で最新値を読む) ので、足せという指摘は外す
+      "react-hooks/exhaustive-deps": "off",
+      // React Compiler 向けの規則。Compiler は使っておらず、描画中に ref の最新値を読む書き方を意図して使っている
+      "react/refs": "off",
+      "react/purity": "off",
+      "react/globals": "off",
+      "react/immutability": "off",
+      "react/set-state-in-effect": "off",
+      // CodeMirror のコマンドや vi.fn() は this を使わない関数なので、メソッドを外して渡しても壊れない
+      "typescript/unbound-method": "off",
+      // role="status" は Mantine の部品に付けている。<output> にするとフォームに属する要素になり意味が変わる
+      "jsx-a11y/prefer-tag-over-role": "off",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/routes/**", "@/routes/**"],
+              message:
+                "src/routes の外 (src/components, src/lib など) からルートの部品を import しない。共有するなら src/components / src/lib へ移す (route-colocation skill)",
+            },
+          ],
+        },
+      ],
+    },
+    overrides: [
+      {
+        files: ["shared/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                {
+                  group: ["@/**", "@worker/**", "**/src/**", "**/worker/**"],
+                  message:
+                    "shared/ は src (ブラウザ) と worker (Workers) の両方から使うので、どちらにも依存しない",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+    options: { typeAware: true, typeCheck: true },
+  },
   server: {
     // dev container 内で動かすため、コンテナ外 (ホスト) からもアクセスできるよう全インターフェースで待ち受ける
     host: true,
@@ -17,7 +88,7 @@ export default defineConfig({
     // tsconfig.app.json の "paths" ("@/*" -> "./src/*", "@worker/*" -> "./worker/*", "@shared/*" -> "./shared/*") を Vite でも解決する
     tsconfigPaths: true,
   },
-  plugins: [
+  plugins: lazyPlugins(() => [
     // tanstackRouter は react() より前に置く必要がある
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
     react(),
@@ -75,5 +146,5 @@ export default defineConfig({
         // そのままネットワークに流れる (NetworkOnly 相当)。認証付きレスポンスをキャッシュ事故させないため
       },
     }),
-  ],
+  ]),
 });

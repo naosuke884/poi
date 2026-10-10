@@ -50,7 +50,7 @@ When adding or splitting routes or pages, also read [references/routes.md](refer
 - Revisit the name when moving. A name tied to the original route (e.g. `XxxFooter` with the page name in it) reads wrong to the other users once it is shared.
   Example: the landing's `LandingFooter` became `src/components/SiteFooter.tsx` when the legal pages started showing it too (#139)
 - Do not get by with importing another route's `-components/` / `-lib/` directly. The same goes for importing route internals from `src/components` / `src/lib`.
-  Both are `npm run lint` errors (the former via `biome-plugins/route-colocation.grit`, the latter via `noRestrictedImports` in `biome.json`).
+  Both are `npm run lint` errors (the former via the `poi/no-cross-route-import` rule in `lint-plugins/route-colocation.ts`, the latter via `no-restricted-imports` in the `lint` block of `vite.config.ts`).
   When lint fails, fix the placement instead of rewriting the import to slip past the rule
 
 ### Before moving a whole file, see whether only part of it needs extracting

@@ -1,6 +1,7 @@
 import { MEMO_TTL_CHOICES, MEMO_TTL_DAYS } from "@shared/constants";
 import { SUB_PAGES } from "@shared/site";
 import { createFileRoute, Link } from "@tanstack/react-router";
+
 import { DocPage } from "./-components/DocPage";
 
 // 使い方 (ログイン不要)。検索の入口にもなるよう、できることを画面の言葉で説明する (issue #152)

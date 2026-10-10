@@ -34,7 +34,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"], colorScheme: "light" } },
   ],
   webServer: {
-    command: `npx vite --port ${PORT}`,
+    command: `npx vp dev --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

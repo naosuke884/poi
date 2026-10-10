@@ -28,6 +28,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import { cursorOf, insertNewlineContinueList } from "../../../-lib/editor/list-continue";
 import {
   indentLess,
@@ -44,6 +45,7 @@ import {
 import { minimalChange } from "../../../-lib/editor/minimal-change";
 import { sectionMarkdown } from "../../../-lib/editor/section-markdown";
 import { viewportInsets } from "../../../-lib/use-keyboard-inset";
+
 import classes from "./SectionEditor.module.css";
 
 export type SectionEditorHandle = {

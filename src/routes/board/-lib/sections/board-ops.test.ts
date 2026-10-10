@@ -1,5 +1,6 @@
 import { BOARD_MAX_LENGTH, SECTION_SEPARATOR } from "@shared/constants";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
+
 import type { EditableSection } from "../data/board";
 import {
   appendSection,

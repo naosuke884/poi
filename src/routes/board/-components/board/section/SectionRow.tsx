@@ -1,5 +1,6 @@
 import { Box, Group } from "@mantine/core";
 import { memo, type RefObject } from "react";
+
 import type { EditableSection } from "../../../-lib/data/board";
 import { copySectionText } from "../../../-lib/section-export";
 import { LifeLine } from "./LifeLine";

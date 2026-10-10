@@ -1,4 +1,5 @@
 import { BOARD_MAX_LENGTH, SECTION_SEPARATOR } from "@shared/constants";
+
 import { type EditableSection, newKey, newSection, splitAtSeparator } from "../data/board";
 import { cutRanges, type OrganizedGroup } from "./organized";
 
@@ -63,15 +64,13 @@ export function changeSection(
     };
   }
   // 最初の部分が id (期限) を引き継ぎ、カーソルの行き先の部分が key を引き継ぐ。残りは新しいセクション
-  const parts = split.parts.map(
-    (content, j): EditableSection => ({
-      key: j === split.focus.index ? orig.key : newKey(),
-      id: j === 0 ? orig.id : null,
-      createdAt: j === 0 ? orig.createdAt : null,
-      expiresAt: j === 0 ? orig.expiresAt : null,
-      content,
-    }),
-  );
+  const parts = split.parts.map((content, j): EditableSection => ({
+    key: j === split.focus.index ? orig.key : newKey(),
+    id: j === 0 ? orig.id : null,
+    createdAt: j === 0 ? orig.createdAt : null,
+    expiresAt: j === 0 ? orig.expiresAt : null,
+    content,
+  }));
   return {
     next: [...cur.slice(0, i), ...parts, ...cur.slice(i + 1)],
     focus: { key: orig.key, offset: split.focus.offset },

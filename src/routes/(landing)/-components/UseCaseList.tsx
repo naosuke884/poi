@@ -1,6 +1,7 @@
 import { Anchor, Box, Text, Title } from "@mantine/core";
 import { MEMO_TTL_CHOICES, MEMO_TTL_DAYS } from "@shared/constants";
 import { Link } from "@tanstack/react-router";
+
 import classes from "./Landing.module.css";
 
 // 使い道の例。どんなメモに向いているかを具体的に示し、その中に実際に検索されそうな語

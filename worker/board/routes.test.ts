@@ -1,6 +1,7 @@
 import { BOARD_MAX_SECTIONS, DAY_MS } from "@shared/constants";
 import { Hono } from "hono";
-import { describe, expect } from "vitest";
+import { describe, expect } from "vite-plus/test";
+
 import { test } from "../d1-test";
 import type { AppEnv } from "../types";
 import { boardRoutes } from "./routes";
@@ -226,7 +227,7 @@ describe.concurrent("PUT /api/board", () => {
       board.putAt(opened.body.revision, [{ id: a.id, content: "x" }]),
       board.putAt(opened.body.revision, [{ id: a.id, content: "y" }]),
     ]);
-    expect(results.map((r) => r.status).toSorted()).toEqual([200, 409]);
+    expect(results.map((r) => r.status).toSorted((x, y) => x - y)).toEqual([200, 409]);
     const winner = results.find((r) => r.status === 200)!;
     expect(await board.rows()).toEqual([
       { id: a.id, content: winner.body.sections[0].content, position: 0 },

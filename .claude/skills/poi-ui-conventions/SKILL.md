@@ -89,4 +89,4 @@ Every keystroke updates `Board`'s state and re-renders it, so the cost of one re
 ## Before finishing
 
 - Check light and dark mode, a narrow (~360px) touch viewport and a desktop width; tab through the changed UI.
-- `npm run lint` (Biome) and `npm run typecheck`; `npm test` if board behaviour changed.
+- `npm run lint` (`vp check`) and `npm run typecheck`; `npm test` if board behaviour changed.

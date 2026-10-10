@@ -15,6 +15,7 @@ import {
   type Line,
   parser as markdownParser,
 } from "@lezer/markdown";
+
 import { HEADING_RE } from "../markdown/markdown-syntax";
 
 /**

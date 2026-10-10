@@ -2,8 +2,10 @@
 import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
 import { createTestRouter, WithRouter } from "@/lib/router-test";
+
 import type { BoardSection } from "../-lib/data/board";
 import type { BoardData } from "../-lib/data/board-loader";
 

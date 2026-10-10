@@ -36,7 +36,7 @@
     "should_trigger": false
   },
   {
-    "query": "npm run lint が落ちる。biome の format エラー",
+    "query": "npm run lint が落ちる。oxfmt の format エラー",
     "should_trigger": false
   },
   {
