@@ -135,7 +135,7 @@ The same check works for any new assertion: break the production line, watch the
 Since tests arrived (2026-09-22), bug-fix commits that change logic add a test in the same commit, at every layer the bug crossed. For example, `c47b800` (#94, expiry under a shortened period) added tests in `board-sync.test.ts`, `routes.test.ts`, `board.test.ts` and `Board.test.tsx`.
 
 Write the failing test first, see it fail, then fix.
-Put the issue number in the `it` / `describe` title when there is one (`(issue #72)`), but only a number you were given or confirmed with `gh issue view`. Never guess one.
+Put the issue ID in the `it` / `describe` title when there is one (`(HAY-12)`; older tests use GitHub numbers such as `(issue #72)`), but only an ID you were given or confirmed in Linear. Never guess one.
 Visual, CSS and scroll/layout fixes are the accepted exceptions, because jsdom has no layout. Say so in the report instead of skipping silently.
 
 ## Commands

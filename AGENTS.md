@@ -31,10 +31,12 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
   `build` / `perf` / `style` / `revert`, scope is optional (e.g. `board`, `auth`), and the subject is a plain-form
   sentence saying what the commit does (header ≤ 100 chars, no trailing `。` or `.`,
   e.g. `feat(board): セクションの並べ替えを追加する`). Then a blank line and a body explaining why.
-  Reference issues with `Closes #N` / `Refs #N`. commitlint checks the shape (`commitlint.config.js`,
+  Reference issues with Linear IDs: `Fixes HAY-N` (moves it to Done) / `Refs HAY-N`. commitlint checks the shape (`commitlint.config.js`,
   `@commitlint/config-conventional`, via a husky hook and CI), not the language or wording.
   Commits before 2026-10-10 don't use this format; don't copy them.
 - Bug fixes come with a regression test where practical.
+- Issues live in Linear (team `HAY`, project `poi`; use the Linear MCP), not GitHub Issues. `#N` in older commits,
+  comments and skills refers to GitHub issues up to #158, which stay readable on GitHub.
 
 ## Topic guides
 
