@@ -28,7 +28,7 @@ jobs:
           # コミットメッセージの lint で push / PR の範囲のコミットを読むため、履歴をすべて取る
           fetch-depth: 0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: npm
