@@ -1,5 +1,5 @@
 import { createHmac, randomUUID } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import {
   INDEXED_PAGE_PATHS,
   PRERENDERED_PAGES,
@@ -8,11 +8,11 @@ import {
   TOP_DESCRIPTION,
   TOP_TITLE,
 } from "@shared/site";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { getPlatformProxy } from "wrangler";
+import { describe, expect } from "vitest";
+import { test } from "./d1-test";
 import worker from "./index";
 
-// Worker 全体 (authMiddleware → Better Auth のハンドラ → レスポンスの加工) をローカルの D1 に対して通す。
+// Worker 全体 (authMiddleware → Better Auth のハンドラ → レスポンスの加工) をテストごとに立てる空のローカル D1 に対して通す。
 // ログインは Google を通さず、session 行を入れて Better Auth と同じ署名の cookie を作って済ませる
 // (.claude/skills/verifying-in-app/scripts/seed-session.mjs と同じ方法)
 
@@ -20,14 +20,11 @@ const ORIGIN = "http://localhost";
 /** テスト用の静的アセットが、ビルド時に描いた HTML の #root に入れる目印 */
 const prerenderedMarker = (assetPath: string) => `<h1>${assetPath}</h1>`;
 const USER_ID = "u1";
-let proxy: Awaited<ReturnType<typeof getPlatformProxy<Env>>>;
-let env: Env;
 
-beforeAll(async () => {
-  proxy = await getPlatformProxy<Env>({ persist: false });
-  // シークレットは .dev.vars に頼らず (CI には無い) テスト用の値を渡す
-  env = {
-    DB: proxy.env.DB,
+/** テスト用の環境。シークレットは .dev.vars に頼らず (CI には無い) テスト用の値を渡す */
+function testEnv(db: D1Database) {
+  return {
+    DB: db,
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
     GOOGLE_CLIENT_SECRET: "test-client-secret",
@@ -52,59 +49,56 @@ beforeAll(async () => {
       },
     },
   } as unknown as Env;
-  for (const file of readdirSync("drizzle")
-    .filter((f) => f.endsWith(".sql"))
-    .sort()) {
-    const statements = readFileSync(`drizzle/${file}`, "utf8").split("--> statement-breakpoint");
-    await env.DB.batch(statements.map((s) => env.DB.prepare(s)));
-  }
-}, 60_000);
-
-afterAll(async () => {
-  await proxy?.dispose();
-});
-
-beforeEach(async () => {
-  await env.DB.prepare("delete from user").run();
-  const now = Date.now();
-  await env.DB.prepare(
-    "insert into user (id, name, email, email_verified, created_at, updated_at) values (?, 'Test', 'test@example.com', 1, ?, ?)",
-  )
-    .bind(USER_ID, now, now)
-    .run();
-});
-
-/** ログイン直後のセッションを作り、その Cookie ヘッダーの値を返す */
-async function signIn(): Promise<string> {
-  const token = randomUUID().replaceAll("-", "");
-  const now = Date.now();
-  await env.DB.prepare(
-    "insert into session (id, token, user_id, expires_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?)",
-  )
-    .bind(randomUUID(), token, USER_ID, now + 86_400_000, now, now)
-    .run();
-  const sig = createHmac("sha256", env.BETTER_AUTH_SECRET).update(token).digest("base64");
-  return `better-auth.session_token=${encodeURIComponent(`${token}.${sig}`)}`;
 }
 
-function request(path: string, init: RequestInit = {}) {
-  return worker.fetch(
-    new Request(`${ORIGIN}${path}`, {
-      ...init,
-      headers: { Origin: ORIGIN, "Content-Type": "application/json", ...init.headers },
-    }),
-    env,
-    {} as ExecutionContext,
-  );
-}
+const it = test
+  .extend("env", async ({ db }) => {
+    const now = Date.now();
+    await db
+      .prepare(
+        "insert into user (id, name, email, email_verified, created_at, updated_at) values (?, 'Test', 'test@example.com', 1, ?, ?)",
+      )
+      .bind(USER_ID, now, now)
+      .run();
+    return testEnv(db);
+  })
+  /** Worker 全体にリクエストを通す */
+  .extend(
+    "request",
+    ({ env }) =>
+      (path: string, init: RequestInit = {}) =>
+        worker.fetch(
+          new Request(`${ORIGIN}${path}`, {
+            ...init,
+            headers: { Origin: ORIGIN, "Content-Type": "application/json", ...init.headers },
+          }),
+          env,
+          {} as ExecutionContext,
+        ),
+  )
+  /** ログイン直後のセッションを作り、その Cookie ヘッダーの値を返す */
+  .extend("signIn", ({ env }) => async () => {
+    const token = randomUUID().replaceAll("-", "");
+    const now = Date.now();
+    await env.DB.prepare(
+      "insert into session (id, token, user_id, expires_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?)",
+    )
+      .bind(randomUUID(), token, USER_ID, now + 86_400_000, now, now)
+      .run();
+    const sig = createHmac("sha256", env.BETTER_AUTH_SECRET).update(token).digest("base64");
+    return `better-auth.session_token=${encodeURIComponent(`${token}.${sig}`)}`;
+  });
 
-async function userCount() {
-  const row = await env.DB.prepare("select count(*) as n from user").first<{ n: number }>();
+async function userCount(db: D1Database) {
+  const row = await db.prepare("select count(*) as n from user").first<{ n: number }>();
   return row?.n;
 }
 
-describe("ログアウト / アカウント削除で cookie を消させる (issue #136)", () => {
-  it("ログアウトの成功レスポンスに Clear-Site-Data: cookies が付く", async () => {
+describe.concurrent("ログアウト / アカウント削除で cookie を消させる (issue #136)", () => {
+  it("ログアウトの成功レスポンスに Clear-Site-Data: cookies が付く", async ({
+    request,
+    signIn,
+  }) => {
     const res = await request("/api/auth/sign-out", {
       method: "POST",
       body: "{}",
@@ -114,7 +108,7 @@ describe("ログアウト / アカウント削除で cookie を消させる (iss
     expect(res.headers.get("Clear-Site-Data")).toBe('"cookies"');
   });
 
-  it("アカウント削除の成功レスポンスに付き、ユーザーも消える", async () => {
+  it("アカウント削除の成功レスポンスに付き、ユーザーも消える", async ({ env, request, signIn }) => {
     const res = await request("/api/auth/delete-user", {
       method: "POST",
       body: "{}",
@@ -122,37 +116,38 @@ describe("ログアウト / アカウント削除で cookie を消させる (iss
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("Clear-Site-Data")).toBe('"cookies"');
-    expect(await userCount()).toBe(0);
+    expect(await userCount(env.DB)).toBe(0);
   });
 
-  it("未ログインでのアカウント削除は失敗し、付かない", async () => {
+  it("未ログインでのアカウント削除は失敗し、付かない", async ({ env, request }) => {
     const res = await request("/api/auth/delete-user", { method: "POST", body: "{}" });
     expect(res.status).toBe(401);
     expect(res.headers.has("Clear-Site-Data")).toBe(false);
-    expect(await userCount()).toBe(1);
+    expect(await userCount(env.DB)).toBe(1);
   });
 
-  it("セッションの確認には付かない", async () => {
+  it("セッションの確認には付かない", async ({ request, signIn }) => {
     const res = await request("/api/auth/get-session", { headers: { Cookie: await signIn() } });
     expect(res.status).toBe(200);
     expect(res.headers.has("Clear-Site-Data")).toBe(false);
   });
 });
 
-describe("セキュリティ関連のレスポンスヘッダー (issue #111)", () => {
-  it.each([
-    ["未ログインで弾いた API (401)", "/api/board", {}],
-    ["未定義の API (404)", "/api/nope", {}],
-    ["Better Auth のハンドラ", "/api/auth/get-session", {}],
-  ])("%s にも付く", async (_, path, init) => {
-    const res = await request(path, init);
+describe.concurrent("セキュリティ関連のレスポンスヘッダー (issue #111)", () => {
+  // フィクスチャはテストの文脈で受け取るので、each ではなく for を使う
+  it.for([
+    ["未ログインで弾いた API (401)", "/api/board"],
+    ["未定義の API (404)", "/api/nope"],
+    ["Better Auth のハンドラ", "/api/auth/get-session"],
+  ] as const)("%s にも付く", async ([, path], { request }) => {
+    const res = await request(path);
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(res.headers.get("Strict-Transport-Security")).toBe("max-age=86400");
     expect(res.headers.get("Referrer-Policy")).toBe("no-referrer");
   });
 
-  it("ログアウトでは Clear-Site-Data と両方付く", async () => {
+  it("ログアウトでは Clear-Site-Data と両方付く", async ({ request, signIn }) => {
     const res = await request("/api/auth/sign-out", {
       method: "POST",
       body: "{}",
@@ -175,7 +170,7 @@ describe("セキュリティ関連のレスポンスヘッダー (issue #111)", 
     }
   });
 
-  it("静的アセットの HSTS と iframe 埋め込みの禁止は API と同じ値", async () => {
+  it("静的アセットの HSTS と iframe 埋め込みの禁止は API と同じ値", async ({ request }) => {
     const res = await request("/api/nope");
     expect(staticHeader("Strict-Transport-Security")).toBe(
       res.headers.get("Strict-Transport-Security"),
@@ -195,7 +190,7 @@ describe("セキュリティ関連のレスポンスヘッダー (issue #111)", 
   });
 });
 
-describe("index.html の検索・カード向けの文言 (issue #145)", () => {
+describe.concurrent("index.html の検索・カード向けの文言 (issue #145)", () => {
   const html = readFileSync("index.html", "utf8");
   const meta = (attr: string, key: string) =>
     html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)"`))?.[1];
@@ -227,15 +222,17 @@ describe("index.html の検索・カード向けの文言 (issue #145)", () => {
   });
 });
 
-describe("ページのリクエスト (静的アセットに無いパス)", () => {
-  it("公開しているページは index.html を 200 で返す", async () => {
+describe.concurrent("ページのリクエスト (静的アセットに無いパス)", () => {
+  it("公開しているページは index.html を 200 で返す", async ({ request }) => {
     const res = await request("/terms");
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
     expect(await res.text()).toContain('<div id="root">');
   });
 
-  it("利用規約・プライバシーポリシーは初期 HTML のタイトルと canonical がそのページのもの (issue #144)", async () => {
+  it("利用規約・プライバシーポリシーは初期 HTML のタイトルと canonical がそのページのもの (issue #144)", async ({
+    request,
+  }) => {
     const terms = await (await request("/terms")).text();
     expect(terms).toContain("<title>利用規約 | poi</title>");
     expect(terms).toContain('<link rel="canonical" href="https://poinote.app/terms" />');
@@ -246,19 +243,19 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(notFound).toContain(`<title>${TOP_TITLE}</title>`);
   });
 
-  it("知らないパスは index.html を 404 で返す (issue #141)", async () => {
+  it("知らないパスは index.html を 404 で返す (issue #141)", async ({ request }) => {
     const res = await request("/nope");
     expect(res.status).toBe(404);
     expect(await res.text()).toContain('<div id="root">');
   });
 
-  it("/login は / へ恒久的に転送する (issue #142)", async () => {
+  it("/login は / へ恒久的に転送する (issue #142)", async ({ request }) => {
     const res = await request("/login");
     expect(res.status).toBe(301);
     expect(res.headers.get("Location")).toBe("/");
   });
 
-  it("/sitemap.xml は公開ページをすべて載せた XML (issue #149)", async () => {
+  it("/sitemap.xml は公開ページをすべて載せた XML (issue #149)", async ({ request }) => {
     const res = await request("/sitemap.xml");
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/xml");
@@ -270,14 +267,19 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(xml).not.toContain("/board");
   });
 
-  it("ログイン済みでトップを開いたら板へ 302 で転送し、キャッシュさせない (issue #156)", async () => {
+  it("ログイン済みでトップを開いたら板へ 302 で転送し、キャッシュさせない (issue #156)", async ({
+    request,
+    signIn,
+  }) => {
     const res = await request("/?from=pwa", { headers: { Cookie: await signIn() } });
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe("/board?from=pwa");
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("未ログインならトップはランディングを描いた landing.html を返す (issue #157)", async () => {
+  it("未ログインならトップはランディングを描いた landing.html を返す (issue #157)", async ({
+    request,
+  }) => {
     const res = await request("/");
     expect(res.status).toBe(200);
     expect(res.headers.get("Vary")).toContain("Cookie");
@@ -289,7 +291,9 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(await (await request("/terms")).text()).toContain('<div id="root"></div>');
   });
 
-  it("使い方とよくある質問は本文を描いた HTML を、そのページの head にして返す (issue #157)", async () => {
+  it("使い方とよくある質問は本文を描いた HTML を、そのページの head にして返す (issue #157)", async ({
+    request,
+  }) => {
     for (const [path, file] of [
       ["/guide", "guide.html"],
       ["/faq", "faq.html"],
@@ -303,7 +307,9 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     }
   });
 
-  it("landing.html が無ければ (Vite の開発サーバー) トップは index.html を返す", async () => {
+  it("landing.html が無ければ (Vite の開発サーバー) トップは index.html を返す", async ({
+    env,
+  }) => {
     const res = await worker.fetch(
       new Request(`${ORIGIN}/`),
       {
@@ -321,7 +327,7 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect(await res.text()).toContain('<div id="root"></div>');
   });
 
-  it("板は noindex で、canonical を板にする (issue #156)", async () => {
+  it("板は noindex で、canonical を板にする (issue #156)", async ({ request }) => {
     const res = await request("/board");
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Robots-Tag")).toBe("noindex");
@@ -330,7 +336,7 @@ describe("ページのリクエスト (静的アセットに無いパス)", () =
     expect((await request("/terms")).headers.get("X-Robots-Tag")).toBeNull();
   });
 
-  it("知らない /api/* は今までどおり 404 の JSON", async () => {
+  it("知らない /api/* は今までどおり 404 の JSON", async ({ request }) => {
     const res = await request("/api/nope");
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Not Found" });
