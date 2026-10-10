@@ -53,9 +53,10 @@ jobs:
             npx commitlint --from "$BEFORE" --to "$AFTER" --verbose
           fi
 
-      - run: npm run lint
-
+      # typecheck が wrangler types で worker-configuration.d.ts (gitignore 済み) を作るので、それを読む lint (vp check の型検査) より前に回す
       - run: npm run typecheck
+
+      - run: npm run lint
 
       - run: npm test
 

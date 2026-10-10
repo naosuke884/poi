@@ -13,7 +13,7 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 ## Commands
 
 - `npm run dev` — Vite+ (`vp dev`) + Worker dev server on :5173 with local D1 (`scripts/dev-server.sh start` keeps it running).
-- `npm test` / `npm run lint` / `npm run typecheck` / `npm run build` — run all four before committing (CI runs the same).
+- `npm test` / `npm run typecheck` / `npm run lint` / `npm run build` — run all four before committing (CI runs the same). `typecheck` generates `worker-configuration.d.ts` (`wrangler types`), which `lint` needs on a fresh clone.
 - `npm run lint` is `vp check`: Oxfmt format check, Oxlint (rules and the `poi/` plugin in `lint-plugins/`) and a type check; config is the `fmt` / `lint` blocks in `vite.config.ts`.
 - `npm run lint:fix` — `vp check --fix`: format and autofix.
 - `npm run test:a11y` — Playwright + axe accessibility check of the rendered pages (starts its own dev server on :5174; CI job `a11y`).
