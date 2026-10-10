@@ -74,27 +74,31 @@ const it = test.extend("board", async ({ db }) => {
 });
 
 describe.concurrent("PUT /api/board", () => {
-  it("セクションが上限の数あっても、全部作る・全部並べ替える・全部消すが通る", async ({
-    board,
-  }) => {
-    const contents = Array.from({ length: BOARD_MAX_SECTIONS }, (_, i) => `s${i}`);
-    const created = await board.put(contents.map((content) => ({ id: null, content })));
-    expect(created.status).toBe(200);
-    expect(created.body.sections.map((s) => s.content)).toEqual(contents);
+  // 既定の 5 秒では CI で落ちる: 1000 行を 3 回書き込むうえ、時間には D1 を立てる分も入り、同じファイルの他のテストと
+  // 並列で D1 を立てて CPU を取り合う。ローカルでは 2 秒ほどだが、GitHub Actions のランナーでは 4〜5 秒かかり時々超えていた
+  it(
+    "セクションが上限の数あっても、全部作る・全部並べ替える・全部消すが通る",
+    { timeout: 20_000 },
+    async ({ board }) => {
+      const contents = Array.from({ length: BOARD_MAX_SECTIONS }, (_, i) => `s${i}`);
+      const created = await board.put(contents.map((content) => ({ id: null, content })));
+      expect(created.status).toBe(200);
+      expect(created.body.sections.map((s) => s.content)).toEqual(contents);
 
-    // 逆順にする (全行の position が変わる) + 一部の内容を変える
-    const reversed = created.body.sections
-      .toReversed()
-      .map((s, i) => ({ id: s.id, content: i % 2 ? s.content : `${s.content}!` }));
-    const moved = await board.put(reversed);
-    expect(moved.status).toBe(200);
-    expect(moved.body.sections.map((s) => s.id)).toEqual(reversed.map((s) => s.id));
-    expect(await board.rows()).toEqual(reversed.map((s, position) => ({ ...s, position })));
+      // 逆順にする (全行の position が変わる) + 一部の内容を変える
+      const reversed = created.body.sections
+        .toReversed()
+        .map((s, i) => ({ id: s.id, content: i % 2 ? s.content : `${s.content}!` }));
+      const moved = await board.put(reversed);
+      expect(moved.status).toBe(200);
+      expect(moved.body.sections.map((s) => s.id)).toEqual(reversed.map((s) => s.id));
+      expect(await board.rows()).toEqual(reversed.map((s, position) => ({ ...s, position })));
 
-    const cleared = await board.put([]);
-    expect(cleared.status).toBe(200);
-    expect(await board.rows()).toEqual([]);
-  });
+      const cleared = await board.put([]);
+      expect(cleared.status).toBe(200);
+      expect(await board.rows()).toEqual([]);
+    },
+  );
 
   it("更新・作成・削除を 1 回の保存で混ぜられ、作成日は引き継ぐ", async ({ board }) => {
     const first = await board.put([
