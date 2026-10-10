@@ -51,8 +51,8 @@ function exportFiles(): Map<string, string> {
   const index = readFileSync(join(esmDir, "index.mjs"), "utf8");
   for (const m of index.matchAll(/^import\s+\{([^}]*)\}\s+from\s+"(\.[^"]+)"/gm)) {
     for (const spec of m[1].split(",")) {
-      const local = spec.trim().split(/\s+as\s+/);
-      if (local[0]) map.set(local.at(-1) as string, join(esmDir, m[2]));
+      const [imported, local = imported] = spec.trim().split(/\s+as\s+/);
+      if (imported && local) map.set(local, join(esmDir, m[2]));
     }
   }
   return map;

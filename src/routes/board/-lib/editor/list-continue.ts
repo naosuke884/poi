@@ -38,8 +38,8 @@ export const insertNewlineContinueList: Command = (view) => {
       return true;
     }
     // いちばん外の空の項目: 記号を消し、前の行が空でなければ空行を 1 つ挟んでリストを抜ける
-    const blank = line.number > 1 && state.doc.line(line.number - 1).text.trim() !== "";
-    const insert = blank ? state.lineBreak : "";
+    const needsBlankLine = line.number > 1 && state.doc.line(line.number - 1).text.trim() !== "";
+    const insert = needsBlankLine ? state.lineBreak : "";
     view.dispatch({
       changes: { from: line.from, to: line.to, insert },
       selection: EditorSelection.cursor(line.from + insert.length),

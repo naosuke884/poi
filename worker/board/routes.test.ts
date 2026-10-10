@@ -24,14 +24,14 @@ const app = new Hono<AppEnv>()
   })
   .route("/", boardRoutes);
 
-type Draft = { id: string | null; content: string; createdAt?: string }[];
+type DraftSection = { id: string | null; content: string; createdAt?: string };
 type PutResponse = { sections: Section[]; revision: string; error?: string };
 
 // 直前の保存で返ってきた版 (put はそれを付けて送り、成功すれば更新する。1 つの端末で保存し続けるのと同じ)
 let latestRevision: string | null;
 
 /** 版を指定して保存する (別の端末からの保存など) */
-async function putAt(revision: string | null, sections: Draft) {
+async function putAt(revision: string | null, sections: DraftSection[]) {
   const res = await app.request(
     "/",
     {
@@ -44,7 +44,7 @@ async function putAt(revision: string | null, sections: Draft) {
   return { status: res.status, body: (await res.json()) as PutResponse };
 }
 
-async function put(sections: Draft) {
+async function put(sections: DraftSection[]) {
   const res = await putAt(latestRevision, sections);
   if (res.status === 200) latestRevision = res.body.revision;
   return res;
