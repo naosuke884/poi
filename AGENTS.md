@@ -25,9 +25,11 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
   - Tests say **what**: name each test after the behaviour it pins down, so the list of names reads as the spec.
   - Commit messages say **why**: the reason for the change, which the diff cannot show.
   - Code comments say **why not**: the obvious alternative and why it was not taken (a constraint, a bug it would cause, an issue number).
-- Commit messages are in English: a capitalised imperative subject (≤ 100 chars, no trailing period), a blank line,
-  then a body explaining why. Reference issues with `Closes #N` / `Refs #N`. commitlint enforces this
-  (`commitlint.config.js`, via a husky hook and CI).
+- Commit messages are in Japanese (identifiers stay as they are): a plain-form subject saying what the commit does
+  (≤ 100 chars, no trailing `。` or `.`, e.g. `ガイドと FAQ のページを事前レンダリングする`), a blank line,
+  then a body explaining why. Reference issues with `Closes #N` / `Refs #N`. commitlint checks only the shape
+  (length, trailing period, blank line; `commitlint.config.js`, via a husky hook and CI), not the language or wording.
+  Commits before 2026-10-10 are in English; don't copy that.
 - Bug fixes come with a regression test where practical.
 
 ## Topic guides
