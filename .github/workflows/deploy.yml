@@ -41,11 +41,11 @@ jobs:
     environment: production
     steps:
       # workflow_run の既定のチェックアウトは main の最新なので、CI が通ったコミットそのものを明示する
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -64,8 +64,19 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      # デプロイが成功しても Worker が起動時に落ちていることがある (better-auth の schema 不一致など)。
+      # 公開ページと、認証を通る API (未ログインなら 401) が答えるかを見る。切り替わるまでの数秒は 5xx を許してやり直す
+      - name: Smoke test
+        env:
+          ORIGIN: https://poinote.app # shared/site.ts の SITE_ORIGIN
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 -o /dev/null "$ORIGIN/"
+          curl -fsS --retry 5 --retry-delay 5 -o /dev/null "$ORIGIN/api/auth/get-session"
+          status=$(curl -sS --retry 5 --retry-delay 5 -o /dev/null -w '%{http_code}' "$ORIGIN/api/board")
+          test "$status" = 401 || { echo "::error::/api/board returned $status (expected 401)"; exit 1; }
