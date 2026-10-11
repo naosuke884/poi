@@ -6,8 +6,14 @@ import { MEMO_TTL_DAYS } from "./constants";
 export const SITE_NAME = "poi";
 export const SITE_ORIGIN = "https://poinote.app";
 
-/** トップ (ランディング / 板) のタイトル。「poi」だけでは何のサービスか伝わらないので一言添える */
+/** トップ (ランディング) のタイトル。「poi」だけでは何のサービスか伝わらないので一言添える */
 export const TOP_TITLE = `${SITE_NAME} - ${MEMO_TTL_DAYS} 日で消えるメモ帳`;
+
+/**
+ * 板のタイトル。使っている本人には説明は要らず、noindex で検索結果にも出ないので、トップのように一言添えず
+ * 短くしてタブで見つけやすくする
+ */
+export const BOARD_TITLE = SITE_NAME;
 
 /** トップの説明文 (meta description / og:description) */
 export const TOP_DESCRIPTION = `書いたメモが ${MEMO_TTL_DAYS} 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown に対応し、スマホのホーム画面に追加しても使えます。`;

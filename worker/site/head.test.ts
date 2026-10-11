@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { TOP_TITLE } from "@shared/site";
+import { BOARD_TITLE } from "@shared/site";
 import { describe, expect, it } from "vite-plus/test";
 
 import { applyPageHead, subPageHead } from "./head";
@@ -19,9 +19,9 @@ describe("subPageHead", () => {
     });
   });
 
-  it("板はタイトルがトップのままで、canonical は板 (noindex と食い違わないように。issue #156)", () => {
+  it("板のタイトルはサイト名だけで、canonical は板 (noindex と食い違わないように。issue #156)", () => {
     expect(subPageHead("/board")).toMatchObject({
-      title: TOP_TITLE,
+      title: BOARD_TITLE,
       url: "https://poinote.app/board",
     });
   });

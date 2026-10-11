@@ -1,6 +1,7 @@
+import { BOARD_TITLE } from "@shared/site";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { useDocumentTitle } from "@/lib/use-document-title";
+import { useTitle } from "@/lib/use-document-title";
 
 import { BoardView } from "./-components/BoardView";
 import { loadBoardPage } from "./-lib/data/board-loader";
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/board/")({
 
 function BoardPage() {
   const data = Route.useLoaderData();
-  // 板のタイトルはトップと同じ (他のページから戻ってきたときに戻す)
-  useDocumentTitle();
+  // 他のページから戻ってきたときにも板のタイトルに戻す
+  useTitle(BOARD_TITLE);
   return <BoardView data={data} />;
 }

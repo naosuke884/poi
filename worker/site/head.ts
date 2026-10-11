@@ -1,20 +1,20 @@
 import {
   APP_PATHS,
+  BOARD_TITLE,
   pageTitle,
   SITE_ORIGIN,
   SUB_PAGES,
   TOP_DESCRIPTION,
-  TOP_TITLE,
 } from "@shared/site";
 
 export type PageHead = { title: string; description: string; url: string };
 
 /** トップ以外のページの head の中身。トップと知らないパスは index.html のまま (undefined) */
 export function subPageHead(pathname: string): PageHead | undefined {
-  // 板はタイトル・説明文はトップのままで、canonical (URL) だけ自分にする
+  // 板は説明文はトップのままで、canonical (URL) は自分にする
   // (トップを指したままだと noindex と食い違う。issue #156)
   if ((APP_PATHS as readonly string[]).includes(pathname)) {
-    return { title: TOP_TITLE, description: TOP_DESCRIPTION, url: `${SITE_ORIGIN}${pathname}` };
+    return { title: BOARD_TITLE, description: TOP_DESCRIPTION, url: `${SITE_ORIGIN}${pathname}` };
   }
   if (!Object.hasOwn(SUB_PAGES, pathname)) return undefined;
   const page = SUB_PAGES[pathname as keyof typeof SUB_PAGES];

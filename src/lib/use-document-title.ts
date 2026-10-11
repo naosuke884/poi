@@ -1,7 +1,7 @@
 import { pageTitle } from "@shared/site";
 import { useEffect } from "react";
 
-/** タブや履歴に出る文書のタイトル。トップ (板 / ランディング) は TOP_TITLE、他は「利用規約 | poi」の形 */
+/** タブや履歴に出る文書のタイトル。トップ (ランディング) は TOP_TITLE、他は「利用規約 | poi」の形 */
 export const documentTitle = pageTitle;
 
 /**
@@ -10,7 +10,12 @@ export const documentTitle = pageTitle;
  * (呼ばないページがあると前のページのタイトルが残る)
  */
 export function useDocumentTitle(page?: string) {
+  useTitle(documentTitle(page));
+}
+
+/** ページ名を付けず、title をそのまま文書のタイトルにする (板) */
+export function useTitle(title: string) {
   useEffect(() => {
-    document.title = documentTitle(page);
-  }, [page]);
+    document.title = title;
+  }, [title]);
 }
