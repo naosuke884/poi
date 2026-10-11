@@ -18,7 +18,7 @@ export function RouteErrorFallback({ error }: ErrorComponentProps) {
   return (
     <Stack>
       <Alert color={offline ? "yellow" : "red"} title={title}>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
       </Alert>
       <Group>
         <Button variant="default" onClick={() => void router.invalidate()}>

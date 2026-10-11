@@ -21,7 +21,7 @@
     "lint": "vp check",
     "lint:fix": "vp check --fix",
     "cf-typegen": "wrangler types",
-    "auth:schema": "npx auth@1.7.2 generate --config better-auth.config.ts --output worker/auth/schema.ts -y",
+    "auth:schema": "npx auth@1.7.7 generate --config better-auth.config.ts --output worker/auth/schema.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply poi --local",
     "db:migrate:remote": "wrangler d1 migrations apply poi --remote",
