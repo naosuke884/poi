@@ -1,0 +1,3 @@
+# CI で落ちるものを push の前に止める。a11y (Playwright) と build は時間がかかるので CI に任せる。
+# typecheck を lint より先に回すのは、lint (vp check) が typecheck の作る worker-configuration.d.ts を読むため
+npm run typecheck && npm run lint && npm test
