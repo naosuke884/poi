@@ -375,4 +375,24 @@ describe.concurrent("Cron (scheduled)", () => {
     const { results } = await env.DB.prepare("select id from memo").all<{ id: string }>();
     expect(results.map((row) => row.id)).toEqual(["alive"]);
   });
+
+  it("期限を過ぎたセッションも消し、有効なセッションは残す", async ({ env, signIn }) => {
+    await signIn();
+    const scheduledTime = Date.now();
+    await env.DB.prepare(
+      "insert into session (id, token, user_id, expires_at, created_at, updated_at) values ('expired', 'expired-token', ?, ?, ?, ?)",
+    )
+      .bind(USER_ID, scheduledTime - 1, scheduledTime, scheduledTime)
+      .run();
+
+    await worker.scheduled(
+      { scheduledTime, cron: "0 * * * *", noRetry: () => {} } as ScheduledController,
+      env,
+      {} as ExecutionContext,
+    );
+
+    const { results } = await env.DB.prepare("select id from session").all<{ id: string }>();
+    expect(results.map((row) => row.id)).not.toContain("expired");
+    expect(results).toHaveLength(1);
+  });
 });

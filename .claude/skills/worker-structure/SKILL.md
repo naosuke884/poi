@@ -17,7 +17,7 @@ worker/
   db.ts         createDb / Db / merged schema (every context's schema.ts spread into one)
   types.ts      AppEnv (Bindings: Env, Variables: auth / user / session)
   env.d.ts      secret types merged into the generated Env
-  auth/         Better Auth: createAuth, authMiddleware / requireAuth, in-app-browser, clear-site-data, schema.ts (generated)
+  auth/         Better Auth: createAuth, authMiddleware / requireAuth, in-app-browser, clear-site-data, sweep (cron: expired sessions / verifications), schema.ts (generated)
   board/        the board: routes (board + settings), board-sync (pure diffing), sweep (cron), schema.ts
   site/         page requests that are not static assets (/terms, unknown paths): index.html with 200 / 404, redirects
 shared/         code used by both src and worker (constants, limits, pure helpers)
@@ -112,7 +112,7 @@ When adding a route under `src/routes`, add its path to `PAGE_PATHS` (the sitema
 ## Scheduled work (Cron)
 
 - Crons are declared in `wrangler.jsonc` `triggers.crons` (currently `"0 * * * *"`) and all go to the one `scheduled` handler in `worker/index.ts`.
-- Keep the handler a thin adapter: build the db with `createDb(env.DB)`, pass `new Date(controller.scheduledTime)`, call a context function (`deleteExpiredMemos` in `board/sweep.ts`), and `console.log` the result (Workers Logs via `observability`). The function takes `db` and `now` so tests and other callers can reuse it.
+- Keep the handler a thin adapter: build the db with `createDb(env.DB)`, pass `new Date(controller.scheduledTime)`, call the context functions (`deleteExpiredMemos` in `board/sweep.ts`, `deleteExpiredAuthRecords` in `auth/sweep.ts`) as separate jobs so one failing does not skip the others, `console.log` each result, and `console.error` + rethrow on failure so Cron Events shows it (Workers Logs via `observability`). The function takes `db` and `now` so tests and other callers can reuse it.
 - A job with its own schedule (e.g. "once a day") gets its own expression in `triggers.crons`; don't fold it into the hourly sweep — that silently changes the frequency the user asked for and mixes two jobs' logs. Branch on `controller.cron` in the handler (constants for each expression, `console.warn` on an unknown one), and put the job's function in the context that owns the table (sessions → `auth/`) with a D1-backed test next to it, like `board/sweep.ts`.
 - Run it locally with the steps in the comment above `scheduled` (`npm run dev` (Vite) cannot trigger crons):
   ```sh

@@ -3,6 +3,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { withClearSiteData } from "./auth/clear-site-data";
 import { authMiddleware } from "./auth/middleware";
+import { deleteExpiredAuthRecords } from "./auth/sweep";
 import { boardRoutes, settingsRoutes } from "./board/routes";
 import { deleteExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
@@ -40,7 +41,7 @@ app.notFound((c) => {
 
 export type ApiType = typeof api;
 
-// Cron Trigger (wrangler.jsonc の triggers.crons) から呼ばれ、期限切れのセクションを物理削除する。
+// Cron Trigger (wrangler.jsonc の triggers.crons) から呼ばれ、期限切れのセクションと、期限切れのセッション / 検証用の値を物理削除する。
 // 削除件数は console.log に出す (observability が有効なので Workers Logs で確認できる)。
 // ローカルでの確認手順 (`npm run dev` (Vite) では --test-scheduled が使えないので wrangler dev を直接起動する。
 // --config を明示するとビルド済み設定へのリダイレクトが無効になり、/__scheduled が使える):
@@ -48,18 +49,33 @@ export type ApiType = typeof api;
 //   npx wrangler dev --config wrangler.jsonc --assets dist/client --test-scheduled
 //   curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"   # 別ターミナルで。ログに [memo sweep] ... が出る
 // 期限切れの行は `npx wrangler d1 execute poi --local --command "..."` で expires_at を過去にして用意する。
-// 失敗は console.error (Workers Logs で level が error になり、アラートで拾える) に出してから投げ直す。
+// 削除はジョブごとに分け、1 つが失敗しても残りは走らせる (セッションの削除が落ちたせいでメモが消えない、を避ける)。
+// 失敗は console.error (Workers Logs で level が error になり、アラートで拾える) に出し、最後に投げ直す。
 // 握りつぶすと Cron の実行が成功扱いになり、ダッシュボードの Cron Events でも失敗に気づけない
 const scheduled: ExportedHandlerScheduledHandler<Env> = async (controller, env) => {
   const now = new Date(controller.scheduledTime);
   const context = `cron: ${controller.cron}, scheduledTime: ${now.toISOString()}`;
-  try {
-    const deleted = await deleteExpiredMemos(createDb(env.DB), now);
-    console.log(`[memo sweep] deleted ${deleted} expired section(s) (${context})`);
-  } catch (error) {
-    console.error(`[memo sweep] failed (${context})`, error);
-    throw error;
+  const db = createDb(env.DB);
+  const jobs: [name: string, run: () => Promise<string>][] = [
+    ["memo sweep", async () => `deleted ${await deleteExpiredMemos(db, now)} expired section(s)`],
+    [
+      "auth sweep",
+      async () => {
+        const { sessions, verifications } = await deleteExpiredAuthRecords(db, now);
+        return `deleted ${sessions} session(s), ${verifications} verification(s)`;
+      },
+    ],
+  ];
+  const errors: unknown[] = [];
+  for (const [name, run] of jobs) {
+    try {
+      console.log(`[${name}] ${await run()} (${context})`);
+    } catch (error) {
+      console.error(`[${name}] failed (${context})`, error);
+      errors.push(error);
+    }
   }
+  if (errors.length > 0) throw new AggregateError(errors, "scheduled sweep failed");
 };
 
 export default {
