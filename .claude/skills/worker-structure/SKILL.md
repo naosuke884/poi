@@ -18,10 +18,10 @@ worker/
   db.ts         createDb / Db / merged schema (every context's schema.ts spread into one)
   types.ts      AppEnv (Bindings: Env, Variables: auth / user / session)
   env.d.ts      secret types merged into the generated Env
-  auth/         Better Auth: createAuth, authMiddleware / requireAuth, in-app-browser, clear-site-data, sweep (cron: expired sessions / verifications), schema.ts (generated)
+  auth/         Better Auth: createAuth, authMiddleware / requireAuth, clear-site-data, sweep (cron: expired sessions / verifications), schema.ts (generated)
   board/        the board: routes (board + settings), board-sync (pure diffing), sweep (cron), schema.ts
   site/         page requests that are not static assets (/terms, unknown paths): index.html with 200 / 404, redirects
-shared/         code used by both src and worker (constants, limits, pure helpers)
+shared/         code used by both src and worker (constants, limits, pure helpers such as in-app-browser)
 ```
 
 ## Which context
@@ -80,7 +80,7 @@ Do this even for a few lines: a route test alone can't pin edge cases cheaply, a
 
 - Example: `board/board-sync.ts` `planBoardSync(existing, sections, expiredCreatedAt, newId?)` decides updates / inserts / deletes; `routes.ts` only turns the plan into a batch. Inject nondeterminism (`newId`, `now`) as parameters so tests can pin it.
 - Tests sit next to the file as `<name>.test.ts` (vitest includes `worker/**/*.test.ts`, node environment).
-  - Pure modules: plain unit tests (`board-sync.test.ts`, `auth/in-app-browser.test.ts`).
+  - Pure modules: plain unit tests (`board-sync.test.ts`, `shared/in-app-browser.test.ts`).
   - Routes: mount the sub-app in a test Hono app with a middleware that sets a fixed `user` / `session`, and call `app.request(path, init, { DB: db })` with the `db` fixture from `worker/d1-test.ts` — a fresh local D1 (`getPlatformProxy`, `drizzle/` migrations applied) per test (`board/routes.test.ts`). This hits the real SQLite limits, which mocks would hide.
   - Wiring in `index.ts` (what the whole app does to a response, e.g. Clear-Site-Data or security headers): call `worker.fetch(request, env)` from `index.test.ts` with test secrets and a signed session cookie on the same per-test D1, so Better Auth's real handler runs.
   - How to write these tests (fixtures, concurrency, what to assert) is in the `writing-tests` skill.

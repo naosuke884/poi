@@ -16,7 +16,7 @@
     "should_trigger": true
   },
   {
-    "query": "worker/auth/in-app-browser.ts の判定に LINE のUAを追加して。テストも",
+    "query": "shared/in-app-browser.ts の判定に LINE のUAを追加して。テストも",
     "should_trigger": true
   },
   {

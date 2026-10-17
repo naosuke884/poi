@@ -1,9 +1,9 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
+import { isInAppBrowser } from "@shared/in-app-browser";
 import { betterAuth } from "better-auth";
 import { multiSession } from "better-auth/plugins/multi-session";
 
 import { createDb, schema } from "../db";
-import { isInAppBrowser } from "./in-app-browser";
 
 // Google から受け取るトークンは、ログインの処理の中で使うだけで、保存はしない。アプリは Google API を呼ばないので、
 // 残しても使い道がなく、漏れたときに Google アカウントへのアクセスに使われうるものを持ち続けるだけになる。

@@ -39,7 +39,7 @@ Prefer the cheapest test that observes the behaviour.
 
 | What changed | Test | Examples |
 |---|---|---|
-| Domain decisions: diffing, merging, splitting, limits, parsing, expiry | Pure test of the functions the module exports for real callers. Node env, no doubles | `worker/board/board-sync.test.ts`, `src/routes/board/-lib/sections/board-ops.test.ts`, `.../data/board.test.ts`, `.../editor/minimal-change.test.ts`, `worker/auth/in-app-browser.test.ts` |
+| Domain decisions: diffing, merging, splitting, limits, parsing, expiry | Pure test of the functions the module exports for real callers. Node env, no doubles | `worker/board/board-sync.test.ts`, `src/routes/board/-lib/sections/board-ops.test.ts`, `.../data/board.test.ts`, `.../editor/minimal-change.test.ts`, `shared/in-app-browser.test.ts` |
 | Something needing DOM / localStorage / a CodeMirror view | Same, with `// @vitest-environment jsdom` | `.../editor/list-editing.test.ts`, `.../data/board-cache.test.ts`, `.../markdown/markdown-source-offset.test.ts` |
 | A hook, component or loader that talks to the API, auth or router | jsdom, real router (`@/lib/router-test`), fake server for API / auth | `src/routes/(root)/-lib/use-account-actions.test.tsx`, `.../header/user-menu/TtlSettingModal.test.tsx`, `.../data/board-loader.test.ts`, `OfflineBanner.test.tsx` |
 | Editing → sections on screen → autosave PUT, conflicts, expiry | jsdom integration test of the whole `Board` | `src/routes/board/-components/board/Board.test.tsx` ([harness](references/board-harness.md)) |
