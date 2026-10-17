@@ -62,7 +62,7 @@ So every migration must be **backward compatible with the currently deployed cod
   2. Push 2: re-copy (catches writes the old Worker made between migrate and deploy), stop writing the old column.
   3. Push 3 (contract): drop the old column.
   Keep public API field names (`memoTtlDays` in `/api/settings`) and exported constants unchanged — renaming them breaks installed PWAs and open tabs; a DB column name is internal.
-- **API**: new request fields stay optional so old clients keep working (e.g. `revision` in PUT /api/board is `.optional()`, and a missing value means "behave as before").
+- **API**: new request fields stay optional so old clients keep working, and a missing value means "behave as before". Make one required only as a deliberate decision once the old pages have had time to reload (e.g. `revision` in PUT /api/board was optional at first and became required in HAY-43; old pages then get 400 until reloaded).
 - A new row-per-user table must treat "no row" as the default (see `user_setting` and `board`), so existing users need no backfill.
 
 Deploys are serialized and never cancelled (`concurrency: deploy-production`) precisely because a cancel could leave migrations applied without the new Worker.

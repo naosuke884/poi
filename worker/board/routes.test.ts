@@ -204,7 +204,7 @@ describe.concurrent("PUT /api/board", () => {
     expect((await board.rows()).map((row) => row.content)).toEqual(["first"]);
   });
 
-  it("版を送らない (版の導入前の) クライアントの保存は、確かめずに通して版を進める", async ({
+  it("版を送らない (版の導入前の) クライアントの保存は 400 で断り、板も版も変えない", async ({
     db,
     board,
   }) => {
@@ -218,11 +218,9 @@ describe.concurrent("PUT /api/board", () => {
       },
       { DB: db },
     );
-    expect(res.status).toBe(200);
-    expect((await board.rows()).map((row) => row.content)).toEqual(["old client"]);
-    const { revision } = await board.get();
-    expect(revision).not.toBeNull();
-    expect(revision).not.toBe(first.body.revision);
+    expect(res.status).toBe(400);
+    expect((await board.rows()).map((row) => row.content)).toEqual(["a"]);
+    expect((await board.get()).revision).toBe(first.body.revision);
   });
 
   it("同じ版をもとにした保存が同時に来たら、片方だけ通る", async ({ board }) => {

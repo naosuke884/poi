@@ -44,13 +44,13 @@ const sectionSchema = z.object({
 });
 
 // userId は保存先としてクライアントが想定している板の持ち主 (アカウント切り替え後の上書き防止。下記)。
-// revision はクライアントが最後に取得 / 保存した板の版 (一度も保存されていない板なら null)。
-// 版を送らない (undefined) のは版の導入前のクライアント: PWA は更新を「リロード」まで待つので、開いたままの
-// 旧ページがしばらく残る。そこからの保存は 400 で失敗させず、これまでどおり版を確かめずに保存する
+// revision はクライアントが最後に取得 / 保存した板の版 (一度も保存されていない板なら null)。必須。
+// 版を送らないのは版の導入前のページ (開いたままの PWA) だけだが、確かめずに保存させると別の場所の保存を
+// 消してしまうので 400 で断る (そのページは保存エラーを出し、リロードすれば新しいページで保存し直せる。HAY-43)
 const putBoardSchema = z
   .object({
     userId: z.string().min(1),
-    revision: z.string().min(1).nullable().optional(),
+    revision: z.string().min(1).nullable(),
     sections: z.array(sectionSchema).max(BOARD_MAX_SECTIONS),
   })
   .refine((v) => boardLength(v.sections) <= BOARD_MAX_LENGTH, {
@@ -166,7 +166,7 @@ export const boardRoutes = new Hono<AppEnv>()
     ]);
     const ttlDays = ttlDaysOf(setting);
     // クライアントの知らない保存が間にあった。そのまま置き換えるとその内容を消したり戻したりするので断る
-    if (baseRevision !== undefined && (current[0]?.revision ?? null) !== baseRevision) {
+    if ((current[0]?.revision ?? null) !== baseRevision) {
       return c.json({ error: "Stale" }, 409);
     }
     // createdAt がこれ以前のセクションは、今の保持日数ではもう期限切れ
@@ -183,18 +183,12 @@ export const boardRoutes = new Hono<AppEnv>()
     // 50 (Free) / 1,000 (Paid)) に当たる。行は JSON 配列 1 つにまとめてバインドし、json_each で
     // 展開して、更新 / 作成 / 削除をそれぞれ 1 文で済ませる (文の数もバインド数もセクション数によらない)
     const ops: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] = [
-      baseRevision === undefined
-        ? // 版の導入前のクライアント (上記): 確かめずに進める (新しいクライアントには版が変わったことが伝わる)
-          db
-            .insert(board)
-            .values({ userId, revision })
-            .onConflictDoUpdate({ target: board.userId, set: { revision } })
-        : baseRevision === null
-          ? db.insert(board).values({ userId, revision }).onConflictDoNothing()
-          : db
-              .update(board)
-              .set({ revision })
-              .where(and(eq(board.userId, userId), eq(board.revision, baseRevision))),
+      baseRevision === null
+        ? db.insert(board).values({ userId, revision }).onConflictDoNothing()
+        : db
+            .update(board)
+            .set({ revision })
+            .where(and(eq(board.userId, userId), eq(board.revision, baseRevision))),
     ];
     if (plan.updates.length > 0) {
       ops.push(
