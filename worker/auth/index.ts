@@ -1,5 +1,4 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { isInAppBrowser } from "@shared/in-app-browser";
 import { betterAuth } from "better-auth";
 import { multiSession } from "better-auth/plugins/multi-session";
 
@@ -10,16 +9,14 @@ import { createDb, schema } from "../db";
 // encryptOAuthTokens で暗号化して残す手もあるが、使わないものは持たないほうが安全 (HAY-37)
 const DROPPED_OAUTH_TOKENS = { accessToken: null, refreshToken: null, idToken: null };
 
-export function createAuth(env: Env, requestOrigin: string, userAgent?: string | null) {
+export function createAuth(env: Env, requestOrigin: string) {
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL ?? requestOrigin,
     secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(createDb(env.DB), { provider: "sqlite", schema }),
-    // X などのアプリ内ブラウザでは state cookie が OAuth コールバックに乗らず state_mismatch になるので、
-    // そのブラウザからのコールバックに限って cookie 照合を省く (state 自体は DB で単回使用・10 分期限で検証される)。
-    // 照合を省くと、攻撃者が用意したコールバック URL を踏ませて攻撃者のアカウントでログインさせる
-    // login CSRF が通るため、普通のブラウザでは照合を残す
-    account: { skipStateCookieCheck: isInAppBrowser(userAgent) },
+    // OAuth の state cookie 照合は省かない。省くと、攻撃者が用意したコールバック URL を踏ませて
+    // 攻撃者のアカウントでログインさせる login CSRF が通る。照合が通らない X などのアプリ内ブラウザでは、
+    // ランディングがログインボタンの代わりにブラウザで開き直す案内を出す (LoginCta、HAY-42)
     // 新しい account 行にも、ログインのたびの更新 (updateAccountOnSignIn) にもトークンを書かせない
     databaseHooks: {
       account: {

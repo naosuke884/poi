@@ -1,6 +1,6 @@
 // X などアプリに埋め込まれたブラウザ (WebView) かを User-Agent から推定する。
-// OAuth の state cookie 照合をこれらのブラウザでだけ省くのに使う (worker/auth/index.ts)。
-// 判定を外すと普通のブラウザでは照合が効き、アプリ内ブラウザではログインが state_mismatch で失敗する
+// これらのブラウザでは OAuth の state cookie がコールバックに乗らずログインが state_mismatch で失敗するので、
+// ランディングでログインボタンの代わりにブラウザで開き直す案内を出すのに使う (LoginCta)
 const APP_TOKENS = /\b(Twitter|TwitterAndroid|Instagram|FBAN|FBAV|Line)\//;
 
 export function isInAppBrowser(userAgent: string | null | undefined): boolean {
