@@ -5,6 +5,11 @@ import { multiSession } from "better-auth/plugins/multi-session";
 import { createDb, schema } from "../db";
 import { isInAppBrowser } from "./in-app-browser";
 
+// Google から受け取るトークンは、ログインの処理の中で使うだけで、保存はしない。アプリは Google API を呼ばないので、
+// 残しても使い道がなく、漏れたときに Google アカウントへのアクセスに使われうるものを持ち続けるだけになる。
+// encryptOAuthTokens で暗号化して残す手もあるが、使わないものは持たないほうが安全 (HAY-37)
+const DROPPED_OAUTH_TOKENS = { accessToken: null, refreshToken: null, idToken: null };
+
 export function createAuth(env: Env, requestOrigin: string, userAgent?: string | null) {
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL ?? requestOrigin,
@@ -15,6 +20,13 @@ export function createAuth(env: Env, requestOrigin: string, userAgent?: string |
     // 照合を省くと、攻撃者が用意したコールバック URL を踏ませて攻撃者のアカウントでログインさせる
     // login CSRF が通るため、普通のブラウザでは照合を残す
     account: { skipStateCookieCheck: isInAppBrowser(userAgent) },
+    // 新しい account 行にも、ログインのたびの更新 (updateAccountOnSignIn) にもトークンを書かせない
+    databaseHooks: {
+      account: {
+        create: { before: async (account) => ({ data: { ...account, ...DROPPED_OAUTH_TOKENS } }) },
+        update: { before: async (account) => ({ data: { ...account, ...DROPPED_OAUTH_TOKENS } }) },
+      },
+    },
     // メニューの「アカウント削除」から使う。板の内容 (memo) は user への
     // FK (ON DELETE cascade) で一緒に消える。パスワードを持たない Google ログインでは
     // セッションの鮮度 (ログインから 1 日以内) が本人確認の代わりになる
