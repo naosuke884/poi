@@ -97,14 +97,17 @@ type RevisionRows = Awaited<ReturnType<typeof selectRevision>>;
 const jsonRows = sql.identifier("j");
 const jsonRow = sql`${jsonRows}.value`;
 
-/** そのユーザーのセクション保持日数 (設定していなければ既定値) */
-async function selectTtlDays(db: Db, userId: string): Promise<number> {
-  const rows = await db
+/** そのユーザーの設定の行 (設定していなければ無い)。selectBoard と同じ batch に入れられるよう、クエリのまま返す */
+function selectSetting(db: Db, userId: string) {
+  return db
     .select({ memoTtlDays: userSetting.memoTtlDays })
     .from(userSetting)
     .where(eq(userSetting.userId, userId));
-  return rows[0]?.memoTtlDays ?? MEMO_TTL_DAYS;
 }
+type SettingRows = Awaited<ReturnType<typeof selectSetting>>;
+
+/** 設定の行から、セクションの保持日数 (設定していなければ既定値) */
+const ttlDaysOf = (rows: SettingRows): number => rows[0]?.memoTtlDays ?? MEMO_TTL_DAYS;
 
 export const boardRoutes = new Hono<AppEnv>()
   .use(requireAuth)
@@ -113,15 +116,16 @@ export const boardRoutes = new Hono<AppEnv>()
   .get("/", async (c) => {
     const db = createDb(c.env.DB);
     const userId = c.get("user").id;
-    const [sections, revision] = await db.batch([
+    const [sections, revision, setting] = await db.batch([
       selectBoard(db, userId, new Date()),
       selectRevision(db, userId),
+      selectSetting(db, userId),
     ]);
     return c.json({
       userId,
       sections,
       revision: revision[0]?.revision ?? null,
-      ttlDays: await selectTtlDays(db, userId),
+      ttlDays: ttlDaysOf(setting),
     });
   })
   // 板を丸ごと置き換える。既存の行との突き合わせ (更新 / 新規 / 削除) は planBoardSync (board-sync.ts)
@@ -136,11 +140,12 @@ export const boardRoutes = new Hono<AppEnv>()
       return c.json({ error: "UserMismatch" }, 409);
     }
 
-    const ttlDays = await selectTtlDays(db, userId);
-    const [existing, current] = await db.batch([
+    const [existing, current, setting] = await db.batch([
       selectBoard(db, userId, now),
       selectRevision(db, userId),
+      selectSetting(db, userId),
     ]);
+    const ttlDays = ttlDaysOf(setting);
     // クライアントの知らない保存が間にあった。そのまま置き換えるとその内容を消したり戻したりするので断る
     if (baseRevision !== undefined && (current[0]?.revision ?? null) !== baseRevision) {
       return c.json({ error: "Stale" }, 409);
@@ -254,7 +259,7 @@ const putSettingsSchema = z.object({
 export const settingsRoutes = new Hono<AppEnv>()
   .use(requireAuth)
   .get("/", async (c) => {
-    const memoTtlDays = await selectTtlDays(createDb(c.env.DB), c.get("user").id);
+    const memoTtlDays = ttlDaysOf(await selectSetting(createDb(c.env.DB), c.get("user").id));
     return c.json({ memoTtlDays });
   })
   .put("/", validate("json", putSettingsSchema), async (c) => {

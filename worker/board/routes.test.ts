@@ -322,6 +322,16 @@ describe.concurrent("PUT /api/settings", () => {
     expect(new Date(a.expiresAt).getTime() - new Date(a.createdAt).getTime()).toBe(3 * DAY_MS);
   });
 
+  it("板の取得でも、保存した保持日数を ttlDays として返す (未設定なら既定の 30 日)", async ({
+    db,
+    board,
+  }) => {
+    const ttlDays = async () => ((await board.get()) as { ttlDays?: number }).ttlDays;
+    expect(await ttlDays()).toBe(30);
+    expect((await putTtlDays(db, 7)).status).toBe(200);
+    expect(await ttlDays()).toBe(7);
+  });
+
   it("選択肢にない日数は 400 で断り、設定を変えない", async ({ db }) => {
     const res = await putTtlDays(db, 5);
     expect(res.status).toBe(400);
