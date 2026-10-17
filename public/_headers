@@ -1,13 +1,14 @@
 # 静的アセット (index.html・JS・画像など) に付けるセキュリティ関連のヘッダー (Cloudflare Workers の静的アセット配信が読む)。
 # /api/* は Worker が返すのでここは効かない。そちらは worker/index.ts の secureHeaders で付ける。
-# CSP はまず Report-Only (違反はブラウザのコンソールに出るだけで止めない)。インラインスクリプト・eval・
-# 外部スクリプトを足すとここに引っかかる。style-src は Mantine がインライン style を入れるので指定しない。
+# CSP は強制 (違反した読み込みや実行はブラウザが止める。HAY-36)。インラインスクリプト・eval・
+# 外部スクリプトを足すとここで止まる。style-src は Mantine がインライン style を入れるので指定しない。
+# default-src も指定しない: Google のアバター画像や「画像にする」の data: / blob: を個別に許すことになり、漏れると壊れる。
 # base-uri は 'none' にしない: 「画像にする」(modern-screenshot) が CSS 内の相対 URL (フォント) を解決するのに
 # 作業用ドキュメントへ同じオリジンの <base> を入れる。
-# CSP が Report-Only のうちも iframe 埋め込みは X-Frame-Options で止める。
+# iframe 埋め込みは frame-ancestors に加えて、それを解さない古いブラウザ向けに X-Frame-Options でも止める。
 # HSTS はここでは付けない: Cloudflare のゾーン設定 (Edge Certificates) が全レスポンスに付けて上書きするので、ここに書いても効かず値が食い違うだけ
 /*
-  Content-Security-Policy-Report-Only: script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+  Content-Security-Policy: script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
