@@ -56,4 +56,11 @@ describe.concurrent("deleteExpiredMemos", () => {
     expect(await deleteExpiredMemos(createDb(db), new Date(NOW))).toBe(0);
     expect(await memos.ids()).toEqual(["alive"]);
   });
+
+  it("1 文で消す件数を超えて溜まっていても、小分けにして全部消す", async ({ db, memos }) => {
+    for (let i = 0; i < 5; i++) await memos.insert(`expired-${i}`, "u1", NOW - i);
+    await memos.insert("alive", "u1", NOW + 1);
+    expect(await deleteExpiredMemos(createDb(db), new Date(NOW), 2)).toBe(5);
+    expect(await memos.ids()).toEqual(["alive"]);
+  });
 });
