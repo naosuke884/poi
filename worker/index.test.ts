@@ -351,3 +351,28 @@ describe.concurrent("ページのリクエスト (静的アセットに無いパ
     expect(await res.json()).toEqual({ error: "Not Found" });
   });
 });
+
+describe.concurrent("Cron (scheduled)", () => {
+  it("予定時刻の時点で期限を過ぎたセクションを物理削除し、期限前のものは残す", async ({ env }) => {
+    const scheduledTime = Date.now();
+    for (const [id, expiresAt] of [
+      ["expired", scheduledTime - 1],
+      ["alive", scheduledTime + 86_400_000],
+    ] as const) {
+      await env.DB.prepare(
+        "insert into memo (id, user_id, content, position, created_at, updated_at, expires_at) values (?, ?, ?, 0, ?, ?, ?)",
+      )
+        .bind(id, USER_ID, id, scheduledTime, scheduledTime, expiresAt)
+        .run();
+    }
+
+    await worker.scheduled(
+      { scheduledTime, cron: "0 * * * *", noRetry: () => {} } as ScheduledController,
+      env,
+      {} as ExecutionContext,
+    );
+
+    const { results } = await env.DB.prepare("select id from memo").all<{ id: string }>();
+    expect(results.map((row) => row.id)).toEqual(["alive"]);
+  });
+});

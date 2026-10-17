@@ -4,7 +4,7 @@ import { describe, expect } from "vite-plus/test";
 
 import { test } from "../d1-test";
 import type { AppEnv } from "../types";
-import { boardRoutes } from "./routes";
+import { boardRoutes, settingsRoutes } from "./routes";
 
 // PUT /api/board をテストごとに立てる空のローカル D1 に対して実行する。
 // ログインはセッションを引かずに固定のユーザーを入れて済ませる
@@ -19,7 +19,8 @@ const app = new Hono<AppEnv>()
     c.set("session", {} as NonNullable<AppEnv["Variables"]["session"]>);
     await next();
   })
-  .route("/", boardRoutes);
+  .route("/", boardRoutes)
+  .route("/settings", settingsRoutes);
 
 type DraftSection = { id: string | null; content: string; createdAt?: string };
 type PutResponse = { sections: Section[]; revision: string; error?: string };
@@ -237,5 +238,95 @@ describe.concurrent("PUT /api/board", () => {
       { id: a.id, content: winner.body.sections[0].content, position: 0 },
     ]);
     expect((await board.get()).revision).toBe(winner.body.revision);
+  });
+});
+
+describe.concurrent("PUT /api/settings", () => {
+  /** createdAt に作り、expiresAt を期限とするセクションの行を入れる */
+  async function insertSection(db: D1Database, id: string, createdAt: number, expiresAt: number) {
+    await db
+      .prepare(
+        "insert into memo (id, user_id, content, position, created_at, updated_at, expires_at) values (?, ?, ?, 0, ?, ?, ?)",
+      )
+      .bind(id, USER_ID, id, createdAt, createdAt, expiresAt)
+      .run();
+  }
+
+  async function putTtlDays(db: D1Database, memoTtlDays: number) {
+    return app.request(
+      "/settings",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memoTtlDays }),
+      },
+      { DB: db },
+    );
+  }
+
+  async function expiresAtById(db: D1Database) {
+    const { results } = await db
+      .prepare("select id, expires_at from memo where user_id = ? order by id")
+      .bind(USER_ID)
+      .all<{ id: string; expires_at: number }>();
+    return Object.fromEntries(results.map((row) => [row.id, row.expires_at]));
+  }
+
+  it("保持日数を変えると、見えているセクションの期限を作成日時 + 新しい日数に引き直す", async ({
+    db,
+    board,
+  }) => {
+    const now = Date.now();
+    await insertSection(db, "a", now - DAY_MS, now + 29 * DAY_MS);
+    await insertSection(db, "b", now - 2 * DAY_MS, now + 28 * DAY_MS);
+
+    const res = await putTtlDays(db, 60);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ memoTtlDays: 60 });
+    expect(await expiresAtById(db)).toEqual({
+      a: now - DAY_MS + 60 * DAY_MS,
+      b: now - 2 * DAY_MS + 60 * DAY_MS,
+    });
+    expect((await board.get()).sections.map((s) => s.id).toSorted()).toEqual(["a", "b"]);
+  });
+
+  it("短くすると、新しい期限を過ぎたセクションはすぐ見えなくなる", async ({ db, board }) => {
+    const now = Date.now();
+    await insertSection(db, "old", now - 10 * DAY_MS, now + 20 * DAY_MS);
+    await insertSection(db, "new", now - DAY_MS, now + 29 * DAY_MS);
+
+    expect((await putTtlDays(db, 7)).status).toBe(200);
+    expect((await board.get()).sections.map((s) => s.id)).toEqual(["new"]);
+  });
+
+  it("延ばしても、期限切れで物理削除待ちのセクションは復活しない", async ({ db, board }) => {
+    const now = Date.now();
+    // 7 日の設定で 10 日前に作り、もう期限を過ぎて Cron の物理削除を待っている行
+    await insertSection(db, "expired", now - 10 * DAY_MS, now - 3 * DAY_MS);
+
+    expect((await putTtlDays(db, 30)).status).toBe(200);
+    expect(await expiresAtById(db)).toEqual({ expired: now - 3 * DAY_MS });
+    expect((await board.get()).sections).toEqual([]);
+  });
+
+  it("保存した保持日数を GET で返し、その後に作るセクションの期限にも使う", async ({
+    db,
+    board,
+  }) => {
+    expect((await putTtlDays(db, 3)).status).toBe(200);
+    const settings = await app.request("/settings", {}, { DB: db });
+    expect(await settings.json()).toEqual({ memoTtlDays: 3 });
+
+    const created = await board.put([{ id: null, content: "a" }]);
+    const [a] = created.body.sections as (Section & { expiresAt: string })[];
+    expect(new Date(a.expiresAt).getTime() - new Date(a.createdAt).getTime()).toBe(3 * DAY_MS);
+  });
+
+  it("選択肢にない日数は 400 で断り、設定を変えない", async ({ db }) => {
+    const res = await putTtlDays(db, 5);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "Bad Request" });
+    const settings = await app.request("/settings", {}, { DB: db });
+    expect(await settings.json()).toEqual({ memoTtlDays: 30 });
   });
 });
