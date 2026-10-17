@@ -16,7 +16,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 /** ホーム画面から (スタンドアロンで) 開かれているか = すでに追加済み */
-function isStandalone(): boolean {
+export function isStandalone(): boolean {
   try {
     if (window.matchMedia("(display-mode: standalone)").matches) return true;
   } catch {

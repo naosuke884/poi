@@ -23,6 +23,7 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 | `削除する` / `キャンセル` | account-deletion confirm (`DeleteAccountConfirmModal`, dialog name `アカウント削除の確認`) |
 | `ログイン` | header, when signed out and not on `/` |
 | `Google でログインして始める` | landing CTA |
+| `URL をコピー` | landing CTA in an in-app browser (X etc.), in place of the login button, after `アプリ内のブラウザでは Google でログインできません。Safari や Chrome などのブラウザで開いてください。`; result `URL をコピーしました。Safari や Chrome に貼り付けて開いてください` / `コピーできませんでした。画面のメニューから「ブラウザで開く」を選んでください` |
 | `アカウントを追加` / `ホーム画面に追加` / `保存期間の設定` / `利用規約` / `プライバシーポリシー` / `問い合わせ` / `ログアウト` / `アカウント削除` | `UserMenu` items, in this order |
 | `タイムライン` / `見出しごとにまとめる` | `ViewToggle` tooltips |
 | `「<title>」を閉じる` / `エラーを閉じる` / `通知を閉じる` | close button label of `BottomLeftNotice` (from the title; `closeLabel` for the untitled error toast; fallback) |
