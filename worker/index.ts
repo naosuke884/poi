@@ -48,12 +48,18 @@ export type ApiType = typeof api;
 //   npx wrangler dev --config wrangler.jsonc --assets dist/client --test-scheduled
 //   curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"   # 別ターミナルで。ログに [memo sweep] ... が出る
 // 期限切れの行は `npx wrangler d1 execute poi --local --command "..."` で expires_at を過去にして用意する。
+// 失敗は console.error (Workers Logs で level が error になり、アラートで拾える) に出してから投げ直す。
+// 握りつぶすと Cron の実行が成功扱いになり、ダッシュボードの Cron Events でも失敗に気づけない
 const scheduled: ExportedHandlerScheduledHandler<Env> = async (controller, env) => {
   const now = new Date(controller.scheduledTime);
-  const deleted = await deleteExpiredMemos(createDb(env.DB), now);
-  console.log(
-    `[memo sweep] deleted ${deleted} expired section(s) (cron: ${controller.cron}, scheduledTime: ${now.toISOString()})`,
-  );
+  const context = `cron: ${controller.cron}, scheduledTime: ${now.toISOString()}`;
+  try {
+    const deleted = await deleteExpiredMemos(createDb(env.DB), now);
+    console.log(`[memo sweep] deleted ${deleted} expired section(s) (${context})`);
+  } catch (error) {
+    console.error(`[memo sweep] failed (${context})`, error);
+    throw error;
+  }
 };
 
 export default {
