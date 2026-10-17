@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 
 import { withClearSiteData } from "./auth/clear-site-data";
@@ -17,6 +18,16 @@ const app = new Hono<AppEnv>();
 // HSTS は付けない: Cloudflare のゾーン設定 (Edge Certificates) が全レスポンスに付けて上書きするため。
 // JSON を返すだけなので CSP・Permissions-Policy は付けない
 app.use("/api/*", secureHeaders({ strictTransportSecurity: false, xFrameOptions: "DENY" }));
+// 本文の大きさの上限。文字数の上限 (BOARD_MAX_LENGTH) は JSON を全部読んでから zod で確かめるので、それより前に止める。
+// 一番大きい正しい PUT /api/board (2 万文字がすべて \u0001 のような 6 バイトにエスケープされる文字で、1,000 セクションに
+// id と createdAt が付く) でも 200KB ほどなので、余裕を持たせて 1MiB にする。セッションを引く (D1 を読む) 前に置く
+app.use(
+  "/api/*",
+  bodyLimit({
+    maxSize: 1024 * 1024,
+    onError: (c) => c.json({ error: "PayloadTooLarge" }, 413),
+  }),
+);
 app.use("/api/*", authMiddleware);
 
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。

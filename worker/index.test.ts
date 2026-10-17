@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
+import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS, SECTION_SEPARATOR } from "@shared/constants";
 import {
   INDEXED_PAGE_PATHS,
   PRERENDERED_PAGES,
@@ -394,5 +395,35 @@ describe.concurrent("Cron (scheduled)", () => {
     const { results } = await env.DB.prepare("select id from session").all<{ id: string }>();
     expect(results.map((row) => row.id)).not.toContain("expired");
     expect(results).toHaveLength(1);
+  });
+});
+
+describe.concurrent("API の本文の大きさの上限", () => {
+  it("1MiB を超える本文は、ログインを確かめる前に 413 の JSON で断る", async ({ request }) => {
+    const res = await request("/api/board", { method: "PUT", body: "x".repeat(1024 * 1024 + 1) });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: "PayloadTooLarge" });
+  });
+
+  it("上限いっぱいの板 (セクション数・文字数とも最大で、エスケープで膨らむ文字) は保存できる", async ({
+    request,
+    signIn,
+  }) => {
+    const createdAt = new Date().toISOString();
+    const perSection = Math.floor(
+      (BOARD_MAX_LENGTH - (BOARD_MAX_SECTIONS - 1) * SECTION_SEPARATOR.length) / BOARD_MAX_SECTIONS,
+    );
+    const sections = Array.from({ length: BOARD_MAX_SECTIONS }, () => ({
+      id: randomUUID(),
+      createdAt,
+      content: "\u0001".repeat(perSection),
+    }));
+    const body = JSON.stringify({ userId: USER_ID, revision: null, sections });
+    const res = await request("/api/board", {
+      method: "PUT",
+      body,
+      headers: { Cookie: await signIn() },
+    });
+    expect(res.status).toBe(200);
   });
 });
