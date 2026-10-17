@@ -32,6 +32,29 @@
       "migrations_dir": "drizzle",
     },
   ],
+  // API のレート制限 (worker/rate-limit.ts、worker/index.ts で付ける)。数えるのは Cloudflare のロケーションごと。
+  // namespace_id はアカウント内で一意な整数 (同じ id の binding はカウンタを共有する)。ダッシュボードでの設定は要らない。
+  // period は 10 か 60 秒しか選べない。しきい値は HAY-34 で決めたもの
+  "ratelimits": [
+    // PUT /api/board: ユーザーごと。自動保存は入力停止から 1 秒待つので、普通に書いていれば 10 秒で 10 回ほど
+    {
+      "name": "BOARD_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 20, "period": 10 },
+    },
+    // PUT /api/settings: ユーザーごと
+    {
+      "name": "SETTINGS_RATE_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 10, "period": 60 },
+    },
+    // /api/auth/*: IP アドレスごと (未ログインでも来るのでユーザーでは数えられない)
+    {
+      "name": "AUTH_RATE_LIMITER",
+      "namespace_id": "1003",
+      "simple": { "limit": 30, "period": 60 },
+    },
+  ],
   // 期限切れメモの物理削除 (worker/index.ts の scheduled ハンドラ) を毎時 0 分に実行する
   "triggers": {
     "crons": ["0 * * * *"],

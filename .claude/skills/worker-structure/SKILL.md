@@ -14,6 +14,7 @@ This way a context can be read, tested, and deleted as a unit, and the root stay
 ```
 worker/
   index.ts      app wiring: authMiddleware, /api/auth/*, route mounting, notFound, scheduled, ApiType
+  rate-limit.ts rateLimit middleware over the Workers Rate Limiting bindings (wrangler.jsonc ratelimits), applied in index.ts
   db.ts         createDb / Db / merged schema (every context's schema.ts spread into one)
   types.ts      AppEnv (Bindings: Env, Variables: auth / user / session)
   env.d.ts      secret types merged into the generated Env
@@ -69,7 +70,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
   It turns failures into `400 { error: "Bad Request", issues }`. Keep it a generic function: a pre-typed hook constant collapses the RPC type to `{}`.
   It currently lives in `board/routes.ts`; when a second context needs it, move it to the worker root rather than importing it across contexts.
 - Limits and choices the UI must also know (`BOARD_MAX_LENGTH`, `MEMO_TTL_CHOICES`, ...) come from `@shared/constants`, so client-side checks and server validation cannot drift.
-- Return JSON via `c.json(...)`. Errors are always `{ error: "<Code>" }` with a status: `400 Bad Request`, `401 Unauthorized`, `404 Not Found` (unknown `/api/*`, from `app.notFound`), `413 PayloadTooLarge` (body over 1MiB, from `bodyLimit` in `worker/index.ts`), `500 Internal Server Error` (an unexpected exception, from `app.onError`, which also `console.error`s it; don't catch just to return 500 yourself), `409` with a machine-readable code (`Stale`, `UserMismatch`) that the client branches on (see `putBoard` in `src/routes/board/-lib/sections/use-board-autosave.ts`). Pick a new PascalCase code for a new conflict rather than reusing one with different meaning.
+- Return JSON via `c.json(...)`. Errors are always `{ error: "<Code>" }` with a status: `400 Bad Request`, `401 Unauthorized`, `404 Not Found` (unknown `/api/*`, from `app.notFound`), `413 PayloadTooLarge` (body over 1MiB, from `bodyLimit` in `worker/index.ts`), `429 TooManyRequests` (over a rate limit, from `rateLimit` in `worker/rate-limit.ts`), `500 Internal Server Error` (an unexpected exception, from `app.onError`, which also `console.error`s it; don't catch just to return 500 yourself), `409` with a machine-readable code (`Stale`, `UserMismatch`) that the client branches on (see `putBoard` in `src/routes/board/-lib/sections/use-board-autosave.ts`). Pick a new PascalCase code for a new conflict rather than reusing one with different meaning.
 - Group writes that must succeed together in one `db.batch([...])` (D1 runs a batch as one transaction). Mind D1's limit of 100 bound parameters per statement; `PUT /api/board` binds rows as one JSON array and expands it with `json_each` for that reason.
 
 ## Keep logic pure and testable
@@ -127,6 +128,7 @@ When adding a route under `src/routes`, add its path to `PAGE_PATHS` (the sitema
 
 - `Env` is generated into `worker-configuration.d.ts` by `wrangler types` (git-ignored; `npm run typecheck` and `npm run cf-typegen` regenerate it). After adding a binding to `wrangler.jsonc`, rerun it instead of typing the binding by hand.
 - Secrets are not in `wrangler.jsonc`: declare their types in `worker/env.d.ts` (merged into `Env`), add the name to `.dev.vars.example`, set them locally in `.dev.vars` and in production with `npx wrangler secret put <NAME>`. Also add a dummy value to the `Env` literal in `better-auth.config.ts` (a required secret missing there fails `npm run typecheck`).
+- Rate limits are `ratelimits` bindings in `wrangler.jsonc` (no dashboard setup; `namespace_id` is any account-unique integer, `period` is 10 or 60 s), applied with `rateLimit(...)` in `worker/index.ts`: `/api/auth/*` per IP (`cf-connecting-ip`, before `authMiddleware`), `PUT /api/board` and `PUT /api/settings` per user (after it). A new write endpoint gets its own binding and `app.on(...)` line there. `index.test.ts` passes fake limiters in its `Env`; add one there for a new binding.
 - Access bindings only through `c.env` (routes) or the handler's `env` (scheduled); there is no global env.
 
 ## Imports

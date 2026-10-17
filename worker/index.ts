@@ -9,6 +9,7 @@ import { deleteExpiredAuthRecords } from "./auth/sweep";
 import { boardRoutes, settingsRoutes } from "./board/routes";
 import { deleteExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
+import { rateLimit } from "./rate-limit";
 import { servePage } from "./site/pages";
 import type { AppEnv } from "./types";
 
@@ -29,7 +30,33 @@ app.use(
     onError: (c) => c.json({ error: "PayloadTooLarge" }, 413),
   }),
 );
+// 認証の入口 (ログインの開始・コールバック・セッションの確認) は未ログインでも来るので IP アドレスで数える。
+// Better Auth のインスタンスを作るより前に止める。cf-connecting-ip が無い (ローカル) ときは数えない
+app.use(
+  "/api/auth/*",
+  rateLimit(
+    (env) => env.AUTH_RATE_LIMITER,
+    (c) => c.req.header("cf-connecting-ip"),
+  ),
+);
 app.use("/api/*", authMiddleware);
+// 書き込みはユーザーごとに数える (セッションを引いた後に置く)。読み込み (GET) は D1 の書き込みも無いので数えない
+app.on(
+  "PUT",
+  "/api/board",
+  rateLimit(
+    (env) => env.BOARD_RATE_LIMITER,
+    (c) => c.get("user")?.id,
+  ),
+);
+app.on(
+  "PUT",
+  "/api/settings",
+  rateLimit(
+    (env) => env.SETTINGS_RATE_LIMITER,
+    (c) => c.get("user")?.id,
+  ),
+);
 
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。
 // ログアウト / アカウント削除の成功時は Clear-Site-Data で cookie も消させる

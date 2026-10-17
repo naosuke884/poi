@@ -24,10 +24,26 @@ const ORIGIN = "http://localhost";
 const prerenderedMarker = (assetPath: string) => `<h1>${assetPath}</h1>`;
 const USER_ID = "u1";
 
+/** Workers Rate Limiting の binding の代わり。key ごとに数え、limit 回を超えたら断る */
+function fakeRateLimiter(limit = Number.POSITIVE_INFINITY) {
+  const counts = new Map<string, number>();
+  return {
+    limit: async ({ key }: { key: string }) => {
+      const count = (counts.get(key) ?? 0) + 1;
+      counts.set(key, count);
+      return { success: count <= limit };
+    },
+  } as RateLimit;
+}
+
 /** テスト用の環境。シークレットは .dev.vars に頼らず (CI には無い) テスト用の値を渡す */
 function testEnv(db: D1Database) {
   return {
     DB: db,
+    // レート制限を確かめるテスト以外では断らない
+    BOARD_RATE_LIMITER: fakeRateLimiter(),
+    SETTINGS_RATE_LIMITER: fakeRateLimiter(),
+    AUTH_RATE_LIMITER: fakeRateLimiter(),
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
     GOOGLE_CLIENT_SECRET: "test-client-secret",
@@ -441,5 +457,72 @@ describe.concurrent("想定外のエラー", () => {
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Internal Server Error" });
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+});
+
+describe.concurrent("レート制限", () => {
+  it("PUT /api/board はユーザーごとの上限を超えたら 429 の JSON で断る", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    env.BOARD_RATE_LIMITER = fakeRateLimiter(1);
+    const cookie = await signIn();
+    const put = () =>
+      request("/api/board", {
+        method: "PUT",
+        body: JSON.stringify({ userId: USER_ID, revision: null, sections: [] }),
+        headers: { Cookie: cookie },
+      });
+    expect((await put()).status).toBe(200);
+    const res = await put();
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "TooManyRequests" });
+  });
+
+  it("GET /api/board は数えない", async ({ env, request, signIn }) => {
+    env.BOARD_RATE_LIMITER = fakeRateLimiter(0);
+    const res = await request("/api/board", { headers: { Cookie: await signIn() } });
+    expect(res.status).toBe(200);
+  });
+
+  it("未ログインの PUT /api/board は数えずに 401 で断る", async ({ env, request }) => {
+    env.BOARD_RATE_LIMITER = fakeRateLimiter(0);
+    const res = await request("/api/board", {
+      method: "PUT",
+      body: JSON.stringify({ userId: USER_ID, revision: null, sections: [] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("PUT /api/settings はユーザーごとの上限を超えたら 429 で断る", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    env.SETTINGS_RATE_LIMITER = fakeRateLimiter(1);
+    const cookie = await signIn();
+    const put = () =>
+      request("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify({ memoTtlDays: 7 }),
+        headers: { Cookie: cookie },
+      });
+    expect((await put()).status).toBe(200);
+    expect((await put()).status).toBe(429);
+  });
+
+  it("/api/auth/* は IP アドレスごとの上限を超えたら 429 で断り、別の IP アドレスは通す", async ({
+    env,
+    request,
+  }) => {
+    env.AUTH_RATE_LIMITER = fakeRateLimiter(1);
+    const getSession = (ip: string) =>
+      request("/api/auth/get-session", { headers: { "cf-connecting-ip": ip } });
+    expect((await getSession("192.0.2.1")).status).toBe(200);
+    const res = await getSession("192.0.2.1");
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "TooManyRequests" });
+    expect((await getSession("192.0.2.2")).status).toBe(200);
   });
 });
