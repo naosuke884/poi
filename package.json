@@ -80,6 +80,9 @@
     "wrangler": "^4.149.0"
   },
   "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    },
     "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0"
   },
   "engines": {
@@ -88,7 +91,6 @@
   "allowScripts": {
     "esbuild@0.28.1": true,
     "workerd@1.20260826.1": true,
-    "esbuild@0.18.20": true,
     "esbuild@0.25.12": true
   }
 }
