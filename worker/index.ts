@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 
 import { withClearSiteData } from "./auth/clear-site-data";
@@ -48,6 +49,17 @@ app.notFound((c) => {
     return c.json({ error: "Not Found" }, 404);
   }
   return servePage(c.req.raw, c.env.ASSETS);
+});
+
+// 想定外の例外。既定 (Hono) の text/plain の 500 だと、/api/* だけ { error } の形が崩れ、ログにも何も残らない。
+// HTTPException (ミドルウェアが意図して投げるもの) はそのレスポンスを返す
+app.onError((error, c) => {
+  if (error instanceof HTTPException) return error.getResponse();
+  console.error(`[error] ${c.req.method} ${c.req.path}`, error);
+  if (c.req.path.startsWith("/api/")) {
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+  return c.text("Internal Server Error", 500);
 });
 
 export type ApiType = typeof api;

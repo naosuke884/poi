@@ -427,3 +427,19 @@ describe.concurrent("API の本文の大きさの上限", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe.concurrent("想定外のエラー", () => {
+  it("API で例外が起きたら、他のエラーと同じ形の 500 の JSON を返し、セキュリティヘッダーも付ける", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    const cookie = await signIn();
+    // 設定の表が無い D1 (読み込みが SQL エラーになる)
+    await env.DB.prepare("drop table user_setting").run();
+    const res = await request("/api/settings", { headers: { Cookie: cookie } });
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "Internal Server Error" });
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+});
