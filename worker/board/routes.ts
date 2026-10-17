@@ -6,7 +6,6 @@ import {
   DAY_MS,
   MEMO_TTL_CHOICES,
   MEMO_TTL_DAYS,
-  memoExpiresAt,
   SECTION_SEPARATOR,
 } from "@shared/constants";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
@@ -201,7 +200,12 @@ export const boardRoutes = new Hono<AppEnv>()
               position: sql<number>`${jsonRow}->>'position'`.as("position"),
               createdAt: sql<number>`${now.getTime()}`.as("created_at"),
               updatedAt: sql<number>`${now.getTime()}`.as("updated_at"),
-              expiresAt: sql<number>`${memoExpiresAt(now, ttlDays).getTime()}`.as("expires_at"),
+              // 保持日数は上で読んだ値ではなく、この batch (トランザクション) の中で読み直す。間に PUT /api/settings が
+              // 割り込むと、その引き直しの後に古い日数の期限で作ってしまうため
+              expiresAt:
+                sql<number>`${now.getTime()} + coalesce((${selectSetting(db, userId)}), ${MEMO_TTL_DAYS}) * ${DAY_MS}`.as(
+                  "expires_at",
+                ),
             })
             .from(sql`json_each(${JSON.stringify(plan.inserts)}) as ${jsonRows}`)
             .where(committed),
