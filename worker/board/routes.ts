@@ -92,6 +92,26 @@ function selectRevision(db: Db, userId: string) {
 type BoardRows = Awaited<ReturnType<typeof selectBoard>>;
 type RevisionRows = Awaited<ReturnType<typeof selectRevision>>;
 
+/**
+ * writes を書いてから、同じ batch (D1 では 1 トランザクション) で板と版を読み直す。
+ * drizzle の batch の結果は渡した順の tuple だが、書き込みの数が保存ごとに違うので末尾の 2 つの型は推論されない
+ * (キャストはここだけにする)
+ */
+async function writeThenSelectBoard(
+  db: Db,
+  userId: string,
+  now: Date,
+  writes: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
+): Promise<{ rows: BoardRows; revision: RevisionRows }> {
+  const results = await db.batch([
+    ...writes,
+    selectBoard(db, userId, now),
+    selectRevision(db, userId),
+  ]);
+  const [rows, revision] = results.slice(-2) as [BoardRows, RevisionRows];
+  return { rows, revision };
+}
+
 // PUT で行の配列を json_each(?) に展開したときの別名と、その 1 行 (JSON オブジェクト)
 const jsonRows = sql.identifier("j");
 const jsonRow = sql`${jsonRows}.value`;
@@ -162,7 +182,7 @@ export const boardRoutes = new Hono<AppEnv>()
     // バインドしたりすると D1 の上限 (1 文あたりのバインド数 100、1 回の呼び出しあたりのクエリ数
     // 50 (Free) / 1,000 (Paid)) に当たる。行は JSON 配列 1 つにまとめてバインドし、json_each で
     // 展開して、更新 / 作成 / 削除をそれぞれ 1 文で済ませる (文の数もバインド数もセクション数によらない)
-    const ops: BatchItem<"sqlite">[] = [
+    const ops: [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] = [
       baseRevision === undefined
         ? // 版の導入前のクライアント (上記): 確かめずに進める (新しいクライアントには版が変わったことが伝わる)
           db
@@ -227,10 +247,7 @@ export const boardRoutes = new Hono<AppEnv>()
     }
     // D1 の batch は 1 トランザクションとして実行される (途中で失敗すれば全部ロールバック)。
     // 保存後の行の取り直しも同じ batch に入れ、間に別の PUT が割り込んだ内容を返さないようにする
-    ops.push(selectBoard(db, userId, now), selectRevision(db, userId));
-    const results = await db.batch(ops as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]]);
-    const rows = results[results.length - 2] as BoardRows;
-    const after = results[results.length - 1] as RevisionRows;
+    const { rows, revision: after } = await writeThenSelectBoard(db, userId, now, ops);
     if (after[0]?.revision !== revision) {
       // 割り込んだ別の保存が先に版を進めた (この保存は何も書いていない)
       return c.json({ error: "Stale" }, 409);
@@ -239,13 +256,17 @@ export const boardRoutes = new Hono<AppEnv>()
     // 送られた順に、各セクションの保存後の行を返す (クライアントは添字で対応付ける)。
     // 期限切れとして作らなかったセクションは null
     const byId = new Map(rows.map((row) => [row.id, row]));
-    const saved = plan.ids.map((id) => (id === null ? null : byId.get(id)));
-    if (saved.some((row) => row === undefined)) {
-      // 突き合わせた既存の行が、読んでから書くまでの間に消された (期限切れの物理削除。別の保存なら
-      // 上の版の確認で断っている)。保存自体は済んで版も進んだので、取り直してもらう
-      return c.json({ error: "Stale" }, 409);
+    const saved: (BoardRows[number] | null)[] = [];
+    for (const id of plan.ids) {
+      const row = id === null ? null : byId.get(id);
+      if (row === undefined) {
+        // 突き合わせた既存の行が、読んでから書くまでの間に消された (期限切れの物理削除。別の保存なら
+        // 上の版の確認で断っている)。保存自体は済んで版も進んだので、取り直してもらう
+        return c.json({ error: "Stale" }, 409);
+      }
+      saved.push(row);
     }
-    return c.json({ sections: saved as Exclude<(typeof saved)[number], undefined>[], revision });
+    return c.json({ sections: saved, revision });
   });
 
 // ユーザー設定 (今はセクションの保持日数のみ)。
