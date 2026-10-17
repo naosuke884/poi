@@ -1,8 +1,30 @@
-/* メニューの項目は、フォーカスがあるだけで (:focus) Mantine が背景を付ける。
-   開いた直後は最初の項目にフォーカスを置く (UserMenu.tsx の withInitialFocusPlaceholder={false}) ので、
-   クリックやタップで開いても「アカウントを追加」が選ばれたように見える (HAY-15)。
-   そのフォーカスが :focus-visible でない (= ポインターで開いた) ときだけ背景を付けない。
-   キーボードで開いたときは今どこにいるかが分かるよう、背景を残す */
-.item:focus:not(:focus-visible, :hover, [data-menu-active]) {
+/* メニューボタンの中身 (アイコンや名前) にポインターを当てさせない。
+   pointer-events は継承されないので、子孫もまとめて消す。
+   Safari は、子要素のあるボタンをタップしたあと別の要素へ focus() すると
+   :focus-visible を付けてしまう (WebKit 241408)。タップがボタン自身に当たれば、この誤判定は起きない。
+   メニューは開いたとき最初の項目へフォーカスを移すので、誤判定のままだと
+   「アカウントを追加」が選ばれたように見える (HAY-15) */
+.triggerContent,
+.triggerContent * {
+  pointer-events: none;
+}
+
+/* 上の回避が効かないとき (ホーム画面から開いた直後の iPhone など) でも、
+   ポインターで開いたあいだは項目の背景と輪郭を出さない。
+   :focus-visible では判定しない。Safari がタップなのに :focus-visible を付けるため。
+   .flat はポインターで開いたあいだだけ付き、キーで項目を動かし始めたら外れる */
+.flat .item:focus:not(:hover, [data-menu-active]) {
   background-color: transparent;
+  /* mantine-focus-auto の輪郭 (:focus-visible の outline)。上と同じ誤判定で出る */
+  outline: none;
+}
+
+/* タッチではタップのあと :hover が残ることがある。マウスが無いときだけ、
+   ポインターで開いた直後の hover 背景も強調と見なして消す。
+   実マウスが項目に乗った hover は (hover: hover) のまま残す */
+@media (hover: none) {
+  .flat .item:is(:hover, :focus):not([data-menu-active]) {
+    background-color: transparent;
+    outline: none;
+  }
 }

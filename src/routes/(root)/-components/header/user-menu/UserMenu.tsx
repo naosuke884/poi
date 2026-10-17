@@ -1,6 +1,6 @@
 import { Avatar, Button, Group, Menu, Skeleton, Text, UnstyledButton } from "@mantine/core";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { CONTACT_URL } from "@/components/ContactLink";
@@ -36,6 +36,36 @@ export function UserMenu() {
   } = useAccountActions();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [settingTtl, setSettingTtl] = useState(false);
+  // ポインターで開いたあいだ true。最初の項目 (アカウントを追加) の強調を消す (UserMenu.module.css)。
+  // Safari は子要素のあるボタンをタップすると、その後の focus() を :focus-visible とみなす
+  // (WebKit 241408)。iPhone ではホーム画面から開いた直後のタップがこれに当たり、
+  // 一度テキストを編集すると以降は当たらなくなる。:focus-visible では判定できない (HAY-15)
+  const openedByPointer = useRef(false);
+  const [pointerOpened, setPointerOpened] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // 開いた直後の focus() は setTimeout なので、この listener より後に起きる。keydown なら
+  // その最初のフォーカスには反応せず、矢印などで動かし始めたときだけ強調を戻せる。
+  // 項目の Arrow は伝播を止め、Popover は onKeyDownCapture を Escape 処理に差し替えるので、
+  // ドロップダウンの keydown では受け取れない
+  useEffect(() => {
+    if (!menuOpen || !pointerOpened) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest("[role=menu]")) return;
+      if (
+        event.key === "Escape" ||
+        event.key === "Tab" ||
+        event.key === "Shift" ||
+        event.key === "Control" ||
+        event.key === "Alt" ||
+        event.key === "Meta"
+      ) {
+        return;
+      }
+      setPointerOpened(false);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [menuOpen, pointerOpened]);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
@@ -65,8 +95,12 @@ export function UserMenu() {
   // 今表示しているアカウント以外 (一覧には自分も含まれる)
   const otherSessions = deviceSessions.filter((d) => d.user.id !== user.id);
   const busy = runningAction !== null;
-  // 他アカウントの一覧はメニューを開くたびに取り直す (オフラインでは取れないので前のまま)
+  // 他アカウントの一覧はメニューを開くたびに取り直す (オフラインでは取れないので前のまま)。
+  // 強調を消すかは、開く click の前に決めた手段 (ポインターかキーか) をここで見る
   const onOpen = () => {
+    setMenuOpen(true);
+    setPointerOpened(openedByPointer.current);
+    openedByPointer.current = false;
     if (!offline) void loadDeviceSessions();
   };
   return (
@@ -74,11 +108,13 @@ export function UserMenu() {
       {/* withinPortal={false}: メニューをヘッダー (banner ランドマーク) の中に描画する。body 直下の portal だと
           どのランドマークにも属さず、ランドマークで移動する人が辿れない。
           withInitialFocusPlaceholder={false}: 開いたときのフォーカス置き場 (role="presentation" の空の div) を置かず、
-          最初の項目にフォーカスする。menu の子に menuitem 以外があると支援技術が構造を取り違える */}
+          最初の項目にフォーカスする。menu の子に menuitem 以外があると支援技術が構造を取り違える。
+          そのフォーカスの見た目は、ポインターで開いたときだけ .flat で消す (キーボードでは矢印ですぐ動ける) */}
       <Menu
         shadow="md"
         width={200}
         onOpen={onOpen}
+        onClose={() => setMenuOpen(false)}
         withinPortal={false}
         withInitialFocusPlaceholder={false}
         classNames={{ item: classes.item }}
@@ -86,8 +122,18 @@ export function UserMenu() {
         <Menu.Target>
           {/* button にしてキーボード (Tab → Enter / Space) でも開けるようにする。
               名前の読み上げは aria-label で (狭い画面では名前の文字を隠すため。下記) */}
-          <UnstyledButton aria-label={user.name}>
-            <Group gap="xs" wrap="nowrap">
+          <UnstyledButton
+            aria-label={user.name}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              openedByPointer.current = true;
+            }}
+            onKeyDown={(event) => {
+              // Enter / Space は続けて click が来る。ポインターのあとでも、キーで開いた扱いにする
+              if (event.key === "Enter" || event.key === " ") openedByPointer.current = false;
+            }}
+          >
+            <Group gap="xs" wrap="nowrap" className={classes.triggerContent}>
               {/* 名前はボタンの aria-label で読み上げるので画像の代替テキストは空 (二重に読み上げない)。
                   狭い画面 (xs 未満) では名前を出す幅が無い (ヘッダーが折り返して 56px からはみ出す) ので
                   アイコンだけにする (誰でログインしているかはメニューのメール (オフライン中は名前) で分かる) */}
@@ -98,7 +144,7 @@ export function UserMenu() {
             </Group>
           </UnstyledButton>
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown className={pointerOpened ? classes.flat : undefined}>
           {/* キャッシュから表示している間はメールアドレスが無い (端末に保存しない。session-cache.ts) ので名前を出す */}
           <Menu.Label>{data?.user.email ?? user.name}</Menu.Label>
           {/* この端末でログイン中の他アカウント (multiSession)。押すとそのまま切り替わる */}

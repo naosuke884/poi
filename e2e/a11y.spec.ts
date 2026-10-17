@@ -52,6 +52,24 @@ async function settleLandingMotion(page: Page) {
   })()`);
 }
 
+// Safari は子要素のあるボタンをタップすると、開いたメニューの最初の項目に :focus-visible を付ける
+// (WebKit 241408)。Chromium では再現しないので、疑似クラスを強制して同じ状態を作る (HAY-15)
+async function forceFocusVisible(page: Page) {
+  const session = await page.context().newCDPSession(page);
+  await session.send("DOM.enable");
+  await session.send("CSS.enable");
+  const { root } = await session.send("DOM.getDocument");
+  const { nodeId } = await session.send("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector: '[role="menu"] [role="menuitem"]',
+  });
+  await session.send("CSS.forcePseudoState", {
+    nodeId,
+    forcedPseudoClasses: ["focus", "focus-visible"],
+  });
+  return session;
+}
+
 test.describe("未ログイン", () => {
   for (const { name, path } of [
     { name: "ランディング", path: "/" },
@@ -147,6 +165,14 @@ test.describe("ログイン済み (板)", () => {
     await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
     await expect(firstItem).toBeFocused();
     await expect(firstItem).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    const session = await forceFocusVisible(page);
+    await expect(firstItem).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(firstItem).toHaveCSS("outline-style", "none");
+    await session.detach();
+
+    await page.keyboard.press("ArrowDown");
+    const moved = page.locator("[role=menuitem]:focus");
+    await expect(moved).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
     await page.keyboard.press("Escape");
     await expect(page.getByRole("menu")).toBeHidden();
@@ -155,5 +181,6 @@ test.describe("ログイン済み (板)", () => {
     await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
     await expect(firstItem).toBeFocused();
     await expect(firstItem).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(firstItem).not.toHaveCSS("outline-style", "none");
   });
 });
