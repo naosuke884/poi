@@ -30,13 +30,18 @@ app.use(
     onError: (c) => c.json({ error: "PayloadTooLarge" }, 413),
   }),
 );
-// 認証の入口 (ログインの開始・コールバック・セッションの確認) は未ログインでも来るので IP アドレスで数える。
-// Better Auth のインスタンスを作るより前に止める。cf-connecting-ip が無い (ローカル) ときは数えない
+// 認証の入口 (ログインの開始・OAuth のコールバック・ログアウトなど、D1 に書くもの) は未ログインでも来るので
+// IP アドレスで数える。Better Auth のインスタンスを作るより前に止める。cf-connecting-ip が無い (テスト) ときは数えない。
+// セッションの確認などの読み込み (GET) は数えない: ページを開くたび・タブに戻るたびに get-session が飛ぶので、
+// 数えると普通に使っているだけで上限に当たり、ログアウトしたように見える (CI の a11y で 1 分に 30 回を超えた)
 app.use(
   "/api/auth/*",
   rateLimit(
     (env) => env.AUTH_RATE_LIMITER,
-    (c) => c.req.header("cf-connecting-ip"),
+    (c) =>
+      c.req.method === "GET" && !c.req.path.startsWith("/api/auth/callback/")
+        ? null
+        : c.req.header("cf-connecting-ip"),
   ),
 );
 app.use("/api/*", authMiddleware);

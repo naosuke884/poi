@@ -512,17 +512,41 @@ describe.concurrent("レート制限", () => {
     expect((await put()).status).toBe(429);
   });
 
-  it("/api/auth/* は IP アドレスごとの上限を超えたら 429 で断り、別の IP アドレスは通す", async ({
+  it("/api/auth/* への書き込みは IP アドレスごとの上限を超えたら 429 で断り、別の IP アドレスは通す", async ({
     env,
     request,
   }) => {
     env.AUTH_RATE_LIMITER = fakeRateLimiter(1);
-    const getSession = (ip: string) =>
-      request("/api/auth/get-session", { headers: { "cf-connecting-ip": ip } });
-    expect((await getSession("192.0.2.1")).status).toBe(200);
-    const res = await getSession("192.0.2.1");
+    const signOut = (ip: string) =>
+      request("/api/auth/sign-out", {
+        method: "POST",
+        body: "{}",
+        headers: { "cf-connecting-ip": ip },
+      });
+    expect((await signOut("192.0.2.1")).status).not.toBe(429);
+    const res = await signOut("192.0.2.1");
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ error: "TooManyRequests" });
-    expect((await getSession("192.0.2.2")).status).toBe(200);
+    expect((await signOut("192.0.2.2")).status).not.toBe(429);
+  });
+
+  it("OAuth のコールバックは GET でも数える", async ({ env, request }) => {
+    env.AUTH_RATE_LIMITER = fakeRateLimiter(0);
+    const res = await request("/api/auth/callback/google?state=x&code=y", {
+      headers: { "cf-connecting-ip": "192.0.2.1" },
+    });
+    expect(res.status).toBe(429);
+  });
+
+  it("セッションの確認 (get-session) は数えない (ページを開くたびに呼ばれるため)", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    env.AUTH_RATE_LIMITER = fakeRateLimiter(0);
+    const res = await request("/api/auth/get-session", {
+      headers: { "cf-connecting-ip": "192.0.2.1", Cookie: await signIn() },
+    });
+    expect(res.status).toBe(200);
   });
 });
