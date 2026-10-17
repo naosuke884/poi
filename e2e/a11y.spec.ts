@@ -132,4 +132,28 @@ test.describe("ログイン済み (板)", () => {
     );
     await expectNoViolations(page, testInfo, "アカウント削除の確認");
   });
+
+  // 開いた直後のフォーカスは最初の項目に置く (withInitialFocusPlaceholder={false}。UserMenu.tsx) が、
+  // その印はキーボードで開いたときだけ出す (HAY-15)
+  test("ユーザーメニューはクリックで開くと項目を強調せず、キーボードで開くと最初の項目を強調する", async ({
+    page,
+  }) => {
+    await resetBoard(page, []);
+    await page.goto("/board");
+    const target = page.getByRole("button", { name: "A11y Check" });
+    const firstItem = page.getByRole("menuitem", { name: "アカウントを追加" });
+
+    await target.click();
+    await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
+    await expect(firstItem).toBeFocused();
+    await expect(firstItem).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toBeHidden();
+    await target.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
+    await expect(firstItem).toBeFocused();
+    await expect(firstItem).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  });
 });

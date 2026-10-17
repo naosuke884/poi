@@ -14,6 +14,8 @@ import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
 import { RunningStatus } from "./RunningStatus";
 import { TtlSettingModal } from "./TtlSettingModal";
 
+import classes from "./UserMenu.module.css";
+
 export function UserMenu() {
   const { data, isPending, error, refetch } = authClient.useSession();
   const router = useRouter();
@@ -79,6 +81,7 @@ export function UserMenu() {
         onOpen={onOpen}
         withinPortal={false}
         withInitialFocusPlaceholder={false}
+        classNames={{ item: classes.item }}
       >
         <Menu.Target>
           {/* button にしてキーボード (Tab → Enter / Space) でも開けるようにする。

@@ -1,0 +1,8 @@
+/* メニューの項目は、フォーカスがあるだけで (:focus) Mantine が背景を付ける。
+   開いた直後は最初の項目にフォーカスを置く (UserMenu.tsx の withInitialFocusPlaceholder={false}) ので、
+   クリックやタップで開いても「アカウントを追加」が選ばれたように見える (HAY-15)。
+   そのフォーカスが :focus-visible でない (= ポインターで開いた) ときだけ背景を付けない。
+   キーボードで開いたときは今どこにいるかが分かるよう、背景を残す */
+.item:focus:not(:focus-visible, :hover, [data-menu-active]) {
+  background-color: transparent;
+}
