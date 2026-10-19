@@ -158,12 +158,15 @@
 }
 
 /* 「あと N 日」。数は CSS のカウンターで描く (アニメーション中の値をそのまま出せる)。
-   幅を揃えて、桁が減ってもバーの始まりが動かないようにする */
+   幅を揃えて、桁が減ってもバーの始まりが動かないようにする。
+   var() をそのまま渡さず calc() で包む: Safari (iOS を含む) は <integer> で登録したプロパティでも
+   アニメーション中は 25.77 のような小数にするので、そのままだと counter-reset が無効になり「あと 0 日」と出る (HAY-51)。
+   整数を求める場所の calc() は四捨五入される */
 .lifeDemoLabel {
   white-space: nowrap;
   min-width: 5.5em;
   font-variant-numeric: tabular-nums;
-  counter-reset: life-demo var(--life-demo-left);
+  counter-reset: life-demo calc(var(--life-demo-left));
 }
 
 .lifeDemoLabel::before {
@@ -185,6 +188,14 @@
   width: calc(var(--life-demo-left) / var(--life-demo-days) * 100%);
   border-block-start: 2px solid currentColor;
   border-radius: 1px;
+}
+
+/* バーの長さも日数と同じく整数に丸め、Safari でも「あと N 日」と同じ一日刻みで縮むようにする (HAY-51)。
+   round() は無条件には使わない: 未対応のブラウザでは宣言ごと無効になり、バーが消える */
+@supports (width: round(1%, 1%)) {
+  .lifeDemoRemaining {
+    width: calc(round(var(--life-demo-left)) / var(--life-demo-days) * 100%);
+  }
 }
 
 /* スクロールを時間に見立てて、日数とバーを減らす。残り 1 日で板と同じくオレンジにする */
