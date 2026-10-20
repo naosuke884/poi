@@ -10,7 +10,7 @@ import {
   TOP_DESCRIPTION,
   TOP_TITLE,
 } from "@shared/site";
-import { describe, expect } from "vite-plus/test";
+import { describe, expect, vi } from "vite-plus/test";
 
 import { test } from "./d1-test";
 import worker from "./index";
@@ -549,4 +549,125 @@ describe.concurrent("レート制限", () => {
     });
     expect(res.status).toBe(200);
   });
+});
+
+const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+const GOOGLE_USER = { sub: "google-sub-1", email: "google@example.com", name: "Google User" };
+
+/** 署名の無い JWT。Better Auth はコールバックで Google の id_token を検証せずに中身を読むだけなので、これで足りる */
+function unsignedJwt(claims: Record<string, unknown>) {
+  const encode = (part: object) => Buffer.from(JSON.stringify(part)).toString("base64url");
+  return `${encode({ alg: "none", typ: "JWT" })}.${encode(claims)}.`;
+}
+
+/** Set-Cookie を、ブラウザが次のリクエストで送る Cookie ヘッダーの値にする */
+function cookieHeader(res: Response) {
+  return res.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
+}
+
+const oauthIt = it
+  /**
+   * Google のトークンエンドポイントの代わり (プロセスの外にあるので、ここだけ偽物にする)。
+   * 受けた認可コードを記録し、GOOGLE_USER の id_token を返す。ほかの URL は本物の fetch に渡す
+   */
+  // oxlint-disable-next-line no-empty-pattern -- Vitest はフィクスチャの依存を第 1 引数の分割代入から読むので、依存が無くても {} が要る
+  .extend("google", async ({}, { onCleanup }) => {
+    const realFetch = globalThis.fetch;
+    const exchangedCodes: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = new Request(input, init);
+      if (req.url !== GOOGLE_TOKEN_ENDPOINT) return realFetch(input, init);
+      exchangedCodes.push(new URLSearchParams(await req.text()).get("code") ?? "");
+      return Response.json({
+        access_token: "google-access-token",
+        token_type: "Bearer",
+        expires_in: 3600,
+        id_token: unsignedJwt({ ...GOOGLE_USER, email_verified: true, aud: "test-client-id" }),
+      });
+    });
+    onCleanup(() => {
+      vi.unstubAllGlobals();
+    });
+    return { exchangedCodes };
+  })
+  /** ランディングのログインボタンと同じく Google ログインを始め、Google に渡す state と、そのブラウザの cookie を返す */
+  .extend("startGoogleSignIn", ({ request }) => async () => {
+    const res = await request("/api/auth/sign-in/social", {
+      method: "POST",
+      body: JSON.stringify({ provider: "google", callbackURL: "/board" }),
+    });
+    const { url } = await res.json<{ url: string }>();
+    return { state: new URL(url).searchParams.get("state") ?? "", cookie: cookieHeader(res) };
+  });
+
+async function sessionCount(db: D1Database) {
+  const row = await db.prepare("select count(*) as n from session").first<{ n: number }>();
+  return row?.n;
+}
+
+const errorCode = (res: Response) =>
+  new URL(res.headers.get("Location") ?? "", ORIGIN).searchParams.get("error");
+
+// fetch を差し替えるのはプロセス全体なので、このまとまりのテストは並行させない
+describe("OAuth のコールバックで state cookie を照合する (HAY-42)", () => {
+  oauthIt(
+    "ログインを始めたブラウザの cookie が付いたコールバックはログインでき、板へ戻る",
+    async ({ env, request, google, startGoogleSignIn }) => {
+      const { state, cookie } = await startGoogleSignIn();
+      const res = await request(`/api/auth/callback/google?state=${state}&code=good-code`, {
+        headers: { Cookie: cookie },
+      });
+      expect(res.status).toBe(302);
+      expect(new URL(res.headers.get("Location") ?? "", ORIGIN).pathname).toBe("/board");
+      expect(google.exchangedCodes).toEqual(["good-code"]);
+      const session = await request("/api/auth/get-session", {
+        headers: { Cookie: cookieHeader(res) },
+      });
+      expect((await session.json<{ user: { email: string } }>()).user.email).toBe(
+        GOOGLE_USER.email,
+      );
+      expect(await sessionCount(env.DB)).toBe(1);
+    },
+  );
+
+  oauthIt(
+    "state cookie の無いブラウザからのコールバックは state_mismatch で断り、Google にコードを渡さない (login CSRF)",
+    async ({ env, request, google, startGoogleSignIn }) => {
+      // 攻撃者が自分のブラウザでログインを始め、得た state のコールバック URL を被害者に踏ませる
+      const { state } = await startGoogleSignIn();
+      const res = await request(`/api/auth/callback/google?state=${state}&code=attacker-code`);
+      expect(res.status).toBe(302);
+      expect(errorCode(res)).toBe("state_mismatch");
+      expect(google.exchangedCodes).toEqual([]);
+      expect(await sessionCount(env.DB)).toBe(0);
+    },
+  );
+
+  oauthIt(
+    "別のログインで付いた state cookie では state_mismatch で断る",
+    async ({ env, request, google, startGoogleSignIn }) => {
+      const attacker = await startGoogleSignIn();
+      const victim = await startGoogleSignIn();
+      const res = await request(
+        `/api/auth/callback/google?state=${attacker.state}&code=attacker-code`,
+        { headers: { Cookie: victim.cookie } },
+      );
+      expect(errorCode(res)).toBe("state_mismatch");
+      expect(google.exchangedCodes).toEqual([]);
+      expect(await sessionCount(env.DB)).toBe(0);
+    },
+  );
+
+  oauthIt(
+    "ログインを始めていない state のコールバックは state_mismatch で断る",
+    async ({ env, request, google }) => {
+      const res = await request("/api/auth/callback/google?state=x&code=y");
+      expect(errorCode(res)).toBe("state_mismatch");
+      expect(google.exchangedCodes).toEqual([]);
+      expect(await sessionCount(env.DB)).toBe(0);
+    },
+  );
 });
