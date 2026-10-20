@@ -1,14 +1,21 @@
 {
+  "enabledPlugins": {
+    "linear@naosuke884-plugins": true,
+    "web-design-guidelines@naosuke884-plugins": true,
+    "impeccable@impeccable": true
+  },
   "extraKnownMarketplaces": {
     "naosuke884-plugins": {
       "source": {
         "source": "github",
         "repo": "naosuke884/plugins"
       }
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
     }
-  },
-  "enabledPlugins": {
-    "linear@naosuke884-plugins": true,
-    "web-design-guidelines@naosuke884-plugins": true
   }
 }
