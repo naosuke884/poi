@@ -18,7 +18,8 @@ import type { BoardSection } from "../../-lib/data/board";
 // 自動保存の PUT / 取り直しの GET を横取りする (保存できた sections の id と内容を記録し、id を振って返す)。
 // 送った userId がセッションのユーザー (sessionUserId) と違えば、送った版がサーバの版 (server.revision) と
 // 違えば、サーバと同じく 409 を返す。別の端末での保存は server を書き換えて表す。
-// expiredOnServer の id は、サーバで期限切れとして作らなかった (null を返す) ことにする
+// expiredOnServer の id は、サーバで期限切れとして作らなかった (null を返す) ことにする。
+// putReply を変えると、通信できなかった (offline) / サーバが断った (500 / 429) 場合を作れる
 type ServerSection = {
   id: string;
   content: string;
@@ -33,6 +34,9 @@ let server: { revision: string | null; sections: ServerSection[] } = {
   sections: [],
 };
 const expiredOnServer = new Set<string>();
+let putReply: "ok" | "offline" | 500 | 429 = "ok";
+// navigator.onLine (false なら端末がオフラインだと分かっている)
+let onLine = true;
 vi.mock("@/lib/api", () => ({
   api: {
     board: {
@@ -45,6 +49,13 @@ vi.mock("@/lib/api", () => ({
           sections: { id: string | null; content: string }[];
         };
       }) => {
+        if (putReply === "offline") throw new TypeError("Failed to fetch");
+        if (putReply === 500) {
+          return { ok: false, status: 500, json: async () => ({ error: "Internal" }) };
+        }
+        if (putReply === 429) {
+          return { ok: false, status: 429, json: async () => ({ error: "TooManyRequests" }) };
+        }
         if (json.userId !== sessionUserId) {
           return { ok: false, status: 409, json: async () => ({ error: "UserMismatch" }) };
         }
@@ -110,6 +121,7 @@ beforeAll(() => {
   Range.prototype.getBoundingClientRect ??= () => new DOMRect();
   window.scrollBy = () => {};
   window.scrollTo = () => {};
+  Object.defineProperty(navigator, "onLine", { configurable: true, get: () => onLine });
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
@@ -171,6 +183,8 @@ beforeEach(() => {
   puts.length = 0;
   sessionUserId = "u";
   expiredOnServer.clear();
+  putReply = "ok";
+  onLine = true;
   localStorage.clear();
   // ログイン中のユーザー (保存時にオフライン用キャッシュを書くのはこのユーザーのときだけ)
   writeCachedUser({ id: "u", name: "U" });
@@ -549,5 +563,200 @@ describe("Board: 削除した後のフォーカス (issue #112)", () => {
     await clickDelete(3, 1);
     expect(sectionTexts()).toEqual(["- a", "b"]);
     expect(editor().hasFocus).toBe(true);
+  });
+});
+
+describe("Board: 保存できないとき (HAY-54)", () => {
+  const OFFLINE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
+  /** ヘッダーの保存状態のうち、割り込んで読み上げる文言 (オフライン / 失敗のときだけ入る) */
+  const saveAlert = () => container.querySelector('[role="alert"]')?.textContent;
+  // 移動の前に出た確認の文言と、それへの答え
+  const confirmations: string[] = [];
+  let confirmAnswer = false;
+  beforeEach(() => {
+    confirmations.length = 0;
+    confirmAnswer = false;
+    window.confirm = (message?: string) => {
+      confirmations.push(message ?? "");
+      return confirmAnswer;
+    };
+  });
+
+  /** 保存が済むまで待つ (偽のサーバはすぐ答えるので、少し待てば足りる) */
+  const settle = () => act(async () => await new Promise((r) => setTimeout(r, 20)));
+  async function goOnline() {
+    onLine = true;
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await settle();
+  }
+  async function navigateAway() {
+    await act(async () => {
+      await router.navigate({ to: "/guide" });
+    });
+    await settle();
+  }
+  // 今いる場所 (URL)。WithRouter はルーターの文脈だけを渡すので、ブロッカーの確認を挟んで移った先は
+  // router.state にはまだ反映されず、履歴のほうに出る
+  const currentPath = () => router.history.location.pathname;
+  const savedContents = () => server.sections.map((s) => s.content);
+
+  it("端末がオフラインなら送らずに入力を残し、オンラインに戻ったら保存する", async () => {
+    await mount([{ content: "- a" }]);
+    onLine = false;
+    await addSection();
+    await type("- b");
+    await waitForSave();
+    expect(puts).toEqual([]);
+    expect(saveAlert()).toBe(OFFLINE_MESSAGE);
+    expect(sectionTexts()).toEqual(["a", "- b"]);
+
+    await goOnline();
+    expect(savedContents()).toEqual(["- a", "- b"]);
+    expect(readCachedBoard("u")?.sections.map((s) => s.content)).toEqual(["- a", "- b"]);
+    expect(saveAlert()).toBe("");
+    expect(container.textContent).toContain("保存済み");
+  });
+
+  it("通信できずに保存できなかったらオフラインと出し、オンラインに戻ったら保存し直す", async () => {
+    await mount([{ content: "- a" }]);
+    putReply = "offline";
+    await addSection();
+    await type("- b");
+    await waitForSave();
+    expect(puts).toEqual([]);
+    expect(saveAlert()).toBe(OFFLINE_MESSAGE);
+    expect(sectionTexts()).toEqual(["a", "- b"]);
+
+    putReply = "ok";
+    await goOnline();
+    expect(savedContents()).toEqual(["- a", "- b"]);
+    expect(saveAlert()).toBe("");
+  });
+
+  it.for([500, 429] as const)(
+    "サーバが断ったら (%i) 失敗と出して入力を残し、「保存を再試行」で保存し直す",
+    async (status) => {
+      await mount([{ content: "- a" }]);
+      putReply = status;
+      await addSection();
+      await type("- b");
+      await waitForSave();
+      expect(puts).toEqual([]);
+      expect(saveAlert()).toBe(`保存に失敗: 保存に失敗しました (${status})`);
+      expect(sectionTexts()).toEqual(["a", "- b"]);
+      // 失敗のまま放っておいても、勝手に送り直しはしない
+      await waitForSave();
+      expect(puts).toEqual([]);
+
+      putReply = "ok";
+      await act(async () =>
+        container.querySelector<HTMLElement>("[aria-label='保存を再試行']")!.click(),
+      );
+      await settle();
+      expect(savedContents()).toEqual(["- a", "- b"]);
+      expect(saveAlert()).toBe("");
+    },
+  );
+
+  it("保存に失敗したままでも、オンラインに戻ったら保存し直す", async () => {
+    await mount([{ content: "- a" }]);
+    putReply = 500;
+    await addSection();
+    await type("- b");
+    await waitForSave();
+    expect(saveAlert()).toMatch(/^保存に失敗/);
+
+    putReply = "ok";
+    await goOnline();
+    expect(savedContents()).toEqual(["- a", "- b"]);
+  });
+
+  it("別の場所で足された分と合わせると文字数の上限を超えるなら送らず、上限を超えたと出す", async () => {
+    // 手元の a に新しいセクションを足しても上限に収まるが、別の場所で足された x (100 文字) と合わせると超える
+    const a = "x".repeat(BOARD_MAX_LENGTH - 3 - 3 - 100 - 10);
+    await mount([{ content: a }]);
+    server = {
+      revision: "elsewhere",
+      sections: [
+        {
+          id: "id-0",
+          content: a,
+          position: 0,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        },
+        {
+          id: "x",
+          content: "y".repeat(100),
+          position: 1,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        },
+      ],
+    };
+    await addSection();
+    await type("- 123456789");
+    // 1 回目は断られて取り直し、合わせた板で保存し直そうとする
+    await waitForSave();
+    await waitForSave();
+    expect(puts).toEqual([]);
+    expect(saveAlert()).toBe(
+      `保存に失敗: 文字数が上限 (${BOARD_MAX_LENGTH.toLocaleString()}) を超えています`,
+    );
+    expect(sectionTexts()).toHaveLength(3);
+  });
+
+  it("オフラインで保存できていない間は、ページを移る前に確かめ、断れば留まる", async () => {
+    await mount([{ content: "- a" }]);
+    onLine = false;
+    await addSection();
+    await type("- b");
+    await waitForSave();
+
+    confirmAnswer = false;
+    await navigateAway();
+    expect(confirmations).toHaveLength(1);
+    expect(confirmations[0]).toMatch(/変更は失われます/);
+    expect(currentPath()).toBe("/");
+    expect(sectionTexts()).toEqual(["a", "- b"]);
+
+    confirmAnswer = true;
+    await navigateAway();
+    expect(currentPath()).toBe("/guide");
+  });
+
+  it("端末がオフラインになったら、自動保存の前でもページを移る前に確かめる", async () => {
+    await mount([{ content: "- a" }]);
+    await addSection();
+    await type("- b");
+    onLine = false;
+    await navigateAway();
+    expect(confirmations).toHaveLength(1);
+    expect(currentPath()).toBe("/");
+  });
+
+  it("オンラインなら未保存の変更があってもページの移動を確かめない", async () => {
+    await mount([{ content: "- a" }]);
+    await addSection();
+    await type("- b");
+    await navigateAway();
+    expect(confirmations).toEqual([]);
+    expect(currentPath()).toBe("/guide");
+  });
+
+  it("通信できずに保存できなかった後に書き足しても、保存できるまではページを移る前に確かめる", async () => {
+    await mount([{ content: "- a" }]);
+    putReply = "offline";
+    await addSection();
+    await type("- b");
+    await waitForSave();
+    expect(saveAlert()).toBe(OFFLINE_MESSAGE);
+    // 自動保存を待たずに移ろうとする (離れるときの保存も届かない)
+    await type("c");
+    await navigateAway();
+    expect(confirmations).toHaveLength(1);
+    expect(currentPath()).toBe("/");
   });
 });

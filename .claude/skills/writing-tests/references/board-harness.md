@@ -10,6 +10,9 @@
 - `sessionUserId`: a PUT with a different `userId` gets `409 { error: "UserMismatch" }` (account switched in another tab).
 - `expiredOnServer`: ids the server treats as expired and returns as `null` (issue #94).
 - New ids come back as `new-<put#>-<n>`.
+- `putReply`: `"offline"` makes `$put` throw `TypeError("Failed to fetch")` (server unreachable), `500` / `429` return that status (`Internal` / `TooManyRequests`). Reset to `"ok"` in `beforeEach`.
+- `onLine` backs `navigator.onLine` (`false` = the device knows it is offline, so nothing is sent). Dispatch `new Event("online")` inside `act` to trigger the resend.
+- The `保存できないとき (HAY-54)` block stubs `window.confirm` to record the leave-page prompt, and reads where navigation ended from `router.history.location` (with `WithRouter` there is no Transitioner, so `router.state` lags behind once a blocker is registered).
 
 ## Router
 

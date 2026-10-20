@@ -131,6 +131,9 @@ export function useBoardAutosave({
 
   // 保存中 / 取り直し中 (どちらも savedRef と画面を書き換えるので、同時には走らせない)
   const inFlightRef = useRef(false);
+  // 最後の保存が届かずに終わった (navigator.onLine が true のままでも、通信できなかったことがある)。
+  // 保存できるまで残し、離れるときの保存も届かないものとして扱う
+  const unreachableRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancelTimer = () => {
@@ -192,6 +195,7 @@ export function useBoardAutosave({
     }
     // 確実にオフラインなら送らずに待つ (online イベントで再試行する)
     if (isOffline()) {
+      unreachableRef.current = true;
       setStatus("offline");
       return;
     }
@@ -215,6 +219,7 @@ export function useBoardAutosave({
         await pull();
       }
       synced = true;
+      unreachableRef.current = false;
       // 保存中に入力があれば (取り直したときは手元の変更があれば)、まだ保存済みではない
       // (下で続けて保存する。その間もタブを閉じる前に確認を出す)
       setStatus(hasChanges() ? "dirty" : "saved");
@@ -223,6 +228,7 @@ export function useBoardAutosave({
         onUserMismatch(e);
       } else if (e instanceof OfflineError) {
         // 入力内容はそのまま保持し、オンライン復帰時に再送する
+        unreachableRef.current = true;
         setStatus("offline");
       } else {
         setStatus("error");
@@ -373,18 +379,18 @@ export function useBoardAutosave({
   }, [unsaved]);
 
   // オフラインで保存できていない変更がある間は、SPA 内の遷移も確認してから (アンマウント時の
-  // 保存が届かず、入力内容が失われるため)。オンラインなら unmount 時にその場で保存するので確認しない
-  const blockNavigation = status === "offline" || (unsaved && isOffline());
-  const confirmLeave = useCallback(
-    () =>
-      !window.confirm(
-        "オフラインのため未保存の変更を保存できません。このページを離れると変更は失われます。移動しますか?",
-      ),
-    [],
-  );
+  // 保存が届かず、入力内容が失われるため)。オンラインなら unmount 時にその場で保存するので確認しない。
+  // 確認するかは描画時の status ではなく移る時点で決める: オフラインになっても描画は起きず、
+  // 通信できなかった後の入力で status は dirty に戻るので、描画時に決めると自動保存の前の移動を止められない (HAY-54)
+  const confirmLeave = useCallback(() => {
+    if (!hasChanges() || !(isOffline() || unreachableRef.current)) return false;
+    return !window.confirm(
+      "オフラインのため未保存の変更を保存できません。このページを離れると変更は失われます。移動しますか?",
+    );
+  }, []);
   useBlocker({
     shouldBlockFn: confirmLeave,
-    disabled: !blockNavigation,
+    disabled: readOnly,
     // beforeunload は上の useEffect で扱う
     enableBeforeUnload: false,
   });
