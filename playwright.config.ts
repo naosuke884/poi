@@ -13,7 +13,7 @@ const PRODUCTION_SPEC = "production.spec.ts";
 
 // dev container ではブラウザを Playwright の sidecar (PW_TEST_CONNECT_WS_ENDPOINT) で動かす。
 // sidecar のブラウザからこのコンテナの localhost に届くよう exposeNetwork を付ける。
-// sidecar とクライアントの major.minor は揃える必要があるので、@playwright/test と playwright-core は ~1.62 に固定している
+// sidecar とクライアントの major.minor は揃える必要があるので、@playwright/test と playwright-core は ~1.64 に固定している
 // (playwright-core は @axe-core/playwright の peer。明示しないと最新版が別に入り、型が合わなくなる)
 const wsEndpoint = process.env.PW_TEST_CONNECT_WS_ENDPOINT;
 
