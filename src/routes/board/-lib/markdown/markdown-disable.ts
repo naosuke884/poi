@@ -22,7 +22,8 @@ export const remarkDisable: Plugin<[readonly string[]]> = function (names) {
  * (裸の URL の自動リンクは構文ではなくパース後の処理なので、消すなら remark-gfm ごと外す。
  *  autolink を消すと <url> の末尾 > まで裸 URL として拾われるので残している)。
  * 編集中セクションの装飾 (src/routes/board/-lib/editor/section-markdown.ts の parser の remove) と対応させること:
- * 片方だけ変えると、編集中と表示で見た目が食い違う
+ * 片方だけ変えると、編集中と表示で見た目が食い違う。
+ * 使い方ページ (src/routes/(docs)/guide.tsx) の「Markdown で書く」も、使える記法だけを挙げているので合わせて直す
  */
 export const BOARD_MARKDOWN_DISABLED: readonly string[] = [
   // 見出しの別記法・区切り
