@@ -6,6 +6,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { startGoogleLogin } from "@/lib/auth-client";
 import { isStandalone } from "@/lib/install-prompt";
 
+import classes from "./Landing.module.css";
+
 // UA は開いている間に変わらないので購読するものは無い
 const subscribeNothing = () => () => {};
 
@@ -94,6 +96,10 @@ function LoginButton() {
           {error}
         </Text>
       )}
+      {/* 押す前の「お金はかかる？」「押したらどうなる？」に答える (どちらも FAQ と同じ事実) */}
+      <Text size="sm" className={classes.heroLead}>
+        無料で使えます。ログインすると、すぐに書き始められます。
+      </Text>
       <Text c="dimmed" size="xs">
         ログインすると、
         <Anchor component={Link} to="/terms" size="xs" underline="always">

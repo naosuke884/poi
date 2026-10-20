@@ -1,5 +1,5 @@
 /* ランディング専用の見た目 (色は Mantine の変数だけを使い、ダーク配色に追従させる)。
-   動き (動画の起き上がり、特徴の浮かび上がり、寿命のバー) はどれも
+   動き (動画の起き上がり、寿命のバー) はどれも
    prefers-reduced-motion: no-preference のときだけ付ける。「動きを減らす」の人には最後の状態だけを見せる */
 
 /* ---- ヒーロー ---- */
@@ -87,46 +87,31 @@
   }
 }
 
-/* ---- 特徴 ---- */
+/* ---- 特徴 (FeatureList) ---- */
 
-/* 特徴のリスト (FeatureList)。記号なしで縦に並べる。
+/* 特徴の一覧。記号なしで並べ、広い画面では 2 列にする (4 項目を縦に積むと使い道の見本と同じ長さの列が続き、単調になる)。
    auto-phrase: 日本語を文節の切れ目で折り返す (「コピ/ー」のような切れ方をしない。未対応のブラウザは通常の折り返し) */
 .features {
   list-style: none;
-  margin: 0;
+  margin: var(--mantine-spacing-lg) 0 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--mantine-spacing-xl);
   word-break: auto-phrase;
 }
 
-/* 各項目の左に藍の細い線を引き、項目のまとまりを示す (forced colors でも残るよう枠線で) */
+@media (min-width: $mantine-breakpoint-sm) {
+  .features {
+    grid-template-columns: 1fr 1fr;
+    column-gap: var(--mantine-spacing-xl);
+  }
+}
+
+/* 各項目の上に、板のセクションの区切り線と同じ細い線を引いてまとまりを示す
+   (色の付いた太い縦線はやめた: 飾りに見え、板のどこにも無い印だったため。forced colors でも残るよう枠線で) */
 .feature {
-  padding-inline-start: var(--mantine-spacing-md);
-  border-inline-start: 2px solid var(--mantine-primary-color-filled);
-}
-
-/* 画面に入ってくるにつれて、下から浮かび上がる */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .feature {
-      animation: reveal linear both;
-      animation-timeline: view();
-      animation-range: entry 10% cover 30%;
-    }
-  }
-}
-
-@keyframes reveal {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  padding-block-start: var(--mantine-spacing-sm);
+  border-block-start: 1px solid var(--mantine-color-default-border);
 }
 
 /* ---- 使い道 (UseCaseList) ---- */
@@ -136,29 +121,51 @@
   word-break: auto-phrase;
 }
 
-/* ---- 寿命のバーの飾り (FeatureList の LifeLineDemo) ---- */
+/* 使い道を板のセクションに見立てた並び (寿命のバー + 見出し + 本文)。板と同じく記号なしで縦に並べる */
+.mockBoard {
+  list-style: none;
+  margin: var(--mantine-spacing-xl) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xl);
+  word-break: auto-phrase;
+}
 
-/* 残り日数。整数として登録すると、アニメーションで 30, 29, … と一日ずつ減る */
+/* 板の見出し (MarkdownView の h1) と同じ印: 左の藍の縦棒 4px + 余白 8px を本文の左の余白へはみ出させ、
+   見出しの文字を本文と同じ位置から始める。大きさは板の h3 (1.125rem) にして、ページの節の見出しより控えめにする */
+.mockHeading {
+  margin: var(--mantine-spacing-xs) 0 0 -12px;
+  padding-inline-start: 8px;
+  border-inline-start: 4px solid var(--mantine-primary-color-filled);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+/* ---- 寿命のバーの飾り (LifeLineDemo) ---- */
+
+/* 残り日数。整数として登録すると、アニメーションで 6, 5, … と一日ずつ減る */
 @property --life-demo-left {
   syntax: "<integer>";
   inherits: true;
-  /* 値は使われない (.lifeDemo で保存期間の既定値 MEMO_TTL_DAYS に置き換える)。登録に初期値が要るので置いているだけ */
+  /* 値は使われない (.lifeDemo で各セクションの --life-demo-from に置き換える)。登録に初期値が要るので置いているだけ */
   initial-value: 30;
 }
 
-/* 板の LifeLine と同じ並び (「あと N 日」+ バー)。色は文字とバーで共有する (currentColor) */
+/* 板の LifeLine と同じ並び (「あと N 日」+ バー)。色は文字とバーで共有する (currentColor)。
+   --life-demo-from / --life-demo-to / --life-demo-total は LifeLineDemo.tsx から渡す */
 .lifeDemo {
-  --life-demo-left: var(--life-demo-days);
+  --life-demo-left: var(--life-demo-from);
   display: flex;
   align-items: center;
   gap: var(--mantine-spacing-xs);
-  max-width: 320px;
   color: var(--mantine-color-dimmed);
   font-size: var(--mantine-font-size-xs);
 }
 
 /* 「あと N 日」。数は CSS のカウンターで描く (アニメーション中の値をそのまま出せる)。
-   幅を揃えて、桁が減ってもバーの始まりが動かないようにする。
+   幅を揃えて、桁が減ってもバーの始まりが動かないようにする (板の LifeLine と同じ 5.5em)。
    var() をそのまま渡さず calc() で包む: Safari (iOS を含む) は <integer> で登録したプロパティでも
    アニメーション中は 25.77 のような小数にするので、そのままだと counter-reset が無効になり「あと 0 日」と出る (HAY-51)。
    整数を求める場所の calc() は四捨五入される */
@@ -180,12 +187,12 @@
   border-block-start: 1px solid var(--mantine-color-default-border);
 }
 
-/* 残りの期間の濃い線。長さは残り日数の割合 */
+/* 残りの期間の濃い線。長さは保存期間 (--life-demo-total) に対する残り日数の割合 */
 .lifeDemoRemaining {
   position: absolute;
   inset-inline-start: 0;
   top: -1.5px;
-  width: calc(var(--life-demo-left) / var(--life-demo-days) * 100%);
+  width: calc(var(--life-demo-left) / var(--life-demo-total) * 100%);
   border-block-start: 2px solid currentColor;
   border-radius: 1px;
 }
@@ -194,33 +201,51 @@
    round() は無条件には使わない: 未対応のブラウザでは宣言ごと無効になり、バーが消える */
 @supports (width: round(1%, 1%)) {
   .lifeDemoRemaining {
-    width: calc(round(var(--life-demo-left)) / var(--life-demo-days) * 100%);
+    width: calc(round(var(--life-demo-left)) / var(--life-demo-total) * 100%);
   }
 }
 
-/* スクロールを時間に見立てて、日数とバーを減らす。残り 1 日で板と同じくオレンジにする */
+/* 残り 1 日まで減るセクションが最後に付ける色 (板と同じオレンジ)。減らない環境では from のままなので使わない */
+.lifeDemo[data-soon] {
+  --life-demo-soon-color: var(--mantine-color-orange-text);
+}
+
+/* スクロールを時間に見立てて、日数とバーを from から to まで減らす。残り 1 日まで減るものは最後にオレンジにする */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .lifeDemo {
       animation: age linear both;
       animation-timeline: view();
-      /* 末尾までスクロールしたときに、画面の中ほどで残り 1 日まで減りきる範囲 */
+      /* 画面に入ってから、画面の中ほどに来るまでに減りきる範囲 */
       animation-range: entry 100% cover 45%;
+    }
+
+    .lifeDemo[data-soon] {
+      animation-name: age-soon;
     }
   }
 }
 
 @keyframes age {
+  from {
+    --life-demo-left: var(--life-demo-from);
+  }
+  to {
+    --life-demo-left: var(--life-demo-to);
+  }
+}
+
+@keyframes age-soon {
   0% {
-    --life-demo-left: var(--life-demo-days);
+    --life-demo-left: var(--life-demo-from);
     color: var(--mantine-color-dimmed);
   }
   92% {
     color: var(--mantine-color-dimmed);
   }
   100% {
-    --life-demo-left: 1;
-    color: var(--mantine-color-orange-text);
+    --life-demo-left: var(--life-demo-to);
+    color: var(--life-demo-soon-color);
   }
 }
 
@@ -237,5 +262,22 @@
 
   .lifeDemoRemaining {
     border-block-start-color: CanvasText;
+  }
+}
+
+/* ---- デモ動画の説明 ---- */
+
+/* 拡大の操作の言い方を、マウスとタッチで出し分ける (隠したほうは display: none なので読み上げられない) */
+.zoomHintTap {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .zoomHintClick {
+    display: none;
+  }
+
+  .zoomHintTap {
+    display: inline;
   }
 }

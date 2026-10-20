@@ -1,4 +1,4 @@
-import { Box, useComputedColorScheme } from "@mantine/core";
+import { Box, Text, useComputedColorScheme } from "@mantine/core";
 import { useReducedMotion } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 
@@ -56,7 +56,8 @@ export function DemoVideo() {
     // 広い画面でもページの列 (Container md = 960px。余白を除くと 928px、0.73 倍で本文 12px 前後) に収める。
     // スマホでは小さく映るので、クリックで全画面 (横向き) にして見てもらう。
     // videoStage は奥行き (perspective) だけを持ち、傾きと光はボタン側 (Landing.module.css)
-    <Box maw={960} w="100%" className={classes.videoStage}>
+    // figure: 下の一行の説明を動画の説明として結び付ける
+    <Box component="figure" maw={960} w="100%" m={0} className={classes.videoStage}>
       <button
         type="button"
         className={classes.videoZoomButton}
@@ -79,6 +80,13 @@ export function DemoVideo() {
           playsInline
         />
       </button>
+      {/* 何を映しているかと、拡大できること (スマホでは小さくて読めないので、全画面で見られると伝える)。
+          操作の言い方はポインターで出し分ける (Landing.module.css の .zoomHint*) */}
+      <Text component="figcaption" size="sm" ta="center" mt="md">
+        実際の画面です。書く、区切る、見出しごとにまとめて読む、コピーする。
+        <span className={classes.zoomHintClick}>クリックで全画面になります。</span>
+        <span className={classes.zoomHintTap}>タップで全画面になります。</span>
+      </Text>
     </Box>
   );
 }

@@ -31,7 +31,7 @@ async function expectNoViolations(page: Page, testInfo: TestInfo, name: string) 
 
 /**
  * ランディングの動きが落ち着くのを待つ。見出しの「消える」が一度消えて戻る途中や、
- * スクロールで浮かび上がる特徴が半透明の間は、コントラストが実際より低く出る。
+ * スクロールで減っていく寿命のバーの色が変わる途中は、コントラストが実際と違って出る。
  * 時間で進む動きは終わるまで待ち、スクロールで進む動きは末尾まで送って最後の状態にする
  */
 async function settleLandingMotion(page: Page) {

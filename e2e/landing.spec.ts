@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// ランディングの寿命のバーの飾り (FeatureList の LifeLineDemo)。スクロールで「あと N 日」とバーが減っていく。
+// ランディングの寿命のバーの飾り (使い道の見本の LifeLineDemo)。スクロールで「あと N 日」とバーが減っていく。
 // HAY-51 の食い違い (Safari で日数が出なくなる) は WebKit でしか起きず、CI の Chromium では再現しない。
 // WebKit で動かせば (iPhone の devices で) このテストが落ちることは手元で確かめてある
 test("寿命のバーの飾りは、スクロールの途中でも「あと N 日」とバーの長さが一致する", async ({
@@ -33,7 +33,7 @@ test("寿命のバーの飾りは、スクロールの途中でも「あと N �
         const [, n] = getComputedStyle(label).counterReset.split(" ");
         return {
           days: Number(n),
-          total: Number(getComputedStyle(el).getPropertyValue("--life-demo-days")),
+          total: Number(getComputedStyle(el).getPropertyValue("--life-demo-total")),
           ratio: remaining.getBoundingClientRect().width / track.getBoundingClientRect().width,
         };
       })()`,
