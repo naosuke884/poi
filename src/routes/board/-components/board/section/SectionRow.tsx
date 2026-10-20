@@ -70,6 +70,7 @@ export const SectionRow = memo(function SectionRow({
   readOnly,
   fillScreen,
   placeholder,
+  ttlDays,
   handlers: h,
   refs,
 }: {
@@ -81,6 +82,8 @@ export const SectionRow = memo(function SectionRow({
   fillScreen: boolean;
   /** エディタのプレースホルダ (セクションが 1 つだけのとき) */
   placeholder: string | undefined;
+  /** そのユーザーの保存期間 (寿命のバーの長さの基準) */
+  ttlDays: number;
   handlers: SectionHandlers;
   refs: SectionRefs;
 }) {
@@ -105,7 +108,7 @@ export const SectionRow = memo(function SectionRow({
     >
       {/* 区切り: 線は寿命のバー (左に残り日数)、コピー / スクショ / 削除は線の外の右端 */}
       <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
-        <LifeLine createdAt={s.createdAt} expiresAt={s.expiresAt} />
+        <LifeLine createdAt={s.createdAt} expiresAt={s.expiresAt} ttlDays={ttlDays} />
         {!empty && (
           <SectionActions
             subject={label}

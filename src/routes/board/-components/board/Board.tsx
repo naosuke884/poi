@@ -345,6 +345,7 @@ export function Board({
               readOnly={readOnly}
               fillScreen={i === sections.length - 1 && sections.length > 1}
               placeholder={sections.length === 1 ? placeholder : undefined}
+              ttlDays={ttlDays}
               handlers={handlers}
               refs={refs}
             />

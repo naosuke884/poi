@@ -2,7 +2,7 @@ import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
   boardLength,
-  memoExpiresAt,
+  retimedExpiresAt,
   SECTION_SEPARATOR,
 } from "@shared/constants";
 import type { InferResponseType } from "hono/client";
@@ -50,8 +50,10 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
 }
 
 /**
- * 保持日数が変わったときの期限の引き直し (サーバの PUT /api/settings と同じ規則)。
- * まだ期限の来ていない保存済みのセクションを createdAt + ttlDays にする。期限を過ぎたものは延ばさない
+ * 保持日数が変わったときの期限の引き直し (サーバの PUT /api/settings と同じ規則: retimedExpiresAt)。
+ * まだ期限の来ていない保存済みのセクションだけを引き直す。期限を過ぎたものは延ばさない。
+ * createdAt + ttlDays だけにすると、サーバでは期限を引き直されてまだ見えているセクションを、画面では期限切れとして
+ * pruneExpired が外し、次の保存でサーバからも消してしまう (HAY-59)
  */
 export function applyTtlDays(
   sections: EditableSection[],
@@ -61,7 +63,15 @@ export function applyTtlDays(
   return sections.map((s) => {
     if (s.createdAt === null || s.expiresAt === null) return s;
     if (new Date(s.expiresAt).getTime() <= now) return s;
-    return { ...s, expiresAt: memoExpiresAt(new Date(s.createdAt), ttlDays).toISOString() };
+    return {
+      ...s,
+      expiresAt: retimedExpiresAt(
+        new Date(s.createdAt),
+        new Date(s.expiresAt),
+        ttlDays,
+        new Date(now),
+      ).toISOString(),
+    };
   });
 }
 

@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 
-import { countExpiring } from "../../../-lib/ttl-expiring";
+import { countPastPeriod } from "../../../-lib/ttl-past-period";
 import { useCloseWatcher } from "../../../-lib/use-close-watcher";
 
 /**
  * セクションの保存期間 (書いてから削除されるまでの日数) の設定モーダル (UserMenu から開く)。
  * 開いたときに現在値と板のセクションの作成日時を取得し (GET /api/settings, /api/board)、保存 (PUT /api/settings) すると
  * いま保存されている全セクションにも新しい期限 (作成日 + 日数) が適用される。
- * 短くしたときは、新しい期限を過ぎたセクションがその場で消え (サーバが見せなくなる)、元に戻せない。
- * 選んだ日数で消えるセクションがあれば、保存の前にその数を出して保存ボタンを赤にする (#106)。
- * 板の取得に失敗したときは数を出せないので、説明文の断り書きだけになる。保存後の板の取り直しは親 (onSaved) に任せる
+ * 作成日 + 日数をもう過ぎているセクションは消さずに、今の期限と「保存した時点 + 日数」の早い方を期限にする
+ * (HAY-59。以前はその場で消えて元に戻せなかったので、赤字で数を出して保存ボタンも赤にしていた: #106)。
+ * そうしたセクションがあれば、期限がいつになるのか分かるよう保存の前にその数を出す。
+ * 板の取得に失敗したときは数を出せないだけで、保存はできる。保存後の板の取り直しは親 (onSaved) に任せる
  */
 export function TtlSettingModal({
   opened,
@@ -27,7 +28,7 @@ export function TtlSettingModal({
 }) {
   // 現在の選択 (Radio は文字列で扱う)。取得が終わるまでは null でスケルトンを出す
   const [value, setValue] = useState<string | null>(null);
-  // 板のセクションの作成日時 (消える数を数える用)。取れなければ null
+  // 板のセクションの作成日時 (選んだ日数をもう過ぎている数を数える用)。取れなければ null
   const [createdAts, setCreatedAts] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -67,7 +68,7 @@ export function TtlSettingModal({
     };
   }, [opened]);
 
-  const expiring = value !== null && createdAts ? countExpiring(createdAts, Number(value)) : 0;
+  const pastPeriod = value !== null && createdAts ? countPastPeriod(createdAts, Number(value)) : 0;
 
   const save = async () => {
     // Enter での送信は保存ボタンの disabled / loading を通らないので、ここでも弾く
@@ -109,11 +110,11 @@ export function TtlSettingModal({
                   ))}
                 </Group>
               </Radio.Group>
-              {/* 保存すると元に戻せないので、消える数を前もって出す。選び直すたびに読み上げるよう、
-                  live region は空でも置いておく (空のときは余白も付けない) */}
-              <Text size="sm" c="red" mt={expiring > 0 ? "sm" : 0} role="status" aria-live="polite">
-                {expiring > 0 &&
-                  `保存すると、書いてから ${value} 日を過ぎたセクション ${expiring} 個がすぐに消えます (元に戻せません)。`}
+              {/* 作成日から数えると思って選ぶと、もう過ぎているセクションがすぐ消えると誤解するので、前もって数を出す。
+                  選び直すたびに読み上げるよう、live region は空でも置いておく (空のときは余白も付けない) */}
+              <Text size="sm" mt={pastPeriod > 0 ? "sm" : 0} role="status" aria-live="polite">
+                {pastPeriod > 0 &&
+                  `保存すると、書いてから ${value} 日を過ぎているセクション ${pastPeriod} 個は、遅くとも今日から ${value} 日後に削除されます。`}
               </Text>
             </div>
           )}
@@ -123,12 +124,7 @@ export function TtlSettingModal({
             </Text>
           )}
           <Group gap="sm">
-            <Button
-              type="submit"
-              loading={saving}
-              disabled={value === null}
-              color={expiring > 0 ? "red" : undefined}
-            >
+            <Button type="submit" loading={saving} disabled={value === null}>
               保存
             </Button>
             <Button variant="default" onClick={onClose} disabled={saving}>

@@ -29,3 +29,24 @@ export function boardLength(sections: { content: string }[]): number {
 export function memoExpiresAt(createdAt: Date = new Date(), ttlDays: number = MEMO_TTL_DAYS): Date {
   return new Date(createdAt.getTime() + ttlDays * DAY_MS);
 }
+
+/**
+ * 保持日数を ttlDays に変えたときの、まだ期限 (expiresAt) の来ていないセクションの新しい期限 (HAY-59)。
+ * 作成日 + 新しい日数がまだ先ならそれ。もう過ぎていれば、今の期限と「変えた時点 (changedAt) + 新しい日数」の早い方。
+ * 作成日 + 日数だけにしないのは、短くしたときに過ぎていたセクションがその場で消えて (元に戻せない) しまうため。
+ * 変えた時点 + 日数だけにしないのは、期限の近いセクションが、短くしたのにかえって長く残ってしまうため。
+ * 延ばしたときも同じ規則にするのは、一度短くして期限を引き直したセクションを作成日から数えると、
+ * 延ばしたのにかえって期限を過ぎてしまうことがあるため。
+ * worker/board/routes.ts の PUT /api/settings は同じ規則を SQL で書いている
+ */
+export function retimedExpiresAt(
+  createdAt: Date,
+  expiresAt: Date,
+  ttlDays: number,
+  changedAt: Date,
+): Date {
+  const fromCreated = memoExpiresAt(createdAt, ttlDays);
+  if (fromCreated.getTime() > changedAt.getTime()) return fromCreated;
+  const fromChange = memoExpiresAt(changedAt, ttlDays);
+  return expiresAt.getTime() < fromChange.getTime() ? expiresAt : fromChange;
+}

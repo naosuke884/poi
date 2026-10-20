@@ -1,4 +1,4 @@
-import { BOARD_MAX_SECTIONS, DAY_MS } from "@shared/constants";
+import { BOARD_MAX_SECTIONS, DAY_MS, retimedExpiresAt } from "@shared/constants";
 import { Hono } from "hono";
 import { describe, expect } from "vite-plus/test";
 
@@ -150,7 +150,7 @@ describe.concurrent("PUT /api/board", () => {
     db,
     board,
   }) => {
-    // 別のタブで保持日数を 7 日に短くし、10 日前に作ったセクションが消えた後の保存
+    // 保持日数が 7 日で、10 日前に作ったセクションが期限を過ぎて消えた後に、それを知らないタブが保存する
     await db
       .prepare("insert into user_setting (user_id, memo_ttl_days) values (?, ?)")
       .bind(USER_ID, 7)
@@ -394,7 +394,16 @@ describe.concurrent("PUT /api/settings", () => {
     return Object.fromEntries(results.map((row) => [row.id, row.expires_at]));
   }
 
-  it("保持日数を変えると、見えているセクションの期限を作成日時 + 新しい日数に引き直す", async ({
+  /** 最後に保持日数を変えた時刻 (サーバが期限の引き直しに使った now と同じ値) */
+  async function changedAt(db: D1Database) {
+    const row = await db
+      .prepare("select updated_at from user_setting where user_id = ?")
+      .bind(USER_ID)
+      .first<{ updated_at: number }>();
+    return row!.updated_at;
+  }
+
+  it("保持日数を変えると、見えているセクションの期限を、まだ先なら作成日時 + 新しい日数に引き直す", async ({
     db,
     board,
   }) => {
@@ -412,13 +421,108 @@ describe.concurrent("PUT /api/settings", () => {
     expect((await board.get()).sections.map((s) => s.id).toSorted()).toEqual(["a", "b"]);
   });
 
-  it("短くすると、新しい期限を過ぎたセクションはすぐ見えなくなる", async ({ db, board }) => {
+  it("短くしても、新しい期限をもう過ぎているセクションは消さず、今の期限と変えた時点 + 新しい日数の早い方にする (HAY-59)", async ({
+    db,
+    board,
+  }) => {
     const now = Date.now();
     await insertSection(db, "old", now - 10 * DAY_MS, now + 20 * DAY_MS);
+    await insertSection(db, "soon", now - 29 * DAY_MS, now + DAY_MS);
     await insertSection(db, "new", now - DAY_MS, now + 29 * DAY_MS);
 
     expect((await putTtlDays(db, 7)).status).toBe(200);
-    expect((await board.get()).sections.map((s) => s.id)).toEqual(["new"]);
+    const changed = await changedAt(db);
+    expect(await expiresAtById(db)).toEqual({
+      new: now - DAY_MS + 7 * DAY_MS,
+      old: changed + 7 * DAY_MS,
+      soon: now + DAY_MS,
+    });
+    expect((await board.get()).sections.map((s) => s.id).toSorted()).toEqual([
+      "new",
+      "old",
+      "soon",
+    ]);
+  });
+
+  it("延ばすと、作成日 + 新しい日数がまだ先なら、短くして早めた期限もそこまで延ばす (HAY-59)", async ({
+    db,
+    board,
+  }) => {
+    // 7 日の設定で 20 日前に書き、短くしたときに残り 2 日になっていた行を 30 日に延ばす
+    const now = Date.now();
+    await insertSection(db, "retimed", now - 20 * DAY_MS, now + 2 * DAY_MS);
+
+    expect((await putTtlDays(db, 30)).status).toBe(200);
+    expect(await expiresAtById(db)).toEqual({ retimed: now - 20 * DAY_MS + 30 * DAY_MS });
+    expect((await board.get()).sections.map((s) => s.id)).toEqual(["retimed"]);
+  });
+
+  it("短くして引き直したセクションは、後で延ばしても消えず、作成日 + 新しい日数を過ぎていれば期限を延ばさない (HAY-59)", async ({
+    db,
+    board,
+  }) => {
+    const now = Date.now();
+    await insertSection(db, "old", now - 10 * DAY_MS, now + 20 * DAY_MS);
+
+    expect((await putTtlDays(db, 1)).status).toBe(200);
+    const shortened = (await expiresAtById(db)).old!;
+    expect(shortened).toBe((await changedAt(db)) + DAY_MS);
+    // 延ばした先の 3 日でも作成日 (10 日前) からはもう過ぎているので、今の期限 (の方が早い) のまま
+    expect((await putTtlDays(db, 3)).status).toBe(200);
+    expect(await expiresAtById(db)).toEqual({ old: shortened });
+    expect((await board.get()).sections.map((s) => s.id)).toEqual(["old"]);
+  });
+
+  it("期限の引き直しは、どの行も retimedExpiresAt と同じ結果になる (HAY-59)", async ({
+    db,
+    board,
+  }) => {
+    const now = Date.now();
+    const rows: [string, number, number][] = [
+      ["fromCreated", now - 3 * DAY_MS, now + 27 * DAY_MS],
+      ["fromChange", now - 10 * DAY_MS, now + 20 * DAY_MS],
+      ["keepEarlier", now - 29 * DAY_MS, now + DAY_MS],
+      ["lengthened", now - 20 * DAY_MS, now + 2 * DAY_MS],
+    ];
+    for (const [id, createdAt, expiresAt] of rows)
+      await insertSection(db, id, createdAt, expiresAt);
+
+    for (const ttlDays of [7, 30]) {
+      const before = await expiresAtById(db);
+      expect((await putTtlDays(db, ttlDays)).status).toBe(200);
+      const changed = new Date(await changedAt(db));
+      expect(await expiresAtById(db)).toEqual(
+        Object.fromEntries(
+          rows.map(([id, createdAt]) => [
+            id,
+            retimedExpiresAt(
+              new Date(createdAt),
+              new Date(before[id]!),
+              ttlDays,
+              changed,
+            ).getTime(),
+          ]),
+        ),
+      );
+    }
+    expect((await board.get()).sections).toHaveLength(rows.length);
+  });
+
+  it("期限を引き直したセクションを、作成日時を付けて保存しても捨てずに更新する (HAY-59)", async ({
+    db,
+    board,
+  }) => {
+    const now = Date.now();
+    const createdAt = now - 10 * DAY_MS;
+    await insertSection(db, "old", createdAt, now + 20 * DAY_MS);
+    expect((await putTtlDays(db, 7)).status).toBe(200);
+
+    const saved = await board.put([
+      { id: "old", content: "edited", createdAt: new Date(createdAt).toISOString() },
+    ]);
+    expect(saved.status).toBe(200);
+    expect(saved.body.sections).toMatchObject([{ id: "old", content: "edited" }]);
+    expect(await board.rows()).toEqual([{ id: "old", content: "edited", position: 0 }]);
   });
 
   it("延ばしても、期限切れで物理削除待ちのセクションは復活しない", async ({ db, board }) => {
@@ -464,7 +568,8 @@ describe.concurrent("PUT /api/settings", () => {
     await insertSection(db, "theirs", now - 10 * DAY_MS, now + 20 * DAY_MS, OTHER_USER_ID);
 
     expect((await putTtlDays(db, 7)).status).toBe(200);
-    expect((await board.get()).sections).toEqual([]);
+    expect(await expiresAtById(db)).toEqual({ mine: (await changedAt(db)) + 7 * DAY_MS });
+    expect((await board.get()).sections.map((s) => s.id)).toEqual(["mine"]);
     expect(await expiresAtById(db, OTHER_USER_ID)).toEqual({ theirs: now + 20 * DAY_MS });
     const other = (await otherBoard.get()) as { sections: Section[]; ttlDays?: number };
     expect(other.sections.map((s) => s.id)).toEqual(["theirs"]);

@@ -30,8 +30,8 @@ export const memo = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
     // 作成時に createdAt + 保持日数 (user_setting.memo_ttl_days。無ければ 30 日) で確定させ、
-    // 内容や並びの更新では延ばさない。保持日数の設定を変えたときだけ、全セクションを
-    // createdAt + 新しい日数で引き直す (PUT /api/settings)
+    // 内容や並びの更新では延ばさない。保持日数の設定を変えたときだけ、見えている全セクションを
+    // 新しい日数で引き直す (PUT /api/settings。規則は shared/constants.ts の retimedExpiresAt)
     expiresAt: integer("expires_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => memoExpiresAt()),

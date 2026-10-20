@@ -129,6 +129,20 @@ describe("TtlSettingModal", () => {
     },
   );
 
+  it("選んだ日数をもう過ぎているセクションがあれば、その数と、遅くとも今日から選んだ日数で消えることを伝える (HAY-59)", async () => {
+    const ago = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    server.sections = [{ createdAt: ago(10) }, { createdAt: ago(8) }, { createdAt: ago(1) }];
+    await open();
+    const status = () => document.querySelector('[role="status"]')?.textContent;
+    expect(status()).toBe("");
+    await act(async () => radioFor(7)?.click());
+    expect(status()).toBe(
+      "保存すると、書いてから 7 日を過ぎているセクション 2 個は、遅くとも今日から 7 日後に削除されます。",
+    );
+    await act(async () => radioFor(14)?.click());
+    expect(status()).toBe("");
+  });
+
   it("今の設定を取得できなければエラーを出し、保存させない", async () => {
     server.reply.settingsGet = "error";
     await open();

@@ -28,8 +28,10 @@ export type BoardSyncPlan = {
  * 送られた順を position (0 始まり) として、既存の行との差分を求める。
  * - id が既存と一致すれば更新 (内容も並び順も同じなら触らない: updatedAt を進めない)
  * - 知らない id で、createdAt が expiredCreatedAt 以前 (= 今の保持日数ではもう期限切れ) のものは作らない。
- *   別のタブで保持日数を短くして消えた行を、古い期限のままのタブが送り返してきた場合など (issue #94)。
- *   作らなかったものは position を詰める
+ *   別のタブで保持日数を短くして早まった期限を過ぎ、消えた行を、古い期限のままのタブが送り返してきた場合など
+ *   (issue #94)。作らなかったものは position を詰める。
+ *   保持日数の変更で期限を引き直した行 (HAY-59) は期限が createdAt + 日数より後になるが、見えている間は既存の行として
+ *   id で突き合わさるのでこの判定に来ない。消えた後なら createdAt + 日数も過ぎているので、やはり作らない
  * - それ以外は新規作成 (id は newId で発行する)。同じ id が 2 回来たら 2 つ目以降は新規 (1 つの行を 2 か所に置けないため)
  * - 送られてこなかった既存の行は削除
  */
@@ -45,7 +47,9 @@ export function planBoardSync(
   let position = 0;
   for (const section of sections) {
     const row = section.id !== null && !kept.has(section.id) ? byId.get(section.id) : undefined;
-    if (!row && section.id !== null && section.createdAt !== undefined) {
+    // 同じ id の 2 つ目以降 (byId にはある) は期限を見ずに新規にする。保持日数の変更で期限を引き直した行は
+    // createdAt が古くてもまだ見えている (HAY-59) ので、createdAt で判定すると見えている行の写しを捨ててしまう
+    if (section.id !== null && !byId.has(section.id) && section.createdAt !== undefined) {
       if (new Date(section.createdAt).getTime() <= expiredCreatedAt.getTime()) {
         plan.ids.push(null);
         continue;

@@ -8,15 +8,20 @@ import classes from "./LifeLine.module.css";
  * セクションの区切り線を兼ねた寿命のバー (issue #95)。
  * 線そのものは全幅の薄い線 (セクションの境界)。その上に、残りの期間の割合だけ濃い線を左から重ねる
  * (書いた直後は全幅、消える直前はほぼ 0)。左端に「あと N 日」。残り 1 日以下はオレンジにして、もうすぐ消えると分かるようにする。
- * 未保存のセクション (期限がまだ無い) は線と「新しいセクション」だけ
+ * 未保存のセクション (期限がまだ無い) は線と「新しいセクション」だけ。
+ * 割合の分母は createdAt〜expiresAt だが、保存期間 (ttlDays) より長くはしない。保存期間を変えたときに
+ * 作成日からではなく変えた時点から期限を数えたセクション (HAY-59) はこの間が保存期間より長く、そのまま割ると
+ * 同じ「あと N 日」でも他のセクションより線が短く (先に消えそうに) 見えてしまうため
  */
 export function LifeLine({
   createdAt,
   expiresAt,
+  ttlDays,
   now = Date.now(),
 }: {
   createdAt: string | null;
   expiresAt: string | null;
+  ttlDays: number;
   now?: number;
 }) {
   if (createdAt === null || expiresAt === null) {
@@ -30,7 +35,7 @@ export function LifeLine({
     );
   }
   const end = new Date(expiresAt).getTime();
-  const total = end - new Date(createdAt).getTime();
+  const total = Math.min(end - new Date(createdAt).getTime(), ttlDays * DAY_MS);
   const left = Math.max(0, end - now);
   // 期限は日単位で付くので切り上げ (残り 5 時間でも「あと 1 日」)
   const days = Math.ceil(left / DAY_MS);

@@ -207,6 +207,11 @@ function sectionTexts(): string[] {
   });
 }
 
+/** 画面上の寿命のバー (LifeLine) の「あと N 日」を上から順に */
+function lifeLineLabels(): string[] {
+  return container.textContent?.match(/あと \d+ 日/g) ?? [];
+}
+
 function editor(): EditorView {
   const el = container.querySelector<HTMLElement>(".cm-editor");
   if (!el) throw new Error("editing section not found");
@@ -450,32 +455,36 @@ describe("Board: 期限切れのセクション (issue #74)", () => {
     expect(sectionTexts()).toEqual(["b", "- c"]);
   });
 
-  it("保持日数を短くしたら期限を引き直し、過ぎたセクションを外す (送り返さない)", async () => {
+  it("保持日数を短くしても、新しい期限をもう過ぎているセクションは外さず、今の期限と今 + 新しい日数の早い方にする (HAY-59)", async () => {
     const now = Date.now();
     await mount([
       { content: "- old", createdAt: iso(now - 10 * DAY), expiresAt: iso(now + 20 * DAY) },
       { content: "- new", createdAt: iso(now - DAY), expiresAt: iso(now + 29 * DAY) },
+      { content: "- soon", createdAt: iso(now - 29 * DAY), expiresAt: iso(now + DAY) },
     ]);
     // 設定の変更後の読み込み直し: Board は作り直さず、保持日数だけが変わる
     await render(7);
-    expect(sectionTexts()).toEqual(["new"]);
+    expect(sectionTexts()).toEqual(["old", "new", "soon"]);
+    expect(lifeLineLabels()).toEqual(["あと 7 日", "あと 6 日", "あと 1 日"]);
     await waitForSave();
-    // 外したものはサーバでも見えないので、それだけでは保存しない
+    // 期限が変わっただけなので保存しない
     expect(puts).toEqual([]);
     await addSection();
     await type("- c");
     await waitForSave();
     expect(puts.at(-1)).toEqual([
+      { id: "id-0", content: "- old" },
       { id: "id-1", content: "- new" },
+      { id: "id-2", content: "- soon" },
       { id: null, content: "- c" },
     ]);
   });
 });
 
-describe("Board: 別のタブで保持日数を短くした後の保存 (issue #94)", () => {
+describe("Board: 画面の知らないうちにサーバで期限を過ぎたセクションの保存 (issue #94)", () => {
   it("サーバが期限切れとして作らなかったセクションは画面から外し、書き換えていたものは新しいセクションとして残す", async () => {
     await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
-    // 画面上の期限はまだ先だが、別のタブで保持日数が短くなり、サーバでは a と b がもう期限切れ
+    // 画面上の期限はまだ先だが、別のタブで保持日数が短くなって期限が早まり、サーバでは a と b がもう期限切れ
     expiredOnServer.add("id-0");
     expiredOnServer.add("id-1");
     await addSection();

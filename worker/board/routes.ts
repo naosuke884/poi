@@ -24,8 +24,9 @@ import { board, memo, userSetting } from "./schema";
 // - id はサーバが発行する。クライアントは「前回保存したセクションの id」を付けて送り返すことで
 //   そのセクションの作成日 (= 期限) を引き継ぐ。id が null / 知らない id のものは新しいセクションとして作る
 // - id を付けるときは、クライアントが知っているその行の createdAt も付ける。知らない id で、今の保持日数では
-//   もう期限を過ぎている (別のタブで保持日数を短くして消えた行など) ものは作り直さない (issue #94)
-// - 期限は作成時に確定し、内容や並び順を変えても延びない
+//   もう期限を過ぎている (別のタブで保持日数を短くして早まった期限で消えた行など) ものは作り直さない (issue #94)。
+//   期限ではなく createdAt で判定するのは、古いタブが持つ期限は保持日数の変更を知らない (遅いまま) ことがあるため
+// - 期限は作成時に確定し、内容や並び順を変えても延びない (保持日数の設定を変えたときだけ引き直す)
 // - 板には版 (board.revision) があり、保存のたびに変わる。PUT にはクライアントが知っている版を付けてもらい、
 //   今の版と違えば (別の端末 / タブが先に保存していれば) 保存せずに 409 Stale を返す。丸ごと置き換えなので、
 //   古い内容のまま保存させると、別の場所で足したセクションが消えたり編集が戻ったりする (issue #72)。
@@ -264,8 +265,9 @@ export const boardRoutes = new Hono<AppEnv>()
   });
 
 // ユーザー設定 (今はセクションの保持日数のみ)。
-// 保持日数を変えたら、いま見えている (期限切れでない) 全セクションの期限も createdAt + 新しい日数で引き直す
-// (短くしたときは、新しい期限を過ぎたセクションが即座に見えなくなり、次の Cron で物理削除される)
+// 保持日数を変えたら、いま見えている (期限切れでない) 全セクションの期限も引き直す (規則は retimedExpiresAt)。
+// createdAt + 新しい日数だけにすると、短くしたときに新しい期限を過ぎたセクションがその場で見えなくなり、
+// 次の Cron で物理削除されて元に戻せない (HAY-59) ので、過ぎているものは今の期限と「変えた時点 + 新しい日数」の早い方にする
 const putSettingsSchema = z.object({
   memoTtlDays: z
     .number()
@@ -274,6 +276,13 @@ const putSettingsSchema = z.object({
       message: `保持日数は ${MEMO_TTL_CHOICES.join(", ")} 日から選んでください`,
     }),
 });
+
+/** retimedExpiresAt (shared/constants.ts) と同じ規則の、memo の新しい expires_at */
+function retimedExpiresAtSql(ttlDays: number, changedAt: Date) {
+  const ttlMs = ttlDays * DAY_MS;
+  const changedAtMs = changedAt.getTime();
+  return sql`case when ${memo.createdAt} + ${ttlMs} > ${changedAtMs} then ${memo.createdAt} + ${ttlMs} else min(${memo.expiresAt}, ${changedAtMs + ttlMs}) end`;
+}
 
 export const settingsRoutes = new Hono<AppEnv>()
   .use(requireAuth)
@@ -297,7 +306,7 @@ export const settingsRoutes = new Hono<AppEnv>()
         }),
       db
         .update(memo)
-        .set({ expiresAt: sql`${memo.createdAt} + ${memoTtlDays * DAY_MS}` })
+        .set({ expiresAt: retimedExpiresAtSql(memoTtlDays, now) })
         // 期限切れで Cron の物理削除待ちの行は引き直さない (延ばすと復活してしまう)
         .where(visibleSections(userId, now)),
     ]);

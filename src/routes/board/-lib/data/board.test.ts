@@ -135,13 +135,27 @@ describe("applyTtlDays", () => {
     expiresAt,
   });
 
-  it("期限前のセクションは createdAt + 日数に引き直す", () => {
+  it("期限前のセクションは、createdAt + 日数がまだ先ならその日時に引き直す", () => {
     const [s] = applyTtlDays(
       [saved("2026-09-20T00:00:00.000Z", "2026-10-20T00:00:00.000Z")],
       7,
       now,
     );
     expect(s!.expiresAt).toBe("2026-09-27T00:00:00.000Z");
+  });
+
+  it("createdAt + 日数をもう過ぎている期限前のセクションは、消さずに今の期限と今 + 日数の早い方にする (HAY-59)", () => {
+    const [later, earlier] = applyTtlDays(
+      [
+        saved("2026-09-10T00:00:00.000Z", "2026-10-10T00:00:00.000Z"),
+        saved("2026-08-25T00:00:00.000Z", "2026-09-24T00:00:00.000Z"),
+      ],
+      7,
+      now,
+    );
+    expect(later!.expiresAt).toBe("2026-09-30T00:00:00.000Z");
+    expect(earlier!.expiresAt).toBe("2026-09-24T00:00:00.000Z");
+    expect(pruneExpired([later!, earlier!], [{ id: "1", content: "a" }], now)).toBeNull();
   });
 
   it("期限を過ぎたセクションと未保存のセクションはそのまま", () => {

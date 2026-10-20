@@ -90,6 +90,37 @@ describe("planBoardSync", () => {
     });
   });
 
+  it("保持日数の変更で期限を引き直した行は、createdAt が今の保持日数より古くても既存の行として更新する (HAY-59)", () => {
+    expect(
+      plan(
+        [row("retimed", "x", 0)],
+        [{ id: "retimed", content: "x2", createdAt: "2026-08-01T00:00:00.000Z" }],
+      ),
+    ).toEqual({
+      updates: [{ id: "retimed", content: "x2", position: 0 }],
+      inserts: [],
+      deletes: [],
+      ids: ["retimed"],
+    });
+  });
+
+  it("同じ id の 2 つ目以降は、createdAt が今の保持日数より古くても捨てずに新規作成 (HAY-59)", () => {
+    expect(
+      plan(
+        [row("retimed", "x", 0)],
+        [
+          { id: "retimed", content: "x", createdAt: "2026-08-01T00:00:00.000Z" },
+          { id: "retimed", content: "copy", createdAt: "2026-08-01T00:00:00.000Z" },
+        ],
+      ),
+    ).toEqual({
+      updates: [],
+      inserts: [{ id: "n1", content: "copy", position: 1 }],
+      deletes: [],
+      ids: ["retimed", "n1"],
+    });
+  });
+
   it("同じ id の 2 つ目以降は新規作成", () => {
     expect(
       plan(
