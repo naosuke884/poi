@@ -5,6 +5,11 @@ import { defineConfig, devices } from "@playwright/test";
 // 普段の dev サーバー (:5173) とぶつからないよう、専用のポートで起動する
 const PORT = 5174;
 const baseURL = `http://localhost:${PORT}`;
+// 本番ビルド (vp preview) で見るテスト (production.spec.ts) 用。public/_headers の CSP は vp dev では付かず
+// (dev は React Refresh のインラインスクリプトも入れるので、付けても本番と同じにはならない)、vp preview なら付く。
+// verifying-in-app skill の手動の preview (:4173) とぶつからないよう、隣のポートにする
+const PREVIEW_PORT = 4174;
+const PRODUCTION_SPEC = "production.spec.ts";
 
 // dev container ではブラウザを Playwright の sidecar (PW_TEST_CONNECT_WS_ENDPOINT) で動かす。
 // sidecar のブラウザからこのコンテナの localhost に届くよう exposeNetwork を付ける。
@@ -28,15 +33,41 @@ export default defineConfig({
     connectOptions: wsEndpoint ? { wsEndpoint, exposeNetwork: "<loopback>" } : undefined,
   },
   projects: [
-    { name: "desktop-light", use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
+    {
+      name: "desktop-light",
+      testIgnore: PRODUCTION_SPEC,
+      use: { ...devices["Desktop Chrome"], colorScheme: "light" },
+    },
     // コントラストは配色ごとに変わるので、ダークモードも見る
-    { name: "desktop-dark", use: { ...devices["Desktop Chrome"], colorScheme: "dark" } },
-    { name: "mobile", use: { ...devices["Pixel 7"], colorScheme: "light" } },
+    {
+      name: "desktop-dark",
+      testIgnore: PRODUCTION_SPEC,
+      use: { ...devices["Desktop Chrome"], colorScheme: "dark" },
+    },
+    {
+      name: "mobile",
+      testIgnore: PRODUCTION_SPEC,
+      use: { ...devices["Pixel 7"], colorScheme: "light" },
+    },
+    {
+      name: "production",
+      testMatch: PRODUCTION_SPEC,
+      use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PREVIEW_PORT}` },
+    },
   ],
-  webServer: {
-    command: `npx vp dev --port ${PORT}`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: `npx vp dev --port ${PORT}`,
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      // 古い dist/ のまま通らないよう、起動のたびにビルドし直す
+      command: `npm run build && npx vp preview --port ${PREVIEW_PORT} --strictPort`,
+      url: `http://localhost:${PREVIEW_PORT}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 300_000,
+    },
+  ],
 });

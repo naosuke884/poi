@@ -85,7 +85,8 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      # dev サーバーの起動、ローカル D1 のマイグレーション、テストユーザーのログインは playwright.config.ts / e2e/global-setup.ts が行う
+      # dev サーバーと本番ビルド (vp preview) の起動、ローカル D1 のマイグレーション、テストユーザーのログインは
+      # playwright.config.ts / e2e/global-setup.ts が行う
       - run: npm run test:a11y
 
       # 違反の詳細 (axe の結果 JSON、スクリーンショット、trace) は HTML レポートで見る

@@ -16,7 +16,7 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 - `npm test` / `npm run typecheck` / `npm run lint` / `npm run build` — run all four before committing (CI runs the same). `typecheck` generates `worker-configuration.d.ts` (`wrangler types`), which `lint` needs on a fresh clone.
 - `npm run lint` is `vp check`: Oxfmt format check, Oxlint (rules and the `poi/` plugin in `lint-plugins/`) and a type check; config is the `fmt` / `lint` blocks in `vite.config.ts`.
 - `npm run lint:fix` — `vp check --fix`: format and autofix.
-- `npm run test:a11y` — Playwright + axe accessibility check of the rendered pages (starts its own dev server on :5174; CI job `a11y`).
+- `npm run test:a11y` — Playwright e2e (`e2e/`; CI job `a11y`): axe accessibility check of the rendered pages on its own dev server (:5174), and a save-and-reload check of the board under the enforced CSP on a production build (`vp preview` on :4174; `public/_headers` is not applied by `vp dev`).
 - `npm run lint:jev` — jev-lint: asks a model whether names, comments and test names match the code (config `.jev-lint.yaml`). Sends the code to the typesafe.ai API and needs `TYPESAFE_API_KEY`; add `-- --dry-run` to see the cost without sending. Findings are candidates to judge, not verdicts; not part of CI.
 
 ## Conventions
