@@ -48,7 +48,7 @@ export function UseCaseList() {
       <Title order={2} id="use-cases" size="h3" className={classes.sectionTitle}>
         消えるメモの使い道
       </Title>
-      <Text mt="xs">
+      <Text mt="xs" className={classes.lead}>
         残しておくほどではないけれど、しばらくは手元に置きたい。poi はそんなメモに向いています。
       </Text>
       <Box component="ul" className={classes.mockBoard}>
@@ -65,7 +65,7 @@ export function UseCaseList() {
           </li>
         ))}
       </Box>
-      <Text size="sm" mt="xl">
+      <Text size="sm" mt="xl" className={classes.lead}>
         くわしくは
         <Anchor component={Link} to="/guide" size="sm" underline="always">
           使い方

@@ -1,11 +1,12 @@
 import { Box, Stack, Text, Title } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
 
+import { HeroMemo } from "./HeroMemo";
 import { LoginCta } from "./LoginCta";
 
 import classes from "./Landing.module.css";
 
-/** 見出し + 一言の説明 + ログインの CTA */
+/** 見出し + 一言の説明 + ログインの CTA + 消えていくメモの見本 */
 export function LandingHero() {
   return (
     <Stack gap="lg" align="center" ta="center">
@@ -20,6 +21,7 @@ export function LandingHero() {
       <Box mt="lg">
         <LoginCta />
       </Box>
+      <HeroMemo />
     </Stack>
   );
 }

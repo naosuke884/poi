@@ -18,7 +18,7 @@
   outline: none;
 }
 
-/* 見出しの下の一言や CTA の下の説明 (中央揃えの短い文)。行末に一文字だけ残らないよう pretty、文節で折り返す */
+/* 見出しの下の一言や説明の文。行末に一文字だけ残らないよう pretty、文節で折り返す */
 .lead {
   text-wrap: pretty;
   word-break: auto-phrase;
@@ -149,14 +149,15 @@
 @property --life-demo-left {
   syntax: "<integer>";
   inherits: true;
-  /* 値は使われない (.lifeDemo で各セクションの --life-demo-from に置き換える)。登録に初期値が要るので置いているだけ */
+  /* 値は使われない (.lifeDemo で各セクションの --life-demo-to に置き換える)。登録に初期値が要るので置いているだけ */
   initial-value: 30;
 }
 
 /* 板の LifeLine と同じ並び (「あと N 日」+ バー)。色は文字とバーで共有する (currentColor)。
-   --life-demo-from / --life-demo-to / --life-demo-total は LifeLineDemo.tsx から渡す */
+   --life-demo-from / --life-demo-to / --life-demo-total は LifeLineDemo.tsx から渡す。
+   動かないとき (「動きを減らす」や未対応のブラウザ) は減りきった後の to を見せる。動くときはアニメーションが from から上書きする */
 .lifeDemo {
-  --life-demo-left: var(--life-demo-from);
+  --life-demo-left: var(--life-demo-to);
   display: flex;
   align-items: center;
   gap: var(--mantine-spacing-xs);
@@ -205,9 +206,10 @@
   }
 }
 
-/* 残り 1 日まで減るセクションが最後に付ける色 (板と同じオレンジ)。減らない環境では from のままなので使わない */
+/* 残り 1 日まで減るセクションの色 (板と同じオレンジ)。動かないときは最初から、動くときは減りきったところで付ける */
 .lifeDemo[data-soon] {
   --life-demo-soon-color: var(--mantine-color-orange-text);
+  color: var(--life-demo-soon-color);
 }
 
 /* スクロールを時間に見立てて、日数とバーを from から to まで減らす。残り 1 日まで減るものは最後にオレンジにする */
@@ -246,6 +248,64 @@
   100% {
     --life-demo-left: var(--life-demo-to);
     color: var(--life-demo-soon-color);
+  }
+}
+
+/* ---- ヒーローのメモ (HeroMemo) ---- */
+
+/* 開いてすぐ、1 つのメモの日数が 30 日から減り、残り 1 日でオレンジになって消える (HAY-53)。
+   スクロールしなくても見えるよう、時間で一度だけ動かす。繰り返さない: 動き続けるものは止める手段が要る (WCAG 2.2.2)。
+   動かないとき (「動きを減らす」や未対応のブラウザ) は「あと 1 日」のメモのまま見せる。
+   消えた後も高さは変えない (最初の画面で下の内容が動かないように)。本文と「消えました」を同じ場所に重ねる */
+.heroMemo {
+  display: grid;
+  text-align: start;
+}
+
+.heroMemo > * {
+  grid-area: 1 / 1;
+}
+
+/* 消えた後の一言。メモがあった場所の真ん中に置く (本文の左端に寄せると、空いた場所の隅に取り残されて見える) */
+.heroMemoGone {
+  place-self: center;
+  opacity: 0;
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+}
+
+/* 本文の箇条書き。板の本文と同じく行頭を見出しの文字にそろえる */
+.heroMemoList {
+  margin: 0;
+  padding-inline-start: 1.25em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 0.4 秒待ってから 2.6 秒で 30 → 1 日 (最後の 8% でオレンジ)。間を置いて消える (合わせて 4.6 秒で止まる) */
+  .heroMemo .lifeDemo {
+    animation: age-soon 2.6s 0.4s linear both;
+    animation-timeline: auto;
+  }
+
+  .heroMemoContent {
+    animation: vanish 0.8s 3.8s ease-out both;
+  }
+
+  .heroMemoGone {
+    animation: appear 0.6s 4s ease-out both;
+  }
+}
+
+@keyframes vanish {
+  to {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
   }
 }
 
