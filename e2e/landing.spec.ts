@@ -7,15 +7,18 @@ test("寿命のバーの飾りは、スクロールの途中でも「あと N �
   page,
 }) => {
   await page.goto("/");
-  const demo = page.locator('[class*="lifeDemo_"]').first();
-  await demo.scrollIntoViewIfNeeded();
+  await page.locator('[class*="lifeDemo_"]').first().waitFor();
+  // 最初の画面の外にある飾りを使う (最初から画面の中ほどにあるものは、下端へ動かせず減る途中を比べられない)。
+  // 見本はヒーローの直後にあるので、どれが外に出るかは画面の高さとレイアウトで変わる
+  const demo = `[...document.querySelectorAll('[class*="lifeDemo_"]')]
+    .find((e) => e.getBoundingClientRect().top + scrollY > innerHeight)`;
   // 画面の下端から中ほどへ動かしながら、途中の何点かで比べる
   const viewportHeight = page.viewportSize()!.height;
   const seen = new Set<number>();
   for (const fraction of [0.9, 0.75, 0.6, 0.5]) {
     await page.evaluate(
       `(() => {
-        const el = document.querySelector('[class*="lifeDemo_"]');
+        const el = ${demo};
         window.scrollBy(0, el.getBoundingClientRect().top - ${viewportHeight * fraction});
       })()`,
     );
@@ -26,7 +29,7 @@ test("寿命のバーの飾りは、スクロールの途中でも「あと N �
       ratio: number;
     }>(
       `(() => {
-        const el = document.querySelector('[class*="lifeDemo_"]');
+        const el = ${demo};
         const label = el.querySelector('[class*="lifeDemoLabel"]');
         const track = el.querySelector('[class*="lifeDemoTrack"]');
         const remaining = el.querySelector('[class*="lifeDemoRemaining"]');

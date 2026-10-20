@@ -23,7 +23,7 @@ export function ClosingCta() {
       <Title order={2} id="closing" size="h3" className={classes.sectionTitle}>
         片付けは、poi にまかせる
       </Title>
-      <Text maw={420} className={classes.heroLead}>
+      <Text maw={420} className={classes.lead}>
         思いついたら、まず書いておく。いらなくなったメモは、日がたてば消えます。
       </Text>
       <LoginCta />

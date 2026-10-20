@@ -97,7 +97,7 @@ function LoginButton() {
         </Text>
       )}
       {/* 押す前の「お金はかかる？」「押したらどうなる？」に答える (どちらも FAQ と同じ事実) */}
-      <Text size="sm" className={classes.heroLead}>
+      <Text size="sm" className={classes.lead}>
         無料で使えます。ログインすると、すぐに書き始められます。
       </Text>
       <Text c="dimmed" size="xs">

@@ -44,7 +44,7 @@ const USE_CASES: { title: string; body: string; from: number; to: number }[] = [
  */
 export function UseCaseList() {
   return (
-    <Box component="section" aria-labelledby="use-cases" maw={560} w="100%">
+    <Box component="section" aria-labelledby="use-cases" maw={720} w="100%">
       <Title order={2} id="use-cases" size="h3" className={classes.sectionTitle}>
         消えるメモの使い道
       </Title>

@@ -18,8 +18,8 @@
   outline: none;
 }
 
-/* 見出しの下の一言。行末に一文字だけ残らないよう pretty、文節で折り返す */
-.heroLead {
+/* 見出しの下の一言や CTA の下の説明 (中央揃えの短い文)。行末に一文字だけ残らないよう pretty、文節で折り返す */
+.lead {
   text-wrap: pretty;
   word-break: auto-phrase;
 }

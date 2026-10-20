@@ -14,7 +14,7 @@ export function LandingHero() {
         {MEMO_TTL_DAYS} 日で消えるメモ帳
       </Title>
       {/* 幅は、広い画面で一文ずつ一行に収まる長さ */}
-      <Text size="lg" maw={420} className={classes.heroLead}>
+      <Text size="lg" maw={420} className={classes.lead}>
         書いたメモは、日がたつと自動で消えます。片付けを気にせず、思いついたまま書けます。
       </Text>
       <Box mt="lg">
