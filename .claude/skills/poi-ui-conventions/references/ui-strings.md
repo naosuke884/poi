@@ -52,7 +52,7 @@ Pattern: what failed + what to do. Connection problems say `接続を確認し�
 - `ログアウトできませんでした。時間をおいてもう一度お試しください`
 - `アカウントを削除できませんでした。一度ログアウトして再ログインし、もう一度お試しください`
 - `切り替えられませんでした。もう一度そのアカウントでログインしてください`
-- `ページが見つかりません。` (404)
+- 404 (`NotFound`): heading `ページが見つかりません`, lead `URL が間違っているか、ページが移動または削除された可能性があります。`, button `トップへ戻る`
 
 Note: sentence-final `。` is inconsistent today — the modal / inline errors in `TtlSettingModal` end with `。`, the `useAccountActions` and `LandingHero` ones don't. Match the file you're editing.
 
