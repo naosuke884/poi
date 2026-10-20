@@ -17,3 +17,6 @@ e2e/.auth
 # jev-lint の判定キャッシュ (npm run lint:jev)。.jev-lint/rules/ に置く独自ルールはコミットするので、ディレクトリごとは無視しない
 .jev-lint/baseline.json
 .vitest/
+
+# Impeccable の critique の記録やライブ用サーバーの一時ファイル (/impeccable critique など)
+.impeccable/
