@@ -12,21 +12,29 @@ import { boardRoutes, settingsRoutes } from "./routes";
 type Section = { id: string; content: string; position: number; createdAt: string };
 
 const USER_ID = "u1";
+/** 他人の行に触れないことを確かめるための、もう 1 人のユーザー */
+const OTHER_USER_ID = "u2";
 
-const app = new Hono<AppEnv>()
-  .use(async (c, next) => {
-    c.set("user", { id: USER_ID } as NonNullable<AppEnv["Variables"]["user"]>);
-    c.set("session", {} as NonNullable<AppEnv["Variables"]["session"]>);
-    await next();
-  })
-  .route("/", boardRoutes)
-  .route("/settings", settingsRoutes);
+/** userId でログインしている状態のアプリ */
+function appAs(userId: string) {
+  return new Hono<AppEnv>()
+    .use(async (c, next) => {
+      c.set("user", { id: userId } as NonNullable<AppEnv["Variables"]["user"]>);
+      c.set("session", {} as NonNullable<AppEnv["Variables"]["session"]>);
+      await next();
+    })
+    .route("/", boardRoutes)
+    .route("/settings", settingsRoutes);
+}
+
+const app = appAs(USER_ID);
 
 type DraftSection = { id: string | null; content: string; createdAt?: string };
 type PutResponse = { sections: Section[]; revision: string; error?: string };
 
-/** USER_ID の板を db に対して読み書きする */
-function boardClient(db: D1Database) {
+/** userId の板を、userId でログインした状態で db に対して読み書きする */
+function boardClient(db: D1Database, userId: string) {
+  const app = appAs(userId);
   // 直前の保存で返ってきた版 (put はそれを付けて送り、成功すれば更新する。1 つの端末で保存し続けるのと同じ)
   let latestRevision: string | null = null;
 
@@ -37,7 +45,7 @@ function boardClient(db: D1Database) {
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: USER_ID, revision, sections }),
+        body: JSON.stringify({ userId, revision, sections }),
       },
       { DB: db },
     );
@@ -52,13 +60,17 @@ function boardClient(db: D1Database) {
 
   async function get() {
     const res = await app.request("/", {}, { DB: db });
-    return (await res.json()) as { sections: Section[]; revision: string | null };
+    return (await res.json()) as {
+      userId: string;
+      sections: Section[];
+      revision: string | null;
+    };
   }
 
   async function rows() {
     const { results } = await db
       .prepare("select id, content, position from memo where user_id = ? order by position")
-      .bind(USER_ID)
+      .bind(userId)
       .all<{ id: string; content: string; position: number }>();
     return results;
   }
@@ -66,13 +78,22 @@ function boardClient(db: D1Database) {
   return { putAt, put, get, rows };
 }
 
-const it = test.extend("board", async ({ db }) => {
+async function insertUser(db: D1Database, userId: string) {
   await db
     .prepare("insert into user (id, name, email) values (?, ?, ?)")
-    .bind(USER_ID, "u", "u@example.com")
+    .bind(userId, userId, `${userId}@example.com`)
     .run();
-  return boardClient(db);
-});
+}
+
+const it = test
+  .extend("board", async ({ db }) => {
+    await insertUser(db, USER_ID);
+    return boardClient(db, USER_ID);
+  })
+  .extend("otherBoard", async ({ db }) => {
+    await insertUser(db, OTHER_USER_ID);
+    return boardClient(db, OTHER_USER_ID);
+  });
 
 describe.concurrent("PUT /api/board", () => {
   // 既定の 5 秒では CI で落ちる: 1000 行を 3 回書き込むうえ、時間には D1 を立てる分も入り、同じファイルの他のテストと
@@ -239,14 +260,117 @@ describe.concurrent("PUT /api/board", () => {
   });
 });
 
+describe.concurrent("他のユーザーの板", () => {
+  it("取得で返すのは自分のセクションと自分の版だけ", async ({ board, otherBoard }) => {
+    const mine = await board.put([{ id: null, content: "mine" }]);
+    await otherBoard.put([{ id: null, content: "theirs" }]);
+
+    const got = await board.get();
+    expect(got.userId).toBe(USER_ID);
+    expect(got.sections.map((s) => s.content)).toEqual(["mine"]);
+    expect(got.revision).toBe(mine.body.revision);
+  });
+
+  it("他人のセクションの id を付けて保存しても、他人の行は書き換わらず、自分の板に新しく作る", async ({
+    board,
+    otherBoard,
+  }) => {
+    const theirs = await otherBoard.put([
+      { id: null, content: "a" },
+      { id: null, content: "b" },
+    ]);
+    const [a, b] = theirs.body.sections;
+
+    const saved = await board.put([
+      { id: a.id, content: "hijacked", createdAt: a.createdAt },
+      { id: b.id, content: "b", createdAt: b.createdAt },
+    ]);
+    expect(saved.status).toBe(200);
+    const ids = saved.body.sections.map((s) => s.id);
+    expect(ids).not.toContain(a.id);
+    expect(ids).not.toContain(b.id);
+    expect(await board.rows()).toEqual([
+      { id: ids[0], content: "hijacked", position: 0 },
+      { id: ids[1], content: "b", position: 1 },
+    ]);
+    expect(await otherBoard.rows()).toEqual([
+      { id: a.id, content: "a", position: 0 },
+      { id: b.id, content: "b", position: 1 },
+    ]);
+    expect((await otherBoard.get()).revision).toBe(theirs.body.revision);
+  });
+
+  it("自分の板を空にして保存しても、他人の行は消えない", async ({ board, otherBoard }) => {
+    await board.put([{ id: null, content: "mine" }]);
+    const theirs = await otherBoard.put([{ id: null, content: "theirs" }]);
+
+    expect((await board.put([])).status).toBe(200);
+    expect(await board.rows()).toEqual([]);
+    expect(await otherBoard.rows()).toEqual([
+      { id: theirs.body.sections[0].id, content: "theirs", position: 0 },
+    ]);
+  });
+
+  it("他人の板の版をもとにした保存は、自分の板の版と違うので断る", async ({
+    board,
+    otherBoard,
+  }) => {
+    await board.put([{ id: null, content: "mine" }]);
+    const theirs = await otherBoard.put([{ id: null, content: "theirs" }]);
+
+    const stale = await board.putAt(theirs.body.revision, [{ id: null, content: "x" }]);
+    expect(stale.status).toBe(409);
+    expect(stale.body.error).toBe("Stale");
+    expect((await board.rows()).map((row) => row.content)).toEqual(["mine"]);
+    expect((await otherBoard.get()).revision).toBe(theirs.body.revision);
+  });
+
+  it("切り替え前のアカウントの下書きが届いたら 409 UserMismatch で断り、どちらの板も変えない", async ({
+    db,
+    board,
+    otherBoard,
+  }) => {
+    const mine = await board.put([{ id: null, content: "mine" }]);
+    const theirs = await otherBoard.put([{ id: null, content: "theirs" }]);
+
+    // OTHER_USER_ID の板を開いたままのタブが、USER_ID に切り替わった後の cookie で自動保存する。
+    // 版は USER_ID の板の今の版にする。他人の版だと UserMismatch の確認が無くても Stale で断られ、板が変わらないので見分けられない
+    const res = await app.request(
+      "/",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: OTHER_USER_ID,
+          revision: mine.body.revision,
+          sections: [{ id: theirs.body.sections[0].id, content: "draft of the other account" }],
+        }),
+      },
+      { DB: db },
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "UserMismatch" });
+    expect((await board.rows()).map((row) => row.content)).toEqual(["mine"]);
+    expect((await board.get()).revision).toBe(mine.body.revision);
+    expect((await otherBoard.rows()).map((row) => row.content)).toEqual(["theirs"]);
+    expect((await otherBoard.get()).revision).toBe(theirs.body.revision);
+  });
+});
+
 describe.concurrent("PUT /api/settings", () => {
-  /** createdAt に作り、expiresAt を期限とするセクションの行を入れる */
-  async function insertSection(db: D1Database, id: string, createdAt: number, expiresAt: number) {
+  /** userId (省略時は USER_ID) の板に、createdAt に作り、expiresAt を期限とするセクションの行を入れる */
+  async function insertSection(
+    db: D1Database,
+    id: string,
+    createdAt: number,
+    expiresAt: number,
+    userId = USER_ID,
+  ) {
     await db
       .prepare(
         "insert into memo (id, user_id, content, position, created_at, updated_at, expires_at) values (?, ?, ?, 0, ?, ?, ?)",
       )
-      .bind(id, USER_ID, id, createdAt, createdAt, expiresAt)
+      .bind(id, userId, id, createdAt, createdAt, expiresAt)
       .run();
   }
 
@@ -262,10 +386,10 @@ describe.concurrent("PUT /api/settings", () => {
     );
   }
 
-  async function expiresAtById(db: D1Database) {
+  async function expiresAtById(db: D1Database, userId = USER_ID) {
     const { results } = await db
       .prepare("select id, expires_at from memo where user_id = ? order by id")
-      .bind(USER_ID)
+      .bind(userId)
       .all<{ id: string; expires_at: number }>();
     return Object.fromEntries(results.map((row) => [row.id, row.expires_at]));
   }
@@ -328,6 +452,23 @@ describe.concurrent("PUT /api/settings", () => {
     expect(await ttlDays()).toBe(30);
     expect((await putTtlDays(db, 7)).status).toBe(200);
     expect(await ttlDays()).toBe(7);
+  });
+
+  it("保持日数を変えても、他のユーザーのセクションの期限と保持日数は変わらない", async ({
+    db,
+    board,
+    otherBoard,
+  }) => {
+    const now = Date.now();
+    await insertSection(db, "mine", now - 10 * DAY_MS, now + 20 * DAY_MS);
+    await insertSection(db, "theirs", now - 10 * DAY_MS, now + 20 * DAY_MS, OTHER_USER_ID);
+
+    expect((await putTtlDays(db, 7)).status).toBe(200);
+    expect((await board.get()).sections).toEqual([]);
+    expect(await expiresAtById(db, OTHER_USER_ID)).toEqual({ theirs: now + 20 * DAY_MS });
+    const other = (await otherBoard.get()) as { sections: Section[]; ttlDays?: number };
+    expect(other.sections.map((s) => s.id)).toEqual(["theirs"]);
+    expect(other.ttlDays).toBe(30);
   });
 
   it("選択肢にない日数は 400 で断り、設定を変えない", async ({ db }) => {
