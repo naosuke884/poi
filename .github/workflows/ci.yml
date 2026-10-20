@@ -83,7 +83,8 @@ jobs:
           cp .dev.vars.example .dev.vars
           sed -i "s|^BETTER_AUTH_SECRET=.*|BETTER_AUTH_SECRET=$(openssl rand -base64 32)|" .dev.vars
 
-      - run: npx playwright install --with-deps chromium
+      # WebKit は寿命のバーの飾りのテスト (e2e/landing.spec.ts) を mobile-webkit で動かすのに使う (HAY-51 は WebKit でしか起きない)
+      - run: npx playwright install --with-deps chromium webkit
 
       # dev サーバーと本番ビルド (vp preview) の起動、ローカル D1 のマイグレーション、テストユーザーのログインは
       # playwright.config.ts / e2e/global-setup.ts が行う

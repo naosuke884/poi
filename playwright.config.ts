@@ -49,6 +49,13 @@ export default defineConfig({
       testIgnore: PRODUCTION_SPEC,
       use: { ...devices["Pixel 7"], colorScheme: "light" },
     },
+    // HAY-51 の食い違いは WebKit でしか起きないので、寿命のバーの飾りのテストだけ iPhone の WebKit でも動かす。
+    // a11y.spec.ts は CDP (Chromium だけ) を使うので、WebKit では動かさない
+    {
+      name: "mobile-webkit",
+      testMatch: "landing.spec.ts",
+      use: { ...devices["iPhone 15"], colorScheme: "light" },
+    },
     {
       name: "production",
       testMatch: PRODUCTION_SPEC,

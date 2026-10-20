@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 // ランディングの寿命のバーの飾り (使い道の見本の LifeLineDemo)。スクロールで「あと N 日」とバーが減っていく。
-// HAY-51 の食い違い (Safari で日数が出なくなる) は WebKit でしか起きず、CI の Chromium では再現しない。
-// WebKit で動かせば (iPhone の devices で) このテストが落ちることは手元で確かめてある
+// HAY-51 の食い違い (Safari で日数が出なくなる) は WebKit でしか起きず、Chromium では再現しないので、
+// playwright.config.ts の mobile-webkit (iPhone の WebKit) でも動かす
 test("寿命のバーの飾りは、スクロールの途中でも「あと N 日」とバーの長さが一致する", async ({
   page,
 }) => {
@@ -17,9 +17,12 @@ test("寿命のバーの飾りは、スクロールの途中でも「あと N �
   const seen = new Set<number>();
   for (const fraction of [0.9, 0.75, 0.6, 0.5]) {
     await page.evaluate(
-      `(() => {
+      `(async () => {
         const el = ${demo};
         window.scrollBy(0, el.getBoundingClientRect().top - ${viewportHeight * fraction});
+        // スクロールに連動するアニメーションの値は次の描画で更新されるので、それを待ってから読む
+        // (待たないと、Chromium ではスクロール前の値を読んで、どの点でも同じ日数になることがある)
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       })()`,
     );
     // e2e の型にはブラウザの DOM が無いので、ページ内で動かす処理は文字列で渡す (a11y.spec.ts と同じ)
@@ -33,7 +36,8 @@ test("寿命のバーの飾りは、スクロールの途中でも「あと N �
         const label = el.querySelector('[class*="lifeDemoLabel"]');
         const track = el.querySelector('[class*="lifeDemoTrack"]');
         const remaining = el.querySelector('[class*="lifeDemoRemaining"]');
-        const [, n] = getComputedStyle(label).counterReset.split(" ");
+        // counter-reset が無効 (none) になると、数は 0 として描かれる (HAY-51 の「あと 0 日」)
+        const [, n = "0"] = getComputedStyle(label).counterReset.split(" ");
         return {
           days: Number(n),
           total: Number(getComputedStyle(el).getPropertyValue("--life-demo-total")),
