@@ -1,5 +1,5 @@
 /* ランディング専用の見た目 (色は Mantine の変数だけを使い、ダーク配色に追従させる)。
-   動き (動画の起き上がり、寿命のバー) はどれも
+   動き (ヒーローのメモが消える、寿命のバー) はどれも
    prefers-reduced-motion: no-preference のときだけ付ける。「動きを減らす」の人には最後の状態だけを見せる */
 
 /* ---- ヒーロー ---- */
@@ -26,14 +26,9 @@
 
 /* ---- デモ動画 ---- */
 
-/* 起き上がる動き (.videoZoomButton) に奥行きを付ける */
-.videoStage {
-  perspective: 1600px;
-}
-
 /* aspect-ratio: ポスターや動画が読み込まれる前から動画の高さ分の場所を取る (無いと既定の 300×150 の比率で
    描かれ、読み込み後に動画の比率へ伸びて下の特徴リストとフッターが押し下げられる。issue #118)。
-   値は public/demo*.mp4 と demo-poster*.webp の縦横比 (2560×1600 = 16 / 10)。撮り直しで比率が変わったら合わせる。
+   値は public/demo*.mp4 と demo-poster*.webp の縦横比 (PC 版は 1856×1160 = 16 / 10)。撮り直しで比率が変わったら合わせる。
    auto を付けると比率が枠線を除いた中身に掛かり、読み込み後 (動画自身の比率) と高さが 1px 未満もずれない */
 .demoVideo {
   width: 100%;
@@ -50,54 +45,26 @@
     aspect-ratio: auto 13 / 24;
   }
 
-  .videoZoomButton {
+  .videoButton {
     max-width: 320px;
     margin-inline: auto;
   }
 }
 
-/* 全画面では枠の飾りをやめる (黒帯の上に角丸と枠線が残らないように) */
-.demoVideo:fullscreen {
-  border-radius: 0;
-  border: 0;
-}
-
-/* デモ動画を包むボタン (クリックで拡大表示)。見た目は動画そのままにする */
-.videoZoomButton {
+/* デモ動画を包むボタン (押すと止まる・動く)。見た目は動画そのままにする */
+.videoButton {
   display: block;
   width: 100%;
   padding: 0;
   border: 0;
   background: none;
-  cursor: zoom-in;
+  cursor: pointer;
   border-radius: var(--mantine-radius-md);
 }
 
-.videoZoomButton:focus-visible {
+.videoButton:focus-visible {
   outline: 2px solid var(--mantine-primary-color-filled);
   outline-offset: 2px;
-}
-
-/* スクロールに合わせて、奥へ倒れた画面が正面に起き上がる (scroll-driven animation。
-   未対応のブラウザは最初から正面のまま)。下端を軸にして、机に置いた画面を立てるように */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .videoZoomButton {
-      transform-origin: 50% 100%;
-      animation: rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% cover 45%;
-    }
-  }
-}
-
-@keyframes rise {
-  from {
-    transform: rotateX(24deg) scale(0.92);
-  }
-  to {
-    transform: none;
-  }
 }
 
 /* ---- 特徴 (FeatureList) ---- */
@@ -335,22 +302,5 @@
 
   .lifeDemoRemaining {
     border-block-start-color: CanvasText;
-  }
-}
-
-/* ---- デモ動画の説明 ---- */
-
-/* 拡大の操作の言い方を、マウスとタッチで出し分ける (隠したほうは display: none なので読み上げられない) */
-.zoomHintTap {
-  display: none;
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .zoomHintClick {
-    display: none;
-  }
-
-  .zoomHintTap {
-    display: inline;
   }
 }
