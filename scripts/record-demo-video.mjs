@@ -287,12 +287,62 @@ async function areaLeftOf(locator) {
   return { x: right - COPY_WIDTH, y: box.y - 130, width: COPY_WIDTH, height: box.height + 260 };
 }
 
+// ---- 締めの画面 ----
+
+// 締めの画面の言葉。ランディングのヒーローの見出し (LandingHero.tsx) と同じにする
+const TAGLINE = "30 日で消えるメモ帳";
+
+/**
+ * 動画の終わりに出す締めの画面 (板をぼかした上にアイコンと名前、ひとこと)。
+ * 動画の頭もこの画面から始めて消していくので、ループのつなぎ目では同じ画面が続いて見える
+ * (板の内容は終わりと頭で違うが、ぼかして薄く敷くのでほとんど分からない)
+ */
+async function installEndCard(page) {
+  const small = Boolean(variant.hasTouch);
+  await page.addStyleTag({
+    content: `
+      #demo-card {
+        position: fixed; inset: 0; z-index: 2147483646; pointer-events: none;
+        display: grid; place-content: center; justify-items: center; gap: ${small ? 14 : 24}px;
+        background: color-mix(in srgb, var(--mantine-color-body) 82%, transparent);
+        backdrop-filter: blur(14px);
+        transition: opacity 600ms ease;
+      }
+      #demo-card[hidden] { display: grid; opacity: 0; }
+      #demo-card .name { display: flex; align-items: center; gap: ${small ? 14 : 20}px; }
+      #demo-card img { width: ${small ? 60 : 104}px; height: ${small ? 60 : 104}px; }
+      #demo-card .name span { font-size: ${small ? 48 : 84}px; font-weight: 700; color: var(--mantine-color-bright); }
+      #demo-card p { margin: 0; font-size: ${small ? 22 : 36}px; color: var(--mantine-color-dimmed); }
+    `,
+  });
+  await page.evaluate((tagline) => {
+    const card = document.createElement("div");
+    card.id = "demo-card";
+    card.innerHTML = '<div class="name"><img src="/icon.svg" alt=""><span>poi</span></div><p></p>';
+    card.querySelector("p").textContent = tagline;
+    document.body.append(card);
+    return card.querySelector("img").decode();
+  }, TAGLINE);
+}
+
+/** 締めの画面を出す (true) か消す (false)。出し切る・消し切るまで待つ */
+async function showEndCard(page, shown) {
+  await page.evaluate((shown) => {
+    document.getElementById("demo-card").hidden = !shown;
+  }, shown);
+  await pause(page, 650);
+}
+
 // 表示の切り替え (SegmentedControl)。中の radio は見えないので、押せる label を押す
 const viewToggle = (page, name) =>
   page.getByRole("radiogroup", { name: "板の表示方法" }).locator("label").filter({ hasText: name });
 
+/** 操作を撮る。返り値はポスターにするコマの時刻 (締めの画面を出す直前の、内容が入って引いた板) */
 async function scenario(page) {
-  await pause(page, 1500);
+  // 締めの画面から始める (ループのつなぎ目)
+  await pause(page, 300);
+  await showEndCard(page, false);
+  await pause(page, 1200);
   // 新しいセクションを書く
   await press(page, page.getByRole("button", { name: "セクションを追加" }).first());
   await pause(page, 300);
@@ -321,6 +371,12 @@ async function scenario(page) {
   look(null);
   await press(page, viewToggle(page, "タイムライン"));
   await pause(page, 2000);
+  const posterAt = Date.now() / 1000 - 0.3;
+  // 頭のコマにはカーソルが無いので、締めの画面でも消しておく
+  if (!variant.hasTouch) await hideCursor(page);
+  await showEndCard(page, true);
+  await pause(page, 1600);
+  return posterAt;
 }
 
 // ---- 録画 ----
@@ -457,6 +513,7 @@ async function record() {
   });
   let frames;
   let endAt;
+  let posterAt;
   try {
     await page.goto("http://localhost:5173/board", { waitUntil: "networkidle" });
     // サイドカーには中国語のフォントしか無く、日本語の字形が違って見えるので、録画のときだけ日本語のフォントを足す。
@@ -482,9 +539,10 @@ async function record() {
     // 板は最後のセクションまで送った位置で開くので、先頭に戻して寿命の違うセクションが並んだ所から撮る
     await page.evaluate(() => scrollTo(0, 0));
     await installPointer(page);
+    await installEndCard(page);
     await pause(page, 300);
     const stop = startCapture(page);
-    await scenario(page);
+    posterAt = await scenario(page);
     endAt = Date.now() / 1000;
     frames = await stop();
   } finally {
@@ -493,14 +551,14 @@ async function record() {
   const mp4 = join(outDir, `demo${suffix}.mp4`);
   const poster = join(outDir, `demo-poster${suffix}.webp`);
   encode(frames, endAt, mp4);
-  // ポスターは内容の入った最後のコマ (先頭のコマだと読み込み中に空に近い板が見える。issue #97)。
-  // それより前は、PC 版では引いている途中のことがある
+  // ポスターは締めの画面を出す直前の、内容の入った板 (先頭のコマだと読み込み中に空に近い板が見える。issue #97。
+  // 締めの画面のコマは、読み込み中や「動きを減らす」で止まったときに、何のアプリか分かる板にならない)
   execFileSync(ffmpegPath(), [
     "-y",
     "-loglevel",
     "error",
-    "-sseof",
-    "-0.5",
+    "-ss",
+    (posterAt - frames[0].at).toFixed(3),
     "-i",
     mp4,
     "-frames:v",
