@@ -45,6 +45,8 @@ if (!variant || !["light", "dark"].includes(values.scheme)) {
   process.exit(2);
 }
 const SCALE = 2;
+// 録画で日本語に使うフォント (Google Fonts)
+const FONT = { family: "Noto Sans JP", query: "Noto+Sans+JP:wght@400;700" };
 const outDir = values.out ?? mkdtempSync(join(tmpdir(), "poi-demo-video-"));
 mkdirSync(outDir, { recursive: true });
 const suffix = `${values.scheme === "dark" ? "-dark" : ""}${values.variant === "phone" ? "-phone" : ""}`;
@@ -243,15 +245,22 @@ async function record() {
   let endAt;
   try {
     await page.goto("http://localhost:5173/board", { waitUntil: "networkidle" });
-    // サイドカーには中国語のフォントしか無く、日本語の字形が違って見えるので、録画のときだけ Noto Sans JP を足す
-    // (Inter の後ろの system-ui の代わりに当たる。読み込みが終わってから撮り始める)
+    // サイドカーには中国語のフォントしか無く、日本語の字形が違って見えるので、録画のときだけ日本語のフォントを足す。
+    // 見出しは body を継がず Mantine の変数で字体を決めるので、変数ごと (Mantine が後から入れる :root より強く) 置き換える
+    const stack = `"Inter Variable", "${FONT.family}", sans-serif`;
     await page.addStyleTag({
-      url: "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=block",
+      url: `https://fonts.googleapis.com/css2?family=${FONT.query}&display=block`,
     });
     await page.addStyleTag({
-      content: 'body { font-family: "Inter Variable", "Noto Sans JP", sans-serif; }',
+      content: `:root { --mantine-font-family: ${stack} !important; --mantine-font-family-headings: ${stack} !important; }`,
     });
-    await page.evaluate(() => document.fonts.ready);
+    // 字はページに出てから読み込まれるので、本文と見出し (太字) の分を先に読み込んでから撮り始める
+    await page.evaluate(async (family) => {
+      const text = document.body.innerText + "今日のやること企画書を見直す打ち合わせ時買い物電池";
+      await Promise.all(
+        ["400", "700"].map((w) => document.fonts.load(`${w} 16px "${family}"`, text)),
+      );
+    }, FONT.family);
     // 開発時だけ出る TanStack Router の開発ツールのボタンは映さない
     await page.evaluate(() =>
       document.querySelectorAll('button[class^="go"]').forEach((b) => b.closest("div")?.remove()),
