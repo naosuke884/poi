@@ -20,7 +20,7 @@ comment_id=
 cleanup() {
   rm -f "$tmp"
   if [[ -n "$comment_id" ]]; then
-    gh api -X DELETE "repos/{owner}/{repo}/issues/comments/$comment_id" >/dev/null
+    gh api -X DELETE "repos/{owner}/{repo}/comments/$comment_id" >/dev/null
   fi
 }
 trap cleanup EXIT
@@ -42,10 +42,12 @@ if ! [[ "$new_url" =~ ^$url_pattern$ ]]; then
   exit 1
 fi
 
-# アップロードしただけの asset は 404 のままで、issue コメントの本文に含めて投稿すると
+# アップロードしただけの asset は 404 のままで、コメントの本文に含めて投稿すると
 # 数秒後に公開される。公開後はコメントを消しても残るので、確認できたら消す。
-issue=$(gh issue list --state all --limit 1 --json number --jq '.[0].number')
-comment_id=$(gh api "repos/{owner}/{repo}/issues/$issue/comments" \
+# issue のコメントは使わない: issue を Linear に移して GitHub の issue を無効にしたため投稿できない。
+# 代わりに main の先頭のコミットへのコメントにする
+head=$(gh api 'repos/{owner}/{repo}/commits/HEAD' --jq .sha)
+comment_id=$(gh api "repos/{owner}/{repo}/commits/$head/comments" \
   -f body="demo.mp4 upload for README (deleted automatically)"$'\n\n'"$new_url" --jq .id)
 for _ in $(seq 30); do
   if curl -sSfL -o "$tmp" "$new_url" 2>/dev/null; then
@@ -53,7 +55,7 @@ for _ in $(seq 30); do
   fi
   sleep 2
 done
-gh api -X DELETE "repos/{owner}/{repo}/issues/comments/$comment_id" >/dev/null
+gh api -X DELETE "repos/{owner}/{repo}/comments/$comment_id" >/dev/null
 comment_id=
 
 if [[ "$(sha256sum "$tmp" | cut -d' ' -f1)" != "$local_hash" ]]; then
