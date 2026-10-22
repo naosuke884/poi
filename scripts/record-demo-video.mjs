@@ -47,6 +47,10 @@ if (!variant || !["light", "dark"].includes(values.scheme)) {
   process.exit(2);
 }
 const SCALE = 2;
+// 書き出す大きさ。PC 版は 2 倍で撮ったまま (2560×1600) だと、ランディング (928px 幅) や README で
+// ブラウザが 1/1.4〜1/2.8 に縮めて描き、細い字の線がガタついて見えた。ランディングの Retina の画面の画素
+// (928 × 2 = 1856) に合わせて、ffmpeg で丁寧に (lanczos) 縮めておく。スマホ版は撮ったまま
+const OUTPUT = values.variant === "desktop" ? { width: 1856, height: 1160 } : null;
 // 寄るときの最大の倍率。ランディングの Retina の画面 (928px 幅 = 1856 画素) では 2560 / 1856 ≒ 1.4 倍までは
 // 撮った画素のままで、それ以上はわずかにぼやける。字を読める大きさにするのを優先して 1.7 倍まで寄る
 const MAX_ZOOM = 1.7;
@@ -418,7 +422,13 @@ function encode(frames, endAt, mp4) {
     "-i",
     listFile,
     "-vf",
-    ["fps=30", ...cameraFilter(frames[0].at), "scale=trunc(iw/2)*2:trunc(ih/2)*2"].join(","),
+    [
+      "fps=30",
+      ...cameraFilter(frames[0].at),
+      OUTPUT
+        ? `scale=${OUTPUT.width}:${OUTPUT.height}:flags=lanczos`
+        : "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+    ].join(","),
     "-an",
     "-c:v",
     "libx264",
