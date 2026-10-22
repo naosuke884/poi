@@ -1,5 +1,5 @@
 import { Box, Button, Text, Title, useComputedColorScheme } from "@mantine/core";
-import { useReducedMotion } from "@mantine/hooks";
+import { useMediaQuery, useReducedMotion } from "@mantine/hooks";
 import { useEffect, useRef, useState } from "react";
 
 import classes from "./Landing.module.css";
@@ -9,6 +9,9 @@ import classes from "./Landing.module.css";
  * ブラウザでは、プリレンダーした HTML はハイドレーションせずに描き直す (src/main.tsx) ので、最初から分かる
  */
 const COLOR_SCHEME_KNOWN = typeof document !== "undefined";
+
+/** スマホ版の動画を出す画面の幅 (Mantine の sm 未満)。Landing.module.css の .demoVideo の比率と揃える */
+const PHONE_QUERY = "(max-width: 47.99em)";
 
 /** 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする */
 export function DemoVideo() {
@@ -20,6 +23,10 @@ export function DemoVideo() {
   // プリレンダーした HTML には動画もポスターも入れない (配色が分からず、明るい版を読み込ませてしまうため)。
   // 場所は aspect-ratio で取ってある
   const dark = useComputedColorScheme("light", { getInitialValueInEffect: false }) === "dark";
+  // スマホの幅では、スマホの画面を撮った縦長の版を出す (PC 版を縮めると字が 4px 前後になり読めない。HAY-53)。
+  // 配色と同じく初回の描画から実際の幅で選ぶ
+  const phone = useMediaQuery(PHONE_QUERY, false, { getInitialValueInEffect: false });
+  const suffix = `${dark ? "-dark" : ""}${phone ? "-phone" : ""}`;
   // デモ動画の拡大表示 (#54): クリックで video 要素をそのまま全画面にする。
   // 全画面の間だけ controls を出す (インラインに置くとクリックが再生操作と取り合いになる。
   // 「動きを減らす」の人の再生もここで行う)
@@ -66,7 +73,7 @@ export function DemoVideo() {
   return (
     // 動画は PC の画面 (1280×800、ヘッダーを含むページ全体) を撮っている (issue #138)。
     // 広い画面でもページの列 (Container md = 960px。余白を除くと 928px、0.73 倍で本文 12px 前後) に収める。
-    // スマホでは小さく映るので、クリックで全画面 (横向き) にして見てもらう。
+    // スマホの幅では、スマホの画面 (390×720) を撮った縦長の版を出す (scripts/record-demo-video.mjs)。
     // videoStage は奥行き (perspective) だけを持ち、傾きと光はボタン側 (Landing.module.css)
     <Box component="section" aria-labelledby="demo" maw={960} w="100%">
       {/* 見出しは本文の列 (720px) に揃える。動画だけは広い画面でその外まで広げる */}
@@ -91,16 +98,10 @@ export function DemoVideo() {
         >
           <video
             ref={videoRef}
-            src={COLOR_SCHEME_KNOWN ? (dark ? "/demo-dark.mp4" : "/demo.mp4") : undefined}
+            src={COLOR_SCHEME_KNOWN ? `/demo${suffix}.mp4` : undefined}
             // 読み込み中や自動再生しないとき (動きを減らす) に見せる、内容の入った板 (issue #97)。
-            // 動画と同じく配色に合わせる
-            poster={
-              COLOR_SCHEME_KNOWN
-                ? dark
-                  ? "/demo-poster-dark.webp"
-                  : "/demo-poster.webp"
-                : undefined
-            }
+            // 動画と同じく配色と幅に合わせる
+            poster={COLOR_SCHEME_KNOWN ? `/demo-poster${suffix}.webp` : undefined}
             className={classes.demoVideo}
             autoPlay={!reduceMotion}
             controls={videoFullscreen}
@@ -111,7 +112,7 @@ export function DemoVideo() {
             onPause={() => setPlaying(false)}
           />
         </button>
-        {/* 何を映しているかと、拡大できること (スマホでは小さくて読めないので、全画面で見られると伝える)。
+        {/* 何を映しているかと、拡大できること (全画面で大きく見られると伝える)。
           操作の言い方はポインターで出し分ける (Landing.module.css の .zoomHint*) */}
         <Text component="figcaption" size="sm" ta="center" mt="md" className={classes.lead}>
           メモを書いて区切り、見出しごとにまとめて読み、コピーするまで。

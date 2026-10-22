@@ -43,6 +43,19 @@
   border: 1px solid var(--mantine-color-default-border);
 }
 
+/* スマホの幅ではスマホ版 (780×1440 = 13 / 24) を出す (DemoVideo.tsx の PHONE_QUERY と揃える)。
+   縦長で列の幅いっぱいだと画面に収まらないので、幅を抑えて中央に置く */
+@media (max-width: 47.99em) {
+  .demoVideo {
+    aspect-ratio: auto 13 / 24;
+  }
+
+  .videoZoomButton {
+    max-width: 320px;
+    margin-inline: auto;
+  }
+}
+
 /* 全画面では枠の飾りをやめる (黒帯の上に角丸と枠線が残らないように) */
 .demoVideo:fullscreen {
   border-radius: 0;
