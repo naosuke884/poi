@@ -221,9 +221,8 @@ const showPress = (page, x, y) =>
             { opacity: 0.9, scale: 0.3 },
             { opacity: 0, scale: 1.3 },
           ];
-      mark
-        .animate(frames, { duration: touch ? 650 : 500, easing: "ease-out" })
-        .finished.then(() => mark.remove());
+      mark.animate(frames, { duration: touch ? 650 : 500, easing: "ease-out" }).onfinish = () =>
+        mark.remove();
     },
     { x, y, touch: Boolean(variant.hasTouch) },
   );
