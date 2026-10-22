@@ -1,31 +1,16 @@
 import { Box, Text, Title } from "@mantine/core";
-import { MEMO_TTL_CHOICES, MEMO_TTL_DAYS } from "@shared/constants";
+import { MEMO_TTL_DAYS } from "@shared/constants";
 
 import classes from "./Landing.module.css";
 
-// 選べる保存期間の幅 (設定の選択肢と食い違わないよう定数から作る)
-const TTL_RANGE = `${MEMO_TTL_CHOICES[0]}〜${MEMO_TTL_CHOICES[MEMO_TTL_CHOICES.length - 1]} 日`;
-
-// 特徴。文言は「何ができるか」だけに絞り、実装の言葉 (PWA 等) は避ける。
-// ヒーローの言い換えにならないよう、消え方の中身・まとめ・持ち出し・どこからでも開けることの順に並べる。
-// 「セクション」は板の言葉なので、初めて出るところで何を指すかを添える
-const FEATURES: { title: string; body: string }[] = [
-  {
-    title: `書いてから ${MEMO_TTL_DAYS} 日で、ひとつずつ消える`,
-    body: `メモは区切ったまとまり (セクション) ごとに、書いた日から数えて消えます。書き足しても消える日は延びません。残りの日数はバーで見え、日数は ${TTL_RANGE}から選べます。`,
-  },
-  {
-    title: "見出しごとに、まとめて読める",
-    body: "見出しを付けると、同じ見出しのメモを日付をまたいで一か所に集めて表示します。箇条書きなどの Markdown も使えます。",
-  },
-  {
-    title: "残したいものは、ワンクリックで持ち出せる",
-    body: "セクションごとに、テキストをコピーしたり、画像にしたりできます。消える前に、チャットや SNS、別のメモへそのまま貼れます。",
-  },
-  {
-    title: "ホーム画面から、すぐ書ける",
-    body: "アプリのようにホーム画面に追加できます。電波がないときも、前回の内容は読めます。",
-  },
+// 特徴。「何ができるか」の一行だけにし、実装の言葉 (PWA 等) は避ける。
+// 細かい決まり (保存期間の幅、Markdown、オフライン) は使い方とよくある質問のページに任せる (HAY-53)。
+// ヒーローの言い換えにならないよう、消え方の中身・まとめ・持ち出し・どこからでも開けることの順に並べる
+const FEATURES = [
+  `書いてから ${MEMO_TTL_DAYS} 日で、ひとつずつ消える`,
+  "見出しごとに、まとめて読める",
+  "残したいものは、ワンクリックで持ち出せる",
+  "ホーム画面から、すぐ書ける",
 ];
 
 /**
@@ -39,14 +24,10 @@ export function FeatureList() {
         できること
       </Title>
       <Box component="ul" className={classes.features}>
-        {FEATURES.map((f) => (
-          // 本文は通常色 (dimmed だと小さい文字でコントラスト AA を割る)
-          <li key={f.title} className={classes.feature}>
+        {FEATURES.map((title) => (
+          <li key={title} className={classes.feature}>
             <Text component="h3" fw={600} size="lg" m={0}>
-              {f.title}
-            </Text>
-            <Text size="sm" mt={4}>
-              {f.body}
+              {title}
             </Text>
           </li>
         ))}

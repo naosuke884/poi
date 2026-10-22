@@ -14,9 +14,9 @@ export function LandingHero() {
       <Title order={1} className={classes.heroTitle} tabIndex={-1}>
         {MEMO_TTL_DAYS} 日で消えるメモ帳
       </Title>
-      {/* 幅は、広い画面で一文ずつ一行に収まる長さ */}
-      <Text size="lg" maw={420} className={classes.lead}>
-        書いたメモは、日がたつと自動で消えます。片付けを気にせず、思いついたまま書けます。
+      {/* 本質の一文だけにする (片付けがいらないことは、下の見本と使い道で見せる。HAY-53) */}
+      <Text size="lg" className={classes.lead}>
+        書いたメモは、日がたつと自動で消えます。
       </Text>
       <Box mt="lg">
         <LoginCta />

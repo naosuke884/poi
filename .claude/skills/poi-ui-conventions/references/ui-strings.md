@@ -67,7 +67,7 @@ Note: sentence-final `。` is inconsistent today — the modal / inline errors i
 ## Titles and fixed text
 
 - Modals: `保存期間` (radio group label `削除までの日数`, options `<n> 日`; note when some sections are past the new period (they are not deleted; their deadline becomes the earlier of the current one and today + <n> days) `保存すると、書いてから <n> 日を過ぎているセクション <m> 個は、遅くとも今日から <n> 日後に削除されます。`), `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
-- Landing: `<n> 日で消えるメモ帳`; lead `書いたメモは、日がたつと自動で消えます。片付けを気にせず、思いついたまま書けます。`; under the CTA `無料で使えます。書いたメモを読めるのは、ログインした本人だけです。` then the consent line `ログインすると、利用規約とプライバシーポリシーに同意したものとみなします。`; hero memo after it vanishes `このメモは消えました`; section headings `消えるメモの使い道`, `実際の画面`, `できること`, `片付けは、poi にまかせる`; video (the video itself is the button) `デモ動画を一時停止` / `デモ動画を再生`; features `書いてから <n> 日で、ひとつずつ消える`, `見出しごとに、まとめて読める`, `残したいものは、ワンクリックで持ち出せる`, `ホーム画面から、すぐ書ける`
+- Landing: `<n> 日で消えるメモ帳`; lead `書いたメモは、日がたつと自動で消えます。`; under the CTA `無料で使えます。書いたメモを読めるのは、ログインした本人だけです。` then the consent line `ログインすると、利用規約とプライバシーポリシーに同意したものとみなします。`; hero memo after it vanishes `このメモは消えました`; section headings `消えるメモの使い道`, `実際の画面`, `できること`, `片付けは、poi にまかせる`; video (the video itself is the button) `デモ動画を一時停止` / `デモ動画を再生`; features `書いてから <n> 日で、ひとつずつ消える`, `見出しごとに、まとめて読める`, `残したいものは、ワンクリックで持ち出せる`, `ホーム画面から、すぐ書ける`
 - Document titles (`useDocumentTitle`): `poi` (top), `使い方 | poi`, `よくある質問 | poi`, `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
 - Legal: `最終更新日: <yyyy> 年 <m> 月 <d> 日`
 - Footer (`SiteFooter`, landing and text pages): links `使い方` / `よくある質問` / `GitHub` on the first row, `利用規約` / `プライバシーポリシー` / `© <year> poi` on the second
