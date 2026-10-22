@@ -14,8 +14,8 @@ const FEATURES = [
 ];
 
 /**
- * 特徴の一覧。広い画面では 2 列に並べ、各項目の上に板の区切り線と同じ細い線を引く
- * (カードや色の付いた縦線にせず、板と同じ見え方でまとまりを示す)
+ * 特徴の一覧。一行ずつの短い箇条書きにする (見出し + 本文のまとまりにすると、本文の無い今は
+ * 区切り線と見出しだけが並んで表の枠のように見える。HAY-53)
  */
 export function FeatureList() {
   return (
@@ -24,12 +24,10 @@ export function FeatureList() {
         できること
       </Title>
       <Box component="ul" className={classes.features}>
-        {FEATURES.map((title) => (
-          <li key={title} className={classes.feature}>
-            <Text component="h3" fw={600} size="lg" m={0}>
-              {title}
-            </Text>
-          </li>
+        {FEATURES.map((feature) => (
+          <Text component="li" key={feature} size="lg" className={classes.feature}>
+            {feature}
+          </Text>
         ))}
       </Box>
     </Box>

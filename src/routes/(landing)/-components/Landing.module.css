@@ -76,22 +76,27 @@
   margin: var(--mantine-spacing-lg) 0 0;
   padding: 0;
   display: grid;
-  gap: var(--mantine-spacing-xl);
+  gap: var(--mantine-spacing-sm);
   word-break: auto-phrase;
 }
 
-@media (min-width: $mantine-breakpoint-sm) {
-  .features {
-    grid-template-columns: 1fr 1fr;
-    column-gap: var(--mantine-spacing-xl);
-  }
+/* 行の頭のチェックの印。枠線で描く (forced colors でも残る) */
+.feature {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mantine-spacing-sm);
 }
 
-/* 各項目の上に、板のセクションの区切り線と同じ細い線を引いてまとまりを示す
-   (色の付いた太い縦線はやめた: 飾りに見え、板のどこにも無い印だったため。forced colors でも残るよう枠線で) */
-.feature {
-  padding-block-start: var(--mantine-spacing-sm);
-  border-block-start: 1px solid var(--mantine-color-default-border);
+.feature::before {
+  content: "";
+  flex: none;
+  width: 0.35em;
+  height: 0.7em;
+  margin-inline: 0.2em;
+  /* light-color: ダーク配色では明るい段の色になり、暗い背景に沈まない */
+  border: solid var(--mantine-primary-color-light-color);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-0.15em) rotate(45deg);
 }
 
 /* ---- 使い道 (UseCaseList) ---- */
