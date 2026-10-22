@@ -30,7 +30,7 @@
     "lint:jev": "jev-lint check"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.7.7",
+    "@better-auth/drizzle-adapter": "^1.7.9",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/language": "^6.13.1",
     "@codemirror/state": "^6.7.6",
@@ -38,19 +38,19 @@
     "@fontsource-variable/inter": "^5.3.0",
     "@hono/zod-validator": "^0.9.1",
     "@lezer/markdown": "^1.8.0",
-    "@mantine/core": "^9.7.1",
+    "@mantine/core": "^9.7.2",
     "@mantine/hooks": "^9.5.2",
     "@tanstack/react-router": "^1.170.41",
-    "better-auth": "^1.7.7",
+    "better-auth": "^1.7.9",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "modern-screenshot": "^4.7.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
