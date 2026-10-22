@@ -66,7 +66,7 @@ describe("LoginCta", () => {
   });
 
   it("URL をコピーすると、トップページの URL をクリップボードに入れて結果を知らせる", async () => {
-    const writeText = vi.fn(async (_: string) => {});
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => {});
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     renderWithUserAgent(X_IOS_UA);
     await act(async () => container.querySelector("button")!.click());
