@@ -1,6 +1,6 @@
 import { Box, Title, useComputedColorScheme } from "@mantine/core";
 import { useMediaQuery, useReducedMotion } from "@mantine/hooks";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import classes from "./Landing.module.css";
 
@@ -28,7 +28,23 @@ export function DemoVideo() {
   const phone = useMediaQuery(PHONE_QUERY, false, { getInitialValueInEffect: false });
   const suffix = `${dark ? "-dark" : ""}${phone ? "-phone" : ""}`;
   // 自動再生が始まる (または止まる) と video のイベントで追従する。「動きを減らす」では止まったまま始まる
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  // React は muted をプロパティにしか設定せず、属性に出さない (facebook/react#10389)。iOS の Safari は
+  // 属性が無いと音の出る動画とみなして自動再生しないので、読み込みが始まる前に属性も付ける
+  const attachVideo = useCallback((video: HTMLVideoElement | null) => {
+    videoRef.current = video;
+    if (video) {
+      video.defaultMuted = true;
+      video.setAttribute("muted", "");
+    }
+  }, []);
+  const src = COLOR_SCHEME_KNOWN ? `/demo${suffix}.mp4` : undefined;
+  // autoPlay だけでは、iOS で読み込みの後に始まらないことがあるので、動画が変わるたびに再生を頼む
+  // (低電力モードなどで断られたら止まったまま。押せば再生できる)
+  useEffect(() => {
+    if (!src || reduceMotion) return;
+    videoRef.current?.play().catch(() => {});
+  }, [src, reduceMotion]);
   const [playing, setPlaying] = useState(false);
   const togglePlay = () => {
     const video = videoRef.current;
@@ -67,8 +83,8 @@ export function DemoVideo() {
         onClick={togglePlay}
       >
         <video
-          ref={videoRef}
-          src={COLOR_SCHEME_KNOWN ? `/demo${suffix}.mp4` : undefined}
+          ref={attachVideo}
+          src={src}
           // 読み込み中や自動再生しないとき (動きを減らす) に見せる、内容の入った板 (issue #97)。
           // 動画と同じく配色と幅に合わせる
           poster={COLOR_SCHEME_KNOWN ? `/demo-poster${suffix}.webp` : undefined}
