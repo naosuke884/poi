@@ -1,5 +1,7 @@
 # 依存の更新 PR を Dependabot に作らせる。minor / patch は dev / prod ごとに 1 本の PR にまとめ、major は個別に確認する
 # cooldown はリリースから 7 日経った版だけを提案させ、出たばかりの不具合版や乗っ取られたパッケージを避ける (セキュリティアップデートにはかからない)
+# vite-plus の更新 PR は、package.json の vite の別名 (npm:@voidzero-dev/vite-plus-core@…、devDependencies と overrides) を
+# Dependabot が上げないため版がずれて CI が落ちる。ignore して手で上げるより通知を残したいので、落ちたら別名を同じ版に揃えて main に入れる
 # commit-message の prefix は、初期設定の `Bump x from …` では Conventional Commits の形にならないため
 version: 2
 updates:
