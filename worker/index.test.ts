@@ -208,9 +208,9 @@ describe.concurrent("セキュリティ関連のレスポンスヘッダー (iss
     expect(staticHeader("Content-Security-Policy")).toContain("script-src 'self';");
     const html = readFileSync("index.html", "utf8");
     // 構造化データ (application/ld+json) は実行されないので CSP の対象外
-    const inlineScripts = [...html.matchAll(/<script\b([^>]*)>/g)].filter(
+    const inlineScripts = [...html.matchAll(/<script\b([^>]*)>/gi)].filter(
       ([, attrs]) =>
-        !/\bsrc=/.test(attrs ?? "") && !/type="application\/ld\+json"/.test(attrs ?? ""),
+        !/\bsrc=/i.test(attrs ?? "") && !/type="application\/ld\+json"/i.test(attrs ?? ""),
     );
     expect(inlineScripts).toEqual([]);
   });
