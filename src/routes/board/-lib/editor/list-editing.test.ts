@@ -24,7 +24,7 @@ function editor(doc: string, extensions: Extension = []): EditorView {
   const at = doc.indexOf("|");
   const view = new EditorView({
     state: EditorState.create({
-      doc: doc.replace("|", ""),
+      doc: at < 0 ? doc : doc.slice(0, at) + doc.slice(at + 1),
       selection: EditorSelection.cursor(at < 0 ? 0 : at),
       extensions,
     }),
