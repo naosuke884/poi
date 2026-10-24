@@ -83,6 +83,9 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.12"
     },
+    "miniflare": {
+      "undici": "^7.30.1"
+    },
     "vite": "npm:@voidzero-dev/vite-plus-core@1.3.0"
   },
   "engines": {
