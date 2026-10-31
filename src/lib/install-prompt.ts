@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 // これは React のマウントより先に飛んでくることがあるので、受け取りはコンポーネントではなく
 // モジュール読み込み時 (main.tsx から import) に済ませておく。
 // 既定のミニ情報バーは preventDefault() で抑え、メニューから押されたときに prompt() する。
+// 状態の移り変わりは nextInstallState。ここでは window のイベントと、prompt() を使ったことを渡すだけ。
 //
 // iOS の Safari はこのイベントを実装していない (インストールの API も無い) ので、
 // その場合はメニューから手順を案内するだけになる。
@@ -33,6 +34,27 @@ export type InstallState = {
   installed: boolean;
 };
 
+/** 状態を進めるきっかけ。window への購読や prompt() の呼び出しはモジュール側が行う */
+export type InstallEvent = "beforeinstallprompt" | "prompt" | "appinstalled";
+
+/**
+ * 今の状態と起きたことから、次の状態を返す。
+ *
+ * prompt で canPrompt を true のまま残さない。prompt() は 1 回しか使えず、同じイベントでは二度出せない。
+ * appinstalled で display-mode を読み直さない。追加されたあともこのタブはブラウザのままなので、
+ * 読み直すと installed が false のままになり、メニューの導線が消えない。
+ */
+export function nextInstallState(state: InstallState, event: InstallEvent): InstallState {
+  switch (event) {
+    case "beforeinstallprompt":
+      return { canPrompt: true, installed: state.installed };
+    case "prompt":
+      return { canPrompt: false, installed: state.installed };
+    case "appinstalled":
+      return { canPrompt: false, installed: true };
+  }
+}
+
 let deferred: BeforeInstallPromptEvent | null = null;
 // useSyncExternalStore は同じ状態なら同じ参照を返す必要があるので、変化したときだけ作り直す
 let snapshot: InstallState = { canPrompt: false, installed: false };
@@ -49,12 +71,11 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferred = event as BeforeInstallPromptEvent;
-    update({ ...snapshot, canPrompt: true });
+    update(nextInstallState(snapshot, "beforeinstallprompt"));
   });
   window.addEventListener("appinstalled", () => {
-    // 追加された後もタブ自体はブラウザのままなので、display-mode ではなくこのイベントで導線を隠す
     deferred = null;
-    update({ canPrompt: false, installed: true });
+    update(nextInstallState(snapshot, "appinstalled"));
   });
 }
 
@@ -79,7 +100,7 @@ export async function promptInstall(): Promise<boolean> {
   const event = deferred;
   if (!event) return false;
   deferred = null;
-  update({ ...snapshot, canPrompt: false });
+  update(nextInstallState(snapshot, "prompt"));
   try {
     await event.prompt();
   } catch {
