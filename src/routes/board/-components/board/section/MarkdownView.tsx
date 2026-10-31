@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { rehypeBlankLines } from "../../../-lib/markdown/markdown-blank-lines";
 import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "../../../-lib/markdown/markdown-disable";
 import { rehypeHeadingMarks } from "../../../-lib/markdown/markdown-heading-marks";
+import { rehypeLinkLabels } from "../../../-lib/markdown/markdown-link-labels";
 import {
   rehypeSourcePositions,
   sourceOffsetAtPoint,
@@ -23,10 +24,12 @@ const REHYPE_PLUGINS_SOURCE_BLANK_LINES: Options["rehypePlugins"] = [
   rehypeSourcePositions,
   rehypeBlankLines,
   rehypeHeadingMarks,
+  rehypeLinkLabels,
 ];
 const REHYPE_PLUGINS_FIXED_GAPS: Options["rehypePlugins"] = [
   rehypeSourcePositions,
   rehypeHeadingMarks,
+  rehypeLinkLabels,
 ];
 const COMPONENTS: Components = {
   // 中身 (children) は props ごと渡しているが、規則からは見えない
@@ -81,6 +84,8 @@ function selectionIntersects(el: Element): boolean {
  * - 見出しの 1 行目は、エディタで見える記号 (`## `) の幅だけ右を空けて折り返す (rehypeHeadingMarks。
  *   狭い画面で長い見出しの行の数が表示と編集で変わらないように。まとめ表示でも同じ見出しは同じに折り返す)
  * - リンクは別タブで開く (同じタブで開くと編集中の板から離れてしまうため)
+ * - URL のリンクはドメインと縮めたパスで見せ、必ず 1 行に収める (rehypeLinkLabels。長い URL が何行にも折り返して
+ *   メモが読みにくくなるため)。エディタではソースのまま折り返すので、長い URL があると表示と編集で高さが変わる
  * - onEdit があれば編集に切り替えられる: クリック、または Tab でフォーカスして Enter。
  *   クリックしたときはその場所に対応する元テキストの位置を渡す (src/routes/board/-lib/markdown/markdown-source-offset.ts。
  *   対応が取れなければ末尾)。Enter のときは末尾。

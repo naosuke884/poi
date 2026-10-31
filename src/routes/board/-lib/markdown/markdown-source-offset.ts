@@ -11,7 +11,8 @@ import { LIST_MARKER_SOURCE } from "./markdown-syntax";
  * 1. rehypeSourcePositions で各要素に元テキストの範囲 (data-pos="start-end") を付けておく
  * 2. クリックしたテキストノードとその中のオフセット (caretPositionFromPoint) から、その要素の範囲の中で
  *    テキストノードの文字列を順に探して位置を確定する (sourceOffsetAt)
- * 表示上のテキストは元テキストにそのまま含まれている (有効な記法が少なく、文字を変える記法は無効) のでこれで足りる
+ * 表示上のテキストは元テキストにそのまま含まれている (有効な記法が少なく、文字を変える記法は無効) のでこれで足りる。
+ * 例外は表示を縮めたリンク (markdown-link-labels.ts) で、その中はリンク全体を 1 つとして扱う
  */
 
 /** 各要素に元テキストの範囲を data-pos="start-end" (文字列の index) として付ける rehype プラグイン */
@@ -56,6 +57,12 @@ export function sourceOffsetAt(node: Node, offset: number, source: string): numb
   const walker = owner.ownerDocument.createTreeWalker(owner, NodeFilter.SHOW_TEXT);
   for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
     if (isFormatting(t)) continue;
+    const link = shortenedLinkRange(t, owner);
+    if (link) {
+      if (t === node) return link[0];
+      cursor = link[1] - start;
+      continue;
+    }
     const i = region.indexOf(t.data, cursor);
     if (i < 0) return null;
     if (t === node) return start + i + Math.min(offset, t.data.length);
@@ -78,6 +85,15 @@ function markerLength(el: HTMLElement, region: string): number {
         ? HEADING_MARKER_RE
         : null;
   return re?.exec(region)?.[0].length ?? 0;
+}
+
+/**
+ * t が表示を縮めたリンク (markdown-link-labels.ts の data-link-label) の中にあれば、そのリンクの元テキストの範囲。
+ * 縮めた文字は元テキストに無いので、リンクの中は 1 文字ずつ対応させずにリンク全体を 1 つとして扱う
+ */
+function shortenedLinkRange(t: Text, owner: HTMLElement): [start: number, end: number] | null {
+  const link = t.parentElement?.closest<HTMLElement>("[data-link-label]");
+  return link && owner.contains(link) ? posRange(link) : null;
 }
 
 // react-markdown がブロック要素の間に入れる整形用の改行 (元テキストの範囲の外にあることがある)
@@ -170,6 +186,13 @@ export function clientTopAtSourceOffset(
   const walker = owner.el.ownerDocument.createTreeWalker(owner.el, NodeFilter.SHOW_TEXT);
   for (let t = walker.nextNode() as Text | null; t; t = walker.nextNode() as Text | null) {
     if (isFormatting(t)) continue;
+    const link = shortenedLinkRange(t, owner.el);
+    if (link) {
+      found = { node: t, offset: pos <= link[0] ? 0 : t.data.length };
+      if (pos <= link[1]) break;
+      cursor = link[1] - owner.start;
+      continue;
+    }
     const i = region.indexOf(t.data, cursor);
     if (i < 0) break;
     const from = owner.start + i;

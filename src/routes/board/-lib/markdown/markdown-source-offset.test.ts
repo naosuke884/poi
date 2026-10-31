@@ -2,15 +2,21 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { describe, expect, it } from "vite-plus/test";
 
+import { rehypeLinkLabels } from "./markdown-link-labels";
 import { rehypeSourcePositions, sourceOffsetAt } from "./markdown-source-offset";
 
 /** source を react-markdown で描画し (data-pos 付き)、DOM にして返す */
 function render(source: string): HTMLElement {
   const root = document.createElement("div");
   root.innerHTML = renderToStaticMarkup(
-    createElement(Markdown, { rehypePlugins: [rehypeSourcePositions] }, source),
+    createElement(
+      Markdown,
+      { remarkPlugins: [remarkGfm], rehypePlugins: [rehypeSourcePositions, rehypeLinkLabels] },
+      source,
+    ),
   );
   return root;
 }
@@ -72,5 +78,17 @@ describe("sourceOffsetAt", () => {
     const broken = root.querySelector("li")!;
     broken.setAttribute("data-pos", "x-y");
     expect(offsetOf(root, "項目", 0, source)).toBeNull();
+  });
+
+  it("表示を縮めたリンクの後ろの文字も元テキストの位置に戻せる", () => {
+    const source = "前 https://example.com/%E6%9D%B1%E4%BA%AC 後ろ";
+    const root = render(source);
+    expect(offsetOf(root, " 後ろ", 2, source)).toBe(source.indexOf("ろ"));
+  });
+
+  it("縮めたリンクの中に当たったら、リンクの先頭", () => {
+    const source = "前 https://example.com/a 後";
+    const root = render(source);
+    expect(offsetOf(root, "/a", 1, source)).toBe(source.indexOf("https"));
   });
 });

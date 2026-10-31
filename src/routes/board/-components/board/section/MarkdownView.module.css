@@ -125,3 +125,27 @@
 .root :where(a) {
   text-decoration: underline;
 }
+
+/* 縮めた URL のリンク (rehypeLinkLabels) は必ず 1 行に収める: 行の残りに入らなければ次の行へ送り、
+   それでも幅を超える分はパスの側から … で切る (ドメインは最後まで残す。どこへのリンクかが一番の手がかりなので)。
+   ドメインは縮めず (幅を超えるほど長いときだけ max-width で切る)、残りの幅をパスに回す。
+   ドメインにも小さな flex-shrink を残すと、端数の 0.0x px だけ縮んで「example.c…」と途中で切れる。
+   高さは本文の 1 行と同じなので、上端で揃えれば行の位置もずれない */
+.root [data-link-label] {
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: top;
+}
+.root :where([data-link-host], [data-link-rest]) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.root [data-link-host] {
+  flex: none;
+  max-width: 100%;
+}
+.root [data-link-rest] {
+  flex: 0 1 auto;
+}
