@@ -12,6 +12,9 @@ const X_IOS_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Twitter/10.60.0";
 const SAFARI_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+// ホーム画面から開いた iOS は Safari/ が無く、WKWebView と同じ UA になる
+const IOS_HOME_SCREEN_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
 
 let root: Root;
 let container: HTMLDivElement;
@@ -36,6 +39,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   vi.restoreAllMocks();
+  delete (navigator as Navigator & { standalone?: boolean }).standalone;
 });
 
 function renderWithUserAgent(userAgent: string) {
@@ -56,6 +60,12 @@ const buttonLabels = () => [...container.querySelectorAll("button")].map((b) => 
 describe("LoginCta", () => {
   it("普通のブラウザでは Google のログインボタンを出す", () => {
     renderWithUserAgent(SAFARI_UA);
+    expect(buttonLabels()).toEqual(["Google でログインして始める"]);
+  });
+
+  it("iOS のホーム画面から開いたときは、アプリ内ブラウザの案内を出さずログインボタンを出す (HAY-125)", () => {
+    Object.defineProperty(navigator, "standalone", { value: true, configurable: true });
+    renderWithUserAgent(IOS_HOME_SCREEN_UA);
     expect(buttonLabels()).toEqual(["Google でログインして始める"]);
   });
 
