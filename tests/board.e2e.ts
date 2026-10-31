@@ -1,5 +1,5 @@
 import { beforeEach, describe, test } from "@e2e-dev/web";
-import { expect } from "e2e";
+import { expect, unique } from "e2e";
 
 describe("板", { session: "user" }, () => {
   // 前の実行の内容に左右されないよう、板を空にしておく (e2e/production.spec.ts と同じやり方)
@@ -40,7 +40,10 @@ describe("板", { session: "user" }, () => {
     async ({ app, agent, screen }) => {
       await app.open("/board");
       const text = `AI が書くメモ ${Date.now()}`;
-      await agent.act("新しいセクションを追加して、{text} と書く", { params: { text } });
+      // 毎回違う文でも記録を再生できるよう、unique() で渡す (そのまま渡すと記録の鍵が毎回変わり、毎回モデルを呼ぶ)
+      await agent.act("新しいセクションを追加して、{text} と書く", {
+        params: { text: unique(text) },
+      });
       await expect(screen.getByText(text)).toBeVisible();
       await expect(screen.getByText("保存済み", { exact: true }).first()).toBeVisible();
 
