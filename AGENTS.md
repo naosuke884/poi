@@ -9,6 +9,7 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 - `worker/` — backend (Hono on a Cloudflare Worker): `auth/` (Better Auth) and `board/` (sections, settings, cron).
 - `shared/` — constants and pure helpers used by both sides (import as `@shared/...`).
 - `drizzle/` — generated D1 migrations.
+- `e2e/` — Playwright (`npm run test:a11y`); `tests/` — e2e (`npm run test:e2e`).
 
 ## Commands
 
@@ -17,6 +18,9 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 - `npm run lint` is `vp check`: Oxfmt format check, Oxlint (rules and the `poi/` plugin in `lint-plugins/`) and a type check; config is the `fmt` / `lint` blocks in `vite.config.ts`.
 - `npm run lint:fix` — `vp check --fix`: format and autofix.
 - `npm run test:a11y` — Playwright e2e (`e2e/`; CI job `a11y`): axe accessibility check of the rendered pages on its own dev server (:5174), and a save-and-reload check of the board under the enforced CSP on a production build (`vp preview` on :4174; `public/_headers` is not applied by `vp dev`).
+- `npm run test:e2e` — e2e (tester-army/e2e; `tests/*.e2e.ts`, config `e2e.config.ts`, CI job `e2e`): `agent.act` / `agent.assert`
+  drive the board from natural-language goals on its own dev server (:5175). AI steps run on the local Claude Code login
+  (`@e2e-dev/acp`), so tests that use them carry the tag `agent` and CI runs `-- --exclude-tag agent`. See the `e2e` skill.
 - `npm run lint:jev` — jev-lint: asks a model whether names, comments and test names match the code (config `.jev-lint.yaml`). Sends the code to the typesafe.ai API and needs `TYPESAFE_API_KEY`; add `-- --dry-run` to see the cost without sending. Findings are candidates to judge, not verdicts; not part of CI.
 
 ## Conventions
