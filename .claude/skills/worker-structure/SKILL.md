@@ -33,7 +33,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
 | A new domain with its own tables and endpoints | a new `worker/<context>/` with the same file shape (`routes.ts`, `schema.ts`, pure `*.ts` + tests) |
 | Wiring every context needs (`AppEnv`, `createDb`, mounting) | worker root |
 
-- Keep the root thin. Anything specific to one domain goes in its context, even when only `index.ts` calls it (e.g. `deleteExpiredMemos` lives in `board/sweep.ts`, not in `index.ts`).
+- Keep the root thin. Anything specific to one domain goes in its context, even when only `index.ts` calls it (e.g. `sweepExpiredMemos` lives in `board/sweep.ts`, not in `index.ts`).
 - Dependencies point one way: `board/` may import `auth/` (`requireAuth`, the `user` table for FKs); `auth/` never imports another context. Root files may import any context.
 - `auth/schema.ts` is overwritten by `npm run auth:schema` (Better Auth CLI, via `better-auth.config.ts`). Never hand-edit it or add app tables there; that is why app tables live in each context's `schema.ts`.
 - A new context's `schema.ts` must also be spread into `schema` in `db.ts` and listed in `drizzle.config.ts`. The rest of the schema work (migrations etc.) is in the `d1-schema-changes` skill.
@@ -114,7 +114,7 @@ When adding a route under `src/routes`, add its path to `PAGE_PATHS` (the sitema
 ## Scheduled work (Cron)
 
 - Crons are declared in `wrangler.jsonc` `triggers.crons` (currently `"0 * * * *"`) and all go to the one `scheduled` handler in `worker/index.ts`.
-- Keep the handler a thin adapter: build the db with `createDb(env.DB)`, pass `new Date(controller.scheduledTime)`, call the context functions (`deleteExpiredMemos` in `board/sweep.ts`, `deleteExpiredAuthRecords` in `auth/sweep.ts`) as separate jobs so one failing does not skip the others, `console.log` each result, and `console.error` + rethrow on failure so Cron Events shows it (Workers Logs via `observability`). The function takes `db` and `now` so tests and other callers can reuse it.
+- Keep the handler a thin adapter: build the db with `createDb(env.DB)`, pass `new Date(controller.scheduledTime)`, call the context functions (`sweepExpiredMemos` in `board/sweep.ts`, `deleteExpiredAuthRecords` in `auth/sweep.ts`) as separate jobs so one failing does not skip the others, `console.log` each result, and `console.error` + rethrow on failure so Cron Events shows it (Workers Logs via `observability`). The function takes `db` and `now` so tests and other callers can reuse it.
 - A job with its own schedule (e.g. "once a day") gets its own expression in `triggers.crons`; don't fold it into the hourly sweep — that silently changes the frequency the user asked for and mixes two jobs' logs. Branch on `controller.cron` in the handler (constants for each expression, `console.warn` on an unknown one), and put the job's function in the context that owns the table (sessions → `auth/`) with a D1-backed test next to it, like `board/sweep.ts`.
 - Run it locally with the steps in the comment above `scheduled` (`npm run dev` (Vite) cannot trigger crons):
   ```sh

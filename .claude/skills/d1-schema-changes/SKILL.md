@@ -91,7 +91,7 @@ Deploys are serialized and never cancelled (`concurrency: deploy-production`) pr
 ## Code that must follow the schema
 
 - `worker/board/routes.ts`: the `insert(memo).select(...)` lists columns **in table-definition order** (a Drizzle constraint). Adding a `memo` column means adding it there in the same position.
-- `worker/board/sweep.ts` (hourly Cron, `triggers.crons` in `wrangler.jsonc`) deletes `memo` rows by `expires_at` and relies on `memo_expiresAt_idx`. Keep that column and index, and remember that rows cascade from `user`, not from the sweep.
+- `worker/board/sweep.ts` (hourly Cron, `triggers.crons` in `wrangler.jsonc`) clears the `content` of `memo` rows past `expires_at` (keeping the row so its id can't be recreated, HAY-60) and deletes them once `created_at` is older than the longest retention choice; both rely on `memo_expiresAt_idx`. Keep that column and index, and remember that rows cascade from `user`, not from the sweep.
 - `expires_at` is computed in code (`memoExpiresAt` in `shared/constants.ts`), and `memo_ttl_days` defaults to `MEMO_TTL_DAYS`. Values the API validates (`MEMO_TTL_CHOICES`, `BOARD_MAX_SECTIONS`, `BOARD_MAX_LENGTH`) live in `shared/constants.ts`, not in DB constraints; if a new column has limits, put them there so the API and UI share them.
 - `worker/board/routes.test.ts` seeds `user` rows with raw SQL (`insert into user (id, name, email)`); a new `NOT NULL` column without a default on a seeded table breaks it.
 

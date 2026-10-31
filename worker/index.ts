@@ -7,7 +7,7 @@ import { withClearSiteData } from "./auth/clear-site-data";
 import { authMiddleware } from "./auth/middleware";
 import { deleteExpiredAuthRecords } from "./auth/sweep";
 import { boardRoutes, settingsRoutes } from "./board/routes";
-import { deleteExpiredMemos } from "./board/sweep";
+import { sweepExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
 import { rateLimit } from "./rate-limit";
 import { servePage } from "./site/pages";
@@ -97,7 +97,7 @@ app.onError((error, c) => {
 export type ApiType = typeof api;
 
 // Cron Trigger (wrangler.jsonc の triggers.crons) から呼ばれ、期限切れのセクションと、期限切れのセッション / 検証用の値を物理削除する。
-// 削除件数は console.log に出す (observability が有効なので Workers Logs で確認できる)。
+// 削除件数 (メモは中身を消した件数も) は console.log に出す (observability が有効なので Workers Logs で確認できる)。
 // ローカルでの確認手順 (`npm run dev` (Vite) では --test-scheduled が使えないので wrangler dev を直接起動する。
 // --config を明示するとビルド済み設定へのリダイレクトが無効になり、/__scheduled が使える):
 //   npm run build
@@ -112,7 +112,13 @@ const scheduled: ExportedHandlerScheduledHandler<Env> = async (controller, env) 
   const context = `cron: ${controller.cron}, scheduledTime: ${now.toISOString()}`;
   const db = createDb(env.DB);
   const jobs: [name: string, run: () => Promise<string>][] = [
-    ["memo sweep", async () => `deleted ${await deleteExpiredMemos(db, now)} expired section(s)`],
+    [
+      "memo sweep",
+      async () => {
+        const { cleared, deleted } = await sweepExpiredMemos(db, now);
+        return `cleared ${cleared} expired section(s), deleted ${deleted} old section(s)`;
+      },
+    ],
     [
       "auth sweep",
       async () => {

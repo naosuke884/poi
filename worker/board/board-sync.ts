@@ -27,6 +27,8 @@ export type BoardSyncPlan = {
 /**
  * 送られた順を position (0 始まり) として、既存の行との差分を求める。
  * - id が既存と一致すれば更新 (内容も並び順も同じなら触らない: updatedAt を進めない)
+ * - 期限切れの行 (expiredIds: 見えないが、中身を消した印として残っている行) の id は作らない。
+ *   期限切れの後に保持日数を延ばすと、下の createdAt の判定を通ってしまうため (HAY-60)
  * - 知らない id で、createdAt が expiredCreatedAt 以前 (= 今の保持日数ではもう期限切れ) のものは作らない。
  *   別のタブで保持日数を短くして早まった期限を過ぎ、消えた行を、古い期限のままのタブが送り返してきた場合など
  *   (issue #94)。作らなかったものは position を詰める。
@@ -39,6 +41,7 @@ export function planBoardSync(
   existing: ExistingSection[],
   sections: IncomingSection[],
   expiredCreatedAt: Date,
+  expiredIds: ReadonlySet<string>,
   newId: () => string = () => crypto.randomUUID(),
 ): BoardSyncPlan {
   const byId = new Map(existing.map((row) => [row.id, row]));
@@ -49,11 +52,13 @@ export function planBoardSync(
     const row = section.id !== null && !kept.has(section.id) ? byId.get(section.id) : undefined;
     // 同じ id の 2 つ目以降 (byId にはある) は期限を見ずに新規にする。保持日数の変更で期限を引き直した行は
     // createdAt が古くてもまだ見えている (HAY-59) ので、createdAt で判定すると見えている行の写しを捨ててしまう
-    if (section.id !== null && !byId.has(section.id) && section.createdAt !== undefined) {
-      if (new Date(section.createdAt).getTime() <= expiredCreatedAt.getTime()) {
-        plan.ids.push(null);
-        continue;
-      }
+    if (
+      section.id !== null &&
+      !byId.has(section.id) &&
+      isExpired(section.id, section.createdAt, expiredCreatedAt, expiredIds)
+    ) {
+      plan.ids.push(null);
+      continue;
     }
     if (!row) {
       const id = newId();
@@ -70,4 +75,14 @@ export function planBoardSync(
   }
   plan.deletes = existing.filter((row) => !kept.has(row.id)).map((row) => row.id);
   return plan;
+}
+
+function isExpired(
+  id: string,
+  createdAt: string | undefined,
+  expiredCreatedAt: Date,
+  expiredIds: ReadonlySet<string>,
+): boolean {
+  if (expiredIds.has(id)) return true;
+  return createdAt !== undefined && new Date(createdAt).getTime() <= expiredCreatedAt.getTime();
 }

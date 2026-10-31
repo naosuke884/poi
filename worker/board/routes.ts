@@ -8,7 +8,7 @@ import {
   MEMO_TTL_DAYS,
   SECTION_SEPARATOR,
 } from "@shared/constants";
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type ValidationTargets } from "hono";
 import { z } from "zod";
@@ -72,7 +72,7 @@ function validate<T extends z.ZodType, Target extends keyof ValidationTargets>(
   });
 }
 
-// 「自分のセクション」かつ「未期限切れ」。期限切れのものは Cron が消すまで DB に残るが、見せない
+// 「自分のセクション」かつ「未期限切れ」。期限切れの行は Cron が中身を消した後もしばらく DB に残る (sweep.ts) が、見せない
 function visibleSections(userId: string, now: Date) {
   return and(eq(memo.userId, userId), gt(memo.expiresAt, now));
 }
@@ -89,6 +89,24 @@ function selectBoard(db: Db, userId: string, now: Date) {
 /** 板の版 (一度も保存されていなければ行が無い)。selectBoard と同じ batch に入れて、同じ時点の版を読む */
 function selectRevision(db: Db, userId: string) {
   return db.select({ revision: board.revision }).from(board).where(eq(board.userId, userId));
+}
+/**
+ * 送られた id のうち、期限切れの自分の行のもの。期限切れの行は Cron が中身を消してしばらく残す (sweep.ts) ので、
+ * 保持日数を延ばした後でも、一度期限切れになった id だとわかる (HAY-60)。
+ * 期限切れの行を全部読むと、保持日数ぶん溜まった行を保存のたびに読むので、送られた id に絞る
+ */
+function selectExpiredIds(db: Db, userId: string, now: Date, sections: { id: string | null }[]) {
+  const ids = sections.flatMap((section) => (section.id === null ? [] : [section.id]));
+  return db
+    .select({ id: memo.id })
+    .from(memo)
+    .where(
+      and(
+        eq(memo.userId, userId),
+        lte(memo.expiresAt, now),
+        inArray(memo.id, sql`(select value from json_each(${JSON.stringify(ids)}))`),
+      ),
+    );
 }
 type BoardRows = Awaited<ReturnType<typeof selectBoard>>;
 type RevisionRows = Awaited<ReturnType<typeof selectRevision>>;
@@ -160,10 +178,11 @@ export const boardRoutes = new Hono<AppEnv>()
       return c.json({ error: "UserMismatch" }, 409);
     }
 
-    const [existing, current, setting] = await db.batch([
+    const [existing, current, setting, expired] = await db.batch([
       selectBoard(db, userId, now),
       selectRevision(db, userId),
       selectSetting(db, userId),
+      selectExpiredIds(db, userId, now, sections),
     ]);
     const ttlDays = ttlDaysOf(setting);
     // クライアントの知らない保存が間にあった。そのまま置き換えるとその内容を消したり戻したりするので断る
@@ -172,7 +191,12 @@ export const boardRoutes = new Hono<AppEnv>()
     }
     // createdAt がこれ以前のセクションは、今の保持日数ではもう期限切れ
     const expiredCreatedAt = new Date(now.getTime() - ttlDays * DAY_MS);
-    const plan = planBoardSync(existing, sections, expiredCreatedAt);
+    const plan = planBoardSync(
+      existing,
+      sections,
+      expiredCreatedAt,
+      new Set(expired.map((row) => row.id)),
+    );
 
     // 版を新しい値にし、以降の書き込みは「版がその値になっている (= この保存が版を進めた)」ときだけ行う。
     // 上で版を確かめてからこの batch までの間に別の保存が割り込んでいれば、版の更新が当たらず何も書かれない
@@ -255,7 +279,7 @@ export const boardRoutes = new Hono<AppEnv>()
     for (const id of plan.ids) {
       const row = id === null ? null : byId.get(id);
       if (row === undefined) {
-        // 突き合わせた既存の行が、読んでから書くまでの間に消された (期限切れの物理削除。別の保存なら
+        // 突き合わせた既存の行が、読んでから書くまでの間に見えなくなった (期限切れ。別の保存なら
         // 上の版の確認で断っている)。保存自体は済んで版も進んだので、取り直してもらう
         return c.json({ error: "Stale" }, 409);
       }
@@ -267,7 +291,7 @@ export const boardRoutes = new Hono<AppEnv>()
 // ユーザー設定 (今はセクションの保持日数のみ)。
 // 保持日数を変えたら、いま見えている (期限切れでない) 全セクションの期限も引き直す (規則は retimedExpiresAt)。
 // createdAt + 新しい日数だけにすると、短くしたときに新しい期限を過ぎたセクションがその場で見えなくなり、
-// 次の Cron で物理削除されて元に戻せない (HAY-59) ので、過ぎているものは今の期限と「変えた時点 + 新しい日数」の早い方にする
+// 次の Cron で中身を消されて元に戻せない (HAY-59) ので、過ぎているものは今の期限と「変えた時点 + 新しい日数」の早い方にする
 const putSettingsSchema = z.object({
   memoTtlDays: z
     .number()
@@ -307,7 +331,7 @@ export const settingsRoutes = new Hono<AppEnv>()
       db
         .update(memo)
         .set({ expiresAt: retimedExpiresAtSql(memoTtlDays, now) })
-        // 期限切れで Cron の物理削除待ちの行は引き直さない (延ばすと復活してしまう)
+        // 期限切れの行 (Cron が中身を消して残している行を含む) は引き直さない (延ばすと復活してしまう)
         .where(visibleSections(userId, now)),
     ]);
     return c.json({ memoTtlDays });

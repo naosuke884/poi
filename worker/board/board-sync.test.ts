@@ -8,9 +8,19 @@ const row = (id: string, content: string, position: number) => ({ id, content, p
 const EXPIRED_CREATED_AT = new Date("2026-09-01T00:00:00.000Z");
 
 // 新規の id を n1, n2, ... と決まった値で発行する
-const plan = (existing: ExistingSection[], sections: IncomingSection[]) => {
+const plan = (
+  existing: ExistingSection[],
+  sections: IncomingSection[],
+  expiredIds: string[] = [],
+) => {
   let n = 0;
-  return planBoardSync(existing, sections, EXPIRED_CREATED_AT, () => `n${++n}`);
+  return planBoardSync(
+    existing,
+    sections,
+    EXPIRED_CREATED_AT,
+    new Set(expiredIds),
+    () => `n${++n}`,
+  );
 };
 
 describe("planBoardSync", () => {
@@ -87,6 +97,25 @@ describe("planBoardSync", () => {
       ],
       deletes: [],
       ids: ["a", null, "b", "n1", "n2"],
+    });
+  });
+
+  it("期限切れの行の id は、createdAt が今の保持日数の範囲内でも、無くても作らず、position を詰める (HAY-60)", () => {
+    expect(
+      plan(
+        [row("a", "x", 2)],
+        [
+          { id: "expired", content: "old", createdAt: "2026-09-10T00:00:00.000Z" },
+          { id: "expired-legacy", content: "no createdAt" },
+          { id: "a", content: "x" },
+        ],
+        ["expired", "expired-legacy"],
+      ),
+    ).toEqual({
+      updates: [{ id: "a", content: "x", position: 0 }],
+      inserts: [],
+      deletes: [],
+      ids: [null, null, "a"],
     });
   });
 

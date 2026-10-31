@@ -370,7 +370,7 @@ describe.concurrent("ページのリクエスト (静的アセットに無いパ
 });
 
 describe.concurrent("Cron (scheduled)", () => {
-  it("予定時刻の時点で期限を過ぎたセクションを物理削除し、期限前のものは残す", async ({ env }) => {
+  it("予定時刻の時点で期限を過ぎたセクションの中身を消し、期限前のものは残す", async ({ env }) => {
     const scheduledTime = Date.now();
     for (const [id, expiresAt] of [
       ["expired", scheduledTime - 1],
@@ -389,8 +389,14 @@ describe.concurrent("Cron (scheduled)", () => {
       {} as ExecutionContext,
     );
 
-    const { results } = await env.DB.prepare("select id from memo").all<{ id: string }>();
-    expect(results.map((row) => row.id)).toEqual(["alive"]);
+    const { results } = await env.DB.prepare("select id, content from memo order by id").all<{
+      id: string;
+      content: string;
+    }>();
+    expect(results).toEqual([
+      { id: "alive", content: "alive" },
+      { id: "expired", content: "" },
+    ]);
   });
 
   it("期限を過ぎたセッションも消し、有効なセッションは残す", async ({ env, signIn }) => {

@@ -3,8 +3,10 @@ import { Hono } from "hono";
 import { describe, expect } from "vite-plus/test";
 
 import { test } from "../d1-test";
+import { createDb } from "../db";
 import type { AppEnv } from "../types";
 import { boardRoutes, settingsRoutes } from "./routes";
+import { sweepExpiredMemos } from "./sweep";
 
 // PUT /api/board をテストごとに立てる空のローカル D1 に対して実行する。
 // ログインはセッションを引かずに固定のユーザーを入れて済ませる
@@ -532,6 +534,25 @@ describe.concurrent("PUT /api/settings", () => {
 
     expect((await putTtlDays(db, 30)).status).toBe(200);
     expect(await expiresAtById(db)).toEqual({ expired: now - 3 * DAY_MS });
+    expect((await board.get()).sections).toEqual([]);
+  });
+
+  it("延ばしても、期限切れになったセクションを古いタブが送り返したら作り直さない (HAY-60)", async ({
+    db,
+    board,
+  }) => {
+    const now = Date.now();
+    // 7 日の設定で 10 日前に作り、もう期限を過ぎた行。Cron が中身を消した後に延ばし、それを知らないタブが保存する
+    await insertSection(db, "expired", now - 10 * DAY_MS, now - 3 * DAY_MS);
+    await sweepExpiredMemos(createDb(db), new Date(now));
+    expect((await putTtlDays(db, 30)).status).toBe(200);
+
+    const saved = await board.put([
+      { id: "expired", content: "old", createdAt: new Date(now - 10 * DAY_MS).toISOString() },
+    ]);
+    expect(saved.status).toBe(200);
+    expect(saved.body.sections).toEqual([null]);
+    expect(await board.rows()).toEqual([{ id: "expired", content: "", position: 0 }]);
     expect((await board.get()).sections).toEqual([]);
   });
 
