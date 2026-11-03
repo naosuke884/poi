@@ -138,6 +138,7 @@ describe("applyTtlDays", () => {
   it("期限前のセクションは、createdAt + 日数がまだ先ならその日時に引き直す", () => {
     const [s] = applyTtlDays(
       [saved("2026-09-20T00:00:00.000Z", "2026-10-20T00:00:00.000Z")],
+      30,
       7,
       now,
     );
@@ -150,6 +151,7 @@ describe("applyTtlDays", () => {
         saved("2026-09-10T00:00:00.000Z", "2026-10-10T00:00:00.000Z"),
         saved("2026-08-25T00:00:00.000Z", "2026-09-24T00:00:00.000Z"),
       ],
+      30,
       7,
       now,
     );
@@ -161,7 +163,33 @@ describe("applyTtlDays", () => {
   it("期限を過ぎたセクションと未保存のセクションはそのまま", () => {
     const expired = saved("2026-08-01T00:00:00.000Z", "2026-08-31T00:00:00.000Z");
     const fresh = newSection("b");
-    expect(applyTtlDays([expired, fresh], 90, now)).toEqual([expired, fresh]);
+    expect(applyTtlDays([expired, fresh], 30, 90, now)).toEqual([expired, fresh]);
+  });
+
+  it("延ばすと、短くして早めた期限を、作成日 + 日数がまだ先ならそこまで、過ぎていれば今 + 日数まで延ばす (サーバと同じ規則)", () => {
+    // 1 日に短くして、どちらも残り 1 日になっていたもの (10 日前と 20 日前に書いた) を 14 日に延ばす
+    const [recent, old] = applyTtlDays(
+      [
+        saved("2026-09-13T00:00:00.000Z", "2026-09-24T00:00:00.000Z"),
+        saved("2026-09-03T00:00:00.000Z", "2026-09-24T00:00:00.000Z"),
+      ],
+      1,
+      14,
+      now,
+    );
+    expect(recent!.expiresAt).toBe("2026-09-27T00:00:00.000Z");
+    expect(old!.expiresAt).toBe("2026-10-07T00:00:00.000Z");
+  });
+
+  it("延ばしても、作成日 + 日数より遅い今の期限は早めない", () => {
+    // 10 日前に書き、30 日 → 7 日に短くして残り 7 日になっていたもの (作成日 + 14 日は残り 4 日)
+    const [s] = applyTtlDays(
+      [saved("2026-09-13T00:00:00.000Z", "2026-09-30T00:00:00.000Z")],
+      7,
+      14,
+      now,
+    );
+    expect(s!.expiresAt).toBe("2026-09-30T00:00:00.000Z");
   });
 });
 

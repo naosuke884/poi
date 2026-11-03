@@ -31,22 +31,27 @@ export function memoExpiresAt(createdAt: Date = new Date(), ttlDays: number = ME
 }
 
 /**
- * 保持日数を ttlDays に変えたときの、まだ期限 (expiresAt) の来ていないセクションの新しい期限 (HAY-59)。
- * 作成日 + 新しい日数がまだ先ならそれ。もう過ぎていれば、今の期限と「変えた時点 (changedAt) + 新しい日数」の早い方。
+ * 保持日数を previousTtlDays から ttlDays に変えたときの、まだ期限 (expiresAt) の来ていないセクションの新しい期限 (HAY-59)。
+ * 候補は、作成日 + 新しい日数がまだ先ならそれ、もう過ぎていれば「変えた時点 (changedAt) + 新しい日数」。
+ * 短くしたら候補と今の期限の早い方、延ばしたら遅い方。同じ日数なら変えない。
  * 作成日 + 日数だけにしないのは、短くしたときに過ぎていたセクションがその場で消えて (元に戻せない) しまうため。
- * 変えた時点 + 日数だけにしないのは、期限の近いセクションが、短くしたのにかえって長く残ってしまうため。
- * 延ばしたときも同じ規則にするのは、一度短くして期限を引き直したセクションを作成日から数えると、
- * 延ばしたのにかえって期限を過ぎてしまうことがあるため。
+ * 短くしたときに候補だけにしないのは、期限の近いセクションが、短くしたのにかえって長く残ってしまうため。
+ * 延ばしたときに早い方を取らないのは、間違えて短くしてから戻しても期限が戻らず (30 → 1 → 7 日で残り 1 日のまま)、
+ * 短くして引き直したセクションは延ばすとかえって期限が早まる (30 → 7 → 14 日で残り 7 日が 4 日に) ため。
+ * 同じ日数で何もしないのは、保存し直すだけで期限が延びたり縮んだりしないようにするため。
  * worker/board/routes.ts の PUT /api/settings は同じ規則を SQL で書いている
  */
 export function retimedExpiresAt(
   createdAt: Date,
   expiresAt: Date,
+  previousTtlDays: number,
   ttlDays: number,
   changedAt: Date,
 ): Date {
+  if (ttlDays === previousTtlDays) return expiresAt;
   const fromCreated = memoExpiresAt(createdAt, ttlDays);
-  if (fromCreated.getTime() > changedAt.getTime()) return fromCreated;
-  const fromChange = memoExpiresAt(changedAt, ttlDays);
-  return expiresAt.getTime() < fromChange.getTime() ? expiresAt : fromChange;
+  const candidate =
+    fromCreated.getTime() > changedAt.getTime() ? fromCreated : memoExpiresAt(changedAt, ttlDays);
+  const pick = ttlDays < previousTtlDays ? Math.min : Math.max;
+  return new Date(pick(candidate.getTime(), expiresAt.getTime()));
 }

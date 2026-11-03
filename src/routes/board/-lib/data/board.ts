@@ -57,6 +57,7 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
  */
 export function applyTtlDays(
   sections: EditableSection[],
+  previousTtlDays: number,
   ttlDays: number,
   now: number,
 ): EditableSection[] {
@@ -68,6 +69,7 @@ export function applyTtlDays(
       expiresAt: retimedExpiresAt(
         new Date(s.createdAt),
         new Date(s.expiresAt),
+        previousTtlDays,
         ttlDays,
         new Date(now),
       ).toISOString(),

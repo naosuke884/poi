@@ -301,11 +301,22 @@ const putSettingsSchema = z.object({
     }),
 });
 
-/** retimedExpiresAt (shared/constants.ts) と同じ規則の、memo の新しい expires_at */
-function retimedExpiresAtSql(ttlDays: number, changedAt: Date) {
+/**
+ * retimedExpiresAt (shared/constants.ts) と同じ規則の、memo の新しい expires_at。
+ * 変える前の日数は、同じ batch (トランザクション) の中で、設定を書き換える前に読む。
+ * 先に読んだ値を渡さないのは、間に別の PUT /api/settings が割り込むと、その引き直しを古い日数から変えたものとして
+ * 扱ってしまうため
+ */
+function retimedExpiresAtSql(db: Db, userId: string, ttlDays: number, changedAt: Date) {
   const ttlMs = ttlDays * DAY_MS;
   const changedAtMs = changedAt.getTime();
-  return sql`case when ${memo.createdAt} + ${ttlMs} > ${changedAtMs} then ${memo.createdAt} + ${ttlMs} else min(${memo.expiresAt}, ${changedAtMs + ttlMs}) end`;
+  const previousTtlDays = sql`coalesce((${selectSetting(db, userId)}), ${MEMO_TTL_DAYS})`;
+  const candidate = sql`case when ${memo.createdAt} + ${ttlMs} > ${changedAtMs} then ${memo.createdAt} + ${ttlMs} else ${changedAtMs + ttlMs} end`;
+  return sql`case
+    when ${ttlDays} < ${previousTtlDays} then min(${memo.expiresAt}, ${candidate})
+    when ${ttlDays} > ${previousTtlDays} then max(${memo.expiresAt}, ${candidate})
+    else ${memo.expiresAt}
+  end`;
 }
 
 export const settingsRoutes = new Hono<AppEnv>()
@@ -319,8 +330,13 @@ export const settingsRoutes = new Hono<AppEnv>()
     const userId = c.get("user").id;
     const now = new Date();
     const { memoTtlDays } = c.req.valid("json");
-    // 設定の upsert と期限の引き直しを 1 トランザクションで
+    // 期限の引き直しと設定の upsert を 1 トランザクションで。引き直しは変える前の日数を読むので、upsert より先に置く
     await db.batch([
+      db
+        .update(memo)
+        .set({ expiresAt: retimedExpiresAtSql(db, userId, memoTtlDays, now) })
+        // 期限切れの行 (Cron が中身を消して残している行を含む) は引き直さない (延ばすと復活してしまう)
+        .where(visibleSections(userId, now)),
       db
         .insert(userSetting)
         .values({ userId, memoTtlDays, createdAt: now, updatedAt: now })
@@ -328,11 +344,6 @@ export const settingsRoutes = new Hono<AppEnv>()
           target: userSetting.userId,
           set: { memoTtlDays, updatedAt: now },
         }),
-      db
-        .update(memo)
-        .set({ expiresAt: retimedExpiresAtSql(memoTtlDays, now) })
-        // 期限切れの行 (Cron が中身を消して残している行を含む) は引き直さない (延ばすと復活してしまう)
-        .where(visibleSections(userId, now)),
     ]);
     return c.json({ memoTtlDays });
   });

@@ -348,9 +348,10 @@ export function useBoardAutosave({
   // 読み込み直しても Board は作り直さない (未保存の入力を保つため) ので、ここでサーバに合わせる
   const ttlDaysRef = useRef(ttlDays);
   useEffect(() => {
-    if (ttlDays === ttlDaysRef.current) return;
+    const previousTtlDays = ttlDaysRef.current;
+    if (ttlDays === previousTtlDays) return;
     ttlDaysRef.current = ttlDays;
-    commit(applyTtlDays(latestRef.current, ttlDays, Date.now()));
+    commit(applyTtlDays(latestRef.current, previousTtlDays, ttlDays, Date.now()));
     dropExpired();
   }, [ttlDays, commit, dropExpired]);
 
