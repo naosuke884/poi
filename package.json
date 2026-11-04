@@ -21,7 +21,7 @@
     "lint": "vp check",
     "lint:fix": "vp check --fix",
     "cf-typegen": "wrangler types",
-    "auth:schema": "npx auth@1.7.7 generate --config better-auth.config.ts --output worker/auth/schema.ts -y",
+    "auth:schema": "npx auth@1.7.16 generate --config better-auth.config.ts --output worker/auth/schema.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply poi --local",
     "db:migrate:remote": "wrangler d1 migrations apply poi --remote",
@@ -31,7 +31,7 @@
     "test:e2e": "e2e run"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.7.10",
+    "@better-auth/drizzle-adapter": "^1.7.16",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/language": "^6.13.1",
     "@codemirror/state": "^6.7.6",
@@ -42,7 +42,7 @@
     "@mantine/core": "^9.7.3",
     "@mantine/hooks": "^9.5.2",
     "@tanstack/react-router": "^1.170.45",
-    "better-auth": "^1.7.10",
+    "better-auth": "^1.7.16",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
     "modern-screenshot": "^4.7.0",
