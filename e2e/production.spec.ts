@@ -33,6 +33,17 @@ test("ランディングは CSP を強制した本番ビルドで違反なく表
   expect(await violations()).toEqual([]);
 });
 
+// ランディング以外にもビルド時に HTML にするページがある
+for (const path of ["/guide", "/faq", "/terms", "/privacy", "/no-such-page"]) {
+  test(`${path} は CSP を強制した本番ビルドで違反なく表示される`, async ({ page }) => {
+    const violations = await collectCspViolations(page);
+    const response = await page.goto(path);
+    expect(response?.headers()["content-security-policy"]).toBe(CSP);
+    await expect(page.locator("h1").first()).toBeVisible();
+    expect(await violations()).toEqual([]);
+  });
+}
+
 test.describe("ログイン済み", () => {
   test.use({ storageState: PERSISTENCE_STORAGE_STATE });
 
@@ -64,6 +75,14 @@ test.describe("ログイン済み", () => {
     // 画面の外からも D1 に入ったことを確かめる
     const stored = await (await page.request.get("/api/board")).json();
     expect(stored.sections.map((s: { content: string }) => s.content)).toEqual([text]);
+
+    // 「画像にする」は作業用のドキュメントに <base> を入れてフォントを読むので、CSP で止まらないかも見る
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("button", { name: /を画像にする$/ })
+      .first()
+      .click();
+    await expect(page.getByText(/画像を(コピー|保存)しました/).first()).toBeAttached();
 
     // 集めた違反は読み込み直すと消えるので、その前にも見る
     expect(await violations()).toEqual([]);
