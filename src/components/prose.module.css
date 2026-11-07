@@ -2,10 +2,11 @@
  * 書かれた文章 (利用規約などの本文、板の Markdown) の要素ごとの見た目。値は Mantine の Typography と同じ。
  * :where で詳細度を 0 にして、使う側の CSS Module (MarkdownView.module.css など) が素直に上書きできるようにする
  */
-.prose :where(:first-child) {
+/* 先頭 / 末尾の外側の余白を消す。ここだけ :where にしないのは、下の p や見出しの余白 (詳細度 0) に勝たせるため */
+.prose :first-child {
   margin-top: 0;
 }
-.prose :where(:last-child) {
+.prose :last-child {
   margin-bottom: 0;
 }
 

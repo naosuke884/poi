@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type ReactNode } from "react";
+import { type HTMLAttributes, type ReactNode, useId } from "react";
 
 import classes from "./Alert.module.css";
 
@@ -17,14 +17,21 @@ export function Alert({
   tone: "attention" | "danger";
   title?: ReactNode;
 }) {
+  // 見出しを案内の名前にする (role="note" などの名前が読み上げられるように)
+  const titleId = useId();
   return (
     <div
       role={role}
+      aria-labelledby={title ? titleId : undefined}
       className={[classes.alert, classes[tone], className].filter(Boolean).join(" ")}
       {...props}
     >
       <div className={classes.body}>
-        {title && <div className={classes.title}>{title}</div>}
+        {title && (
+          <div id={titleId} className={classes.title}>
+            {title}
+          </div>
+        )}
         <div>{children}</div>
       </div>
     </div>

@@ -21,6 +21,10 @@
   --poi-space-lg: 1.25rem;
   --poi-space-xl: 2rem;
 
+  /* 上部固定のヘッダーの高さと、本文のまわりの余白。本文の上の余白やセクションへのスクロール位置もこれで決める */
+  --poi-header-height: 3.5rem;
+  --poi-page-padding: var(--poi-space-md);
+
   --poi-radius-sm: 0.25rem;
   --poi-radius-md: 0.5rem;
 
@@ -64,6 +68,8 @@
   --poi-color-code-bg: #f8f9fa;
   --poi-color-pre-bg: #f8f9fa;
   --poi-color-rule: #dee2e6;
+  /* ヘッダーの下やまとめの見出しの区切り線。ライトは <hr> と同じ、ダークは枠線と同じ色 */
+  --poi-color-divider: #dee2e6;
 
   /* 赤の文字。赤の 6 番 (#fa5252) は白地で 3.3 しかないので 9 番 (5.5) にする */
   --poi-color-danger: #c92a2a;
@@ -91,6 +97,40 @@
   --poi-color-list-3-band: #f3d9fa;
   --poi-color-list-4: #fd7e14;
   --poi-color-list-4-band: #ffe8cc;
+
+  /* 部品の色。値は Mantine の部品と同じ (移行で見た目を変えないため) */
+  --poi-color-on-primary: #fff;
+  --poi-color-success: #12b886;
+  --poi-color-icon: #212529;
+  --poi-color-icon-hover: #e9ecef;
+  --poi-color-close: #495057;
+  --poi-color-close-hover: #f8f9fa;
+  --poi-color-danger-accent: #fa5252;
+  --poi-color-danger-subtle-hover: #ffc9c9;
+  --poi-color-warning-strong: #d9480f;
+  --poi-color-warning-subtle-hover: #ffd8a8;
+  --poi-color-tooltip-bg: #212529;
+  --poi-color-tooltip-text: #fff;
+  --poi-color-menu-border: #e9ecef;
+  --poi-color-menu-hover: #f1f3f5;
+  --poi-color-avatar-bg: #f1f3f5;
+  --poi-color-skeleton: #dee2e6;
+  --poi-color-toggle-bg: #f1f3f5;
+  --poi-color-toggle-text: #495057;
+  --poi-color-toggle-indicator: #fff;
+  --poi-color-notice-title: #212529;
+  --poi-color-notice-text: #868e96;
+  --poi-color-notice-close-hover: #f8f9fa;
+
+  /* 浮かせる要素の影。lg は左下の通知、xl はモーダル、toggle は表示切替の選択中の札 */
+  --poi-shadow-lg:
+    0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 1.75rem 1.4375rem -0.4375rem rgb(0 0 0 / 0.05),
+    0 0.75rem 0.75rem -0.4375rem rgb(0 0 0 / 0.04);
+  --poi-shadow-xl:
+    0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 2.25rem 1.75rem -0.4375rem rgb(0 0 0 / 0.05),
+    0 1.0625rem 1.0625rem -0.4375rem rgb(0 0 0 / 0.04);
+  --poi-shadow-toggle:
+    0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 0.0625rem 0.125rem rgb(0 0 0 / 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -118,6 +158,7 @@
     --poi-color-code-bg: #3b3b3b;
     --poi-color-pre-bg: #1f1f1f;
     --poi-color-rule: #696969;
+    --poi-color-divider: #424242;
 
     --poi-color-danger: #ff8787;
     --poi-color-danger-outline: #ffa8a8;
@@ -136,5 +177,29 @@
     --poi-color-list-3-band: #43174e;
     --poi-color-list-4: #f76707;
     --poi-color-list-4-band: #6d2408;
+
+    --poi-color-success: #38d9a9;
+    --poi-color-icon: #f8f9fa;
+    --poi-color-icon-hover: #171a1d;
+    --poi-color-close: #b8b8b8;
+    --poi-color-close-hover: #2e2e2e;
+    --poi-color-danger-accent: #f03e3e;
+    --poi-color-danger-subtle-hover: #8d1d1d;
+    --poi-color-warning-strong: #fff4e6;
+    --poi-color-warning-subtle-hover: #98320b;
+    --poi-color-tooltip-bg: #e9ecef;
+    --poi-color-tooltip-text: #000;
+    --poi-color-menu-border: #424242;
+    --poi-color-menu-hover: #424242;
+    --poi-color-avatar-bg: #111315;
+    --poi-color-skeleton: #424242;
+    --poi-color-toggle-bg: #1f1f1f;
+    --poi-color-toggle-text: #b8b8b8;
+    --poi-color-toggle-indicator: #3b3b3b;
+    --poi-color-notice-title: #fff;
+    --poi-color-notice-text: #828282;
+    --poi-color-notice-close-hover: #1f1f1f;
+    /* 暗い背景では影が見えないので付けない */
+    --poi-shadow-toggle: none;
   }
 }
