@@ -1,5 +1,8 @@
-import { ActionIcon, Box, ThemeIcon, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useRef } from "react";
+
+import { IconButton } from "@/components/IconButton";
+import { Tooltip } from "@/components/Tooltip";
+import { VisuallyHidden } from "@/components/VisuallyHidden";
 
 import {
   NO_SAVE_ANNOUNCEMENT,
@@ -7,6 +10,8 @@ import {
   type SaveState,
 } from "../../../-lib/sections/save-status";
 import { Svg } from "../TablerIcon";
+
+import classes from "./SaveStatusIcon.module.css";
 
 const OFFLINE_SAVE_MESSAGE = "オフラインです。オンライン復帰後に再保存してください";
 
@@ -29,15 +34,11 @@ export function SaveStatusIcon({ state }: { state: SaveState | null }) {
     : NO_SAVE_ANNOUNCEMENT;
   const announcement = announcementRef.current;
   return (
-    <Box component="span" style={{ display: "inline-flex", alignItems: "center" }}>
+    <span className={classes.root}>
       {state && <Inner state={state} />}
-      <VisuallyHidden component="span" role="alert">
-        {announcement.alert}
-      </VisuallyHidden>
-      <VisuallyHidden component="span" role="status">
-        {announcement.status}
-      </VisuallyHidden>
-    </Box>
+      <VisuallyHidden role="alert">{announcement.alert}</VisuallyHidden>
+      <VisuallyHidden role="status">{announcement.status}</VisuallyHidden>
+    </span>
   );
 }
 
@@ -69,7 +70,7 @@ function Inner({ state }: { state: SaveState }) {
       );
     case "saving":
       return (
-        <Status label="保存中…" color="ai">
+        <Status label="保存中…" color="primary">
           <CloudUploadIcon />
         </Status>
       );
@@ -95,15 +96,15 @@ function Status({
   children,
 }: {
   label: string;
-  color?: string;
+  color?: "gray" | "primary";
   children: ReactNode;
 }) {
   return (
     <>
       <Tooltip label={label}>
-        <ThemeIcon variant="transparent" color={color} size="sm" aria-hidden="true">
+        <span className={`${classes.icon} ${classes[color]}`} aria-hidden="true">
           {children}
-        </ThemeIcon>
+        </span>
       </Tooltip>
       <VisuallyHidden>{label}</VisuallyHidden>
     </>
@@ -118,7 +119,7 @@ function RetryStatus({
   children,
 }: {
   label: string;
-  color: string;
+  color: "orange" | "red";
   onRetry: () => void;
   children: ReactNode;
 }) {
@@ -126,7 +127,7 @@ function RetryStatus({
     <>
       <VisuallyHidden>{label}</VisuallyHidden>
       <Tooltip label={`${label} (クリックで再試行)`}>
-        <ActionIcon
+        <IconButton
           variant="subtle"
           color={color}
           size="sm"
@@ -134,7 +135,7 @@ function RetryStatus({
           onClick={onRetry}
         >
           {children}
-        </ActionIcon>
+        </IconButton>
       </Tooltip>
     </>
   );

@@ -1,0 +1,33 @@
+.board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--poi-space-xs);
+}
+
+/* タイムライン (セクションの並び)。最後のセクションより下の空きもクリックで書ける場所に見せる */
+.timeline {
+  flex: 1;
+}
+.timeline[data-writable] {
+  cursor: text;
+}
+
+.endSpacer {
+  height: 4rem;
+  flex: none;
+}
+
+/* 右下固定の追加ボタンは狭い画面だけ (sm = 48em 以上ではヘッダーの AddSectionButton) */
+@media (min-width: 48em) {
+  .fab {
+    display: none;
+  }
+}
+.fabButton {
+  box-shadow: var(--poi-shadow-md);
+}
+
+.undo {
+  margin-top: var(--poi-space-xs);
+}

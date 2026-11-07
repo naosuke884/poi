@@ -1,0 +1,26 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* クリックできない状態のアイコン。再試行のボタン (IconButton size="sm") と同じ 22px 四方に置く */
+.icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border: 1px solid transparent;
+  border-radius: var(--poi-radius-md);
+  line-height: 1;
+  user-select: none;
+}
+
+/* 保存済み / 未保存はアイコンの灰色 */
+.gray {
+  color: var(--poi-color-icon);
+}
+.primary {
+  color: var(--poi-color-primary-strong);
+}

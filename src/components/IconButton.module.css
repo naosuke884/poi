@@ -1,0 +1,148 @@
+/* アイコンだけのボタン (IconButton) と × の閉じるボタン (CloseButton) */
+.root,
+.close {
+  --icon-button-size: 1.75rem;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0;
+  border-radius: var(--poi-radius-md);
+  background: transparent;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.root {
+  --icon-button-bg: var(--poi-color-primary);
+  --icon-button-hover: var(--poi-color-primary-hover);
+  --icon-button-color: var(--poi-color-on-primary);
+
+  /* 読み込み中のスピナーを下から滑り込ませる分を隠す */
+  overflow: hidden;
+  border: 1px solid transparent;
+  background: var(--icon-button-bg);
+  color: var(--icon-button-icon-color, var(--icon-button-color));
+}
+
+/* ホバーはマウスのときだけ (タッチではタップ後も色が残る)。タッチでは押している間だけ色を変える */
+@media (hover: hover) {
+  .root:hover:not(:disabled) {
+    background: var(--icon-button-hover);
+  }
+  .close:hover:not(:disabled) {
+    background: var(--close-button-hover, var(--close-hover-default));
+  }
+}
+@media (hover: none) {
+  .root:active:not(:disabled) {
+    background: var(--icon-button-hover);
+  }
+  .close:active:not(:disabled) {
+    background: var(--close-button-hover, var(--close-hover-default));
+  }
+}
+
+/* 押した感触 (1px 沈む) */
+.root:active:not(:disabled),
+.close:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.root:disabled:not([data-loading]) {
+  --icon-button-bg: var(--poi-color-disabled);
+  --icon-button-color: var(--poi-color-disabled-text);
+  cursor: not-allowed;
+}
+.root[data-loading] {
+  cursor: not-allowed;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.root[data-loading] .icon {
+  opacity: 0;
+  transform: translateY(100%);
+}
+
+.loaderBox {
+  position: absolute;
+  inset: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+}
+.root .loader {
+  --loader-size: calc(var(--icon-button-size) * 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .icon {
+    transition:
+      transform 150ms ease,
+      opacity 100ms ease;
+  }
+}
+
+/* 大きさ */
+.xs {
+  --icon-button-size: 1.125rem;
+}
+.sm {
+  --icon-button-size: 1.375rem;
+}
+.md {
+  --icon-button-size: 1.75rem;
+}
+.xl {
+  --icon-button-size: 2.75rem;
+}
+
+.round {
+  border-radius: 2rem;
+}
+
+/* 種類と色。subtle は面なしで、ホバーで薄い面を出す */
+.subtle {
+  --icon-button-bg: transparent;
+}
+.gray {
+  --icon-button-color: var(--poi-color-icon);
+  --icon-button-hover: var(--poi-color-icon-hover);
+}
+.orange {
+  --icon-button-color: var(--poi-color-warning-strong);
+  --icon-button-hover: var(--poi-color-warning-subtle-hover);
+}
+.red {
+  --icon-button-color: var(--poi-color-danger-strong);
+  --icon-button-hover: var(--poi-color-danger-subtle-hover);
+}
+
+/* 閉じるボタン: 枠線なし、灰色の ×。色とホバーの面は使う側が --close-button-color / --close-button-hover で変える
+   (color を直接上書きさせないのは、CSS Modules の読み込み順でどちらが勝つかが変わるため) */
+.close {
+  --close-default: var(--poi-color-close);
+  --close-hover-default: var(--poi-color-close-hover);
+
+  border: 0;
+  color: var(--close-button-color, var(--close-default));
+}
+.closeIcon {
+  width: var(--close-icon-size, 70%);
+  height: var(--close-icon-size, 70%);
+}

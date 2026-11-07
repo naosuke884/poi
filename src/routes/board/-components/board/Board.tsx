@@ -1,10 +1,13 @@
-import { ActionIcon, Affix, Box, Button, Stack, Tooltip } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
+import { Affix } from "@/components/Affix";
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
+import { Button } from "@/components/Button";
 import { HeaderSlot } from "@/components/HeaderSlot";
+import { IconButton } from "@/components/IconButton";
+import { Tooltip } from "@/components/Tooltip";
 import { affixInset } from "@/lib/affix";
 
 import type { BoardSection } from "../../-lib/data/board";
@@ -29,6 +32,8 @@ import { OrganizedView } from "./OrganizedView";
 import { PlusIcon } from "./PlusIcon";
 import type { EditAnchor } from "./section/SectionEditor";
 import { type SectionHandlers, type SectionRefs, SectionRow } from "./section/SectionRow";
+
+import classes from "./Board.module.css";
 
 /**
  * 板。セクション (= 1 つの memo、30 日で消える) を縦に並べる。
@@ -115,8 +120,8 @@ export function Board({
     });
 
   // キーボードで削除したら「元に戻す」へフォーカスを移す (DOM の末尾の通知には Tab で届かないので。#112)。
-  // 通知 (Affix) はポータルで、初めて出るときはボタンが 1 描画遅れて現れるので、予約しておいて
-  // ボタンが現れた (ref が付いた) 時点でも移す
+  // 通知 (Affix) は body へのポータルで、ボタンが現れる (ref が付く) のと deleted が変わる effect の
+  // どちらが先かは描画の仕方で変わるので、予約しておいてボタンが現れた時点でも移す
   const undoButtonRef = useRef<HTMLButtonElement | null>(null);
   const focusUndoRef = useRef(false);
   const focusUndoButton = () => {
@@ -307,7 +312,7 @@ export function Board({
     "Tab でインデント、Esc で編集をやめる",
   ].join("\n");
   return (
-    <Stack gap="xs" style={{ flex: 1 }}>
+    <div className={classes.board}>
       {/* ヘッダーに出す板の操作 (板を表示している間だけ)。表示切替はまとめが閲覧にも役立つので
           閲覧のみ (readOnly) でも出す。追加ボタンは編集できるときだけ */}
       <HeaderSlot>
@@ -331,8 +336,11 @@ export function Board({
           onDelete={removeGroup}
         />
       ) : (
-        <Box
-          style={{ flex: 1, cursor: readOnly ? undefined : "text" }}
+        // 空きのクリックはマウス / タッチ向けの近道 (キーボードでは各セクションに Tab で入れる)
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+        <div
+          className={classes.timeline}
+          data-writable={readOnly ? undefined : true}
           onClick={focusEnd}
           onMouseDown={keepFocus}
         >
@@ -350,11 +358,11 @@ export function Board({
               refs={refs}
             />
           ))}
-        </Box>
+        </div>
       )}
 
       {/* 右下固定の追加ボタンの下に本文が隠れないよう、スクロールの終端に余白を足しておく */}
-      <Box h={64} />
+      <div className={classes.endSpacer} />
 
       {/* セクションを追加 (右下固定。狭い画面のみ: PC 幅 (sm 以上) ではヘッダーの AddSectionButton)。
           区切りの入力 (空行 2 つ) を知らなくても増やせるように。
@@ -363,23 +371,23 @@ export function Board({
           切り替わらないように。追加したいときはヘッダーで切り替えるか、PC 幅ならヘッダーのボタンで) */}
       {!readOnly && !organized && (
         <Affix
-          hiddenFrom="sm"
-          position={{
+          className={classes.fab}
+          style={{
             bottom: `calc(16px + env(safe-area-inset-bottom) + ${keyboardInset}px)`,
-            right: affixInset("right"),
+            insetInlineEnd: affixInset("right"),
           }}
         >
           <Tooltip label="セクションを追加" withArrow>
-            <ActionIcon
+            <IconButton
               size="xl"
-              radius="xl"
+              round
+              className={classes.fabButton}
               aria-label="セクションを追加"
-              style={{ boxShadow: "var(--poi-shadow-md)" }}
               onMouseDown={keepEditorFocus}
               onClick={addSection}
             >
               <PlusIcon size={22} />
-            </ActionIcon>
+            </IconButton>
           </Tooltip>
         </Affix>
       )}
@@ -402,11 +410,17 @@ export function Board({
             if (e.key === "Escape") closeUndo();
           }}
         >
-          <Button ref={setUndoButton} size="xs" mt="xs" variant="default" onClick={undoDelete}>
+          <Button
+            ref={setUndoButton}
+            size="xs"
+            variant="default"
+            className={classes.undo}
+            onClick={undoDelete}
+          >
             元に戻す
           </Button>
         </BottomLeftNotice>
       )}
-    </Stack>
+    </div>
   );
 }

@@ -1,0 +1,46 @@
+/* ツールチップ (Tooltip.tsx)。配色は本文と逆 (ライトでは濃い地に白、ダークでは明るい地に黒) */
+.tooltip {
+  --tooltip-bg: var(--poi-color-tooltip-bg);
+  --tooltip-color: var(--poi-color-tooltip-text);
+
+  position: absolute;
+  /* 固定のヘッダー (100) や右下の固定要素 (200) より上 */
+  z-index: 300;
+  padding: calc(var(--poi-space-xs) / 2) var(--poi-space-xs);
+  border-radius: var(--poi-radius-md);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-color);
+  font-size: var(--poi-font-size-sm);
+  line-height: var(--poi-line-height);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tooltip {
+    animation: fade-in 100ms ease;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 対象を指す小さな三角。一辺 4px の正方形を 45 度回し、吹き出しの外に出る半分だけを見せる */
+.arrow {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.tooltip[data-side="top"] .arrow {
+  bottom: -2px;
+  clip-path: polygon(0 100%, 100% 100%, 100% 0);
+}
+.tooltip[data-side="bottom"] .arrow {
+  top: -2px;
+  clip-path: polygon(0 100%, 0 0, 100% 0);
+}

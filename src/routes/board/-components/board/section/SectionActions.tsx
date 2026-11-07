@@ -1,5 +1,8 @@
-import { ActionIcon, CloseButton, Tooltip, VisuallyHidden } from "@mantine/core";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+
+import { CloseButton, IconButton } from "@/components/IconButton";
+import { Tooltip } from "@/components/Tooltip";
+import { VisuallyHidden } from "@/components/VisuallyHidden";
 
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { Svg } from "../TablerIcon";
@@ -70,8 +73,7 @@ export function SectionDeleteButton({
     <Tooltip label="削除" withArrow>
       <CloseButton
         size="xs"
-        c="red"
-        className={classes.touchTarget}
+        className={`${classes.touchTarget} ${classes.delete}`}
         aria-label={`${subject} を削除`}
         onMouseDown={keepEditorFocus}
         onClick={(e) => onDelete(e.detail === 0)}
@@ -126,22 +128,23 @@ function ActionButton({
   return (
     <>
       <Tooltip label={feedback?.message ?? tooltip} opened={feedback ? true : undefined} withArrow>
-        <ActionIcon
+        <IconButton
           variant="subtle"
           color="gray"
+          size="xs"
           // 普段は区切り線のラベル (dimmed) と同じ色に揃える。
           // 結果表示中はチェック / × を teal / red で見せる。
-          // variant の色は gray のまま (色付きにするとクリック直後のホバー背景が緑/赤に光る)
-          c={feedback ? (feedback.ok ? "teal" : "red") : "dimmed"}
-          size="xs"
-          className={classes.touchTarget}
+          // color は gray のまま、アイコンの色だけ変える (色付きにするとクリック直後のホバー背景が緑/赤に光る)
+          className={`${classes.touchTarget} ${
+            feedback ? (feedback.ok ? classes.succeeded : classes.failed) : classes.muted
+          }`}
           aria-label={label}
           loading={busy}
           onMouseDown={keepEditorFocus}
           onClick={() => void onClick()}
         >
           {feedback ? feedback.ok ? <CheckIcon /> : <XIcon /> : children}
-        </ActionIcon>
+        </IconButton>
       </Tooltip>
       {/* Tooltip (role="tooltip") は読み上げられないので、結果はここで通知する */}
       <VisuallyHidden role="status" aria-live="polite">
