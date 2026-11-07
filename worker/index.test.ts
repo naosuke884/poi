@@ -116,8 +116,8 @@ async function userCount(db: D1Database) {
   return row?.n;
 }
 
-describe.concurrent("ログアウト / アカウント削除で cookie を消させる (issue #136)", () => {
-  it("ログアウトの成功レスポンスに Clear-Site-Data: cookies が付く", async ({
+describe.concurrent("ログアウト / アカウント削除", () => {
+  it("ログアウトの成功レスポンスはセッションの cookie を失効させる", async ({
     request,
     signIn,
   }) => {
@@ -127,31 +127,23 @@ describe.concurrent("ログアウト / アカウント削除で cookie を消さ
       headers: { Cookie: await signIn() },
     });
     expect(res.status).toBe(200);
-    expect(res.headers.get("Clear-Site-Data")).toBe('"cookies"');
+    expect(res.headers.get("Set-Cookie")).toMatch(/better-auth\.session_token=;.*Max-Age=0/);
   });
 
-  it("アカウント削除の成功レスポンスに付き、ユーザーも消える", async ({ env, request, signIn }) => {
+  it("アカウント削除が成功するとユーザーも消える", async ({ env, request, signIn }) => {
     const res = await request("/api/auth/delete-user", {
       method: "POST",
       body: "{}",
       headers: { Cookie: await signIn() },
     });
     expect(res.status).toBe(200);
-    expect(res.headers.get("Clear-Site-Data")).toBe('"cookies"');
     expect(await userCount(env.DB)).toBe(0);
   });
 
-  it("未ログインでのアカウント削除は失敗し、付かない", async ({ env, request }) => {
+  it("未ログインでのアカウント削除は失敗する", async ({ env, request }) => {
     const res = await request("/api/auth/delete-user", { method: "POST", body: "{}" });
     expect(res.status).toBe(401);
-    expect(res.headers.has("Clear-Site-Data")).toBe(false);
     expect(await userCount(env.DB)).toBe(1);
-  });
-
-  it("セッションの確認には付かない", async ({ request, signIn }) => {
-    const res = await request("/api/auth/get-session", { headers: { Cookie: await signIn() } });
-    expect(res.status).toBe(200);
-    expect(res.headers.has("Clear-Site-Data")).toBe(false);
   });
 });
 
@@ -166,16 +158,6 @@ describe.concurrent("セキュリティ関連のレスポンスヘッダー (iss
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(res.headers.get("Referrer-Policy")).toBe("no-referrer");
-  });
-
-  it("ログアウトでは Clear-Site-Data と両方付く", async ({ request, signIn }) => {
-    const res = await request("/api/auth/sign-out", {
-      method: "POST",
-      body: "{}",
-      headers: { Cookie: await signIn() },
-    });
-    expect(res.headers.get("Clear-Site-Data")).toBe('"cookies"');
-    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
   });
 
   // 静的アセットのヘッダー (public/_headers) は Worker を通らないので、ファイルの中身で確かめる

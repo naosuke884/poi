@@ -18,7 +18,7 @@ worker/
   db.ts         createDb / Db / merged schema (every context's schema.ts spread into one)
   types.ts      AppEnv (Bindings: Env, Variables: auth / user / session)
   env.d.ts      secret types merged into the generated Env
-  auth/         Better Auth: createAuth, authMiddleware / requireAuth, clear-site-data, sweep (cron: expired sessions / verifications), schema.ts (generated)
+  auth/         Better Auth: createAuth, authMiddleware / requireAuth, sweep (cron: expired sessions / verifications), schema.ts (generated)
   board/        the board: routes (board + settings), board-sync (pure diffing), sweep (cron), schema.ts
   site/         page requests that are not static assets (/terms, unknown paths): index.html with 200 / 404, redirects
 shared/         code used by both src and worker (constants, limits, pure helpers such as in-app-browser)
@@ -59,7 +59,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
 ### Auth
 
 - `authMiddleware` runs on every `/api/*`: it builds a per-request Better Auth instance and sets `auth`, `user`, `session` (null when signed out). For `/api/auth/*` it skips the session lookup, because those requests only go to Better Auth's handler and the DB read would be wasted.
-- Responses from Better Auth's handler pass through `withClearSiteData` (`auth/clear-site-data.ts`), which adds `Clear-Site-Data: "cookies"` to a successful `POST /api/auth/sign-out` or `/api/auth/delete-user`. It backs up the Set-Cookie expiry and the client's `clearOfflineCaches`; don't remove either. Note it wipes every cookie on the origin, including the other accounts' `multiSession` cookies. If another endpoint should end the session on this device, add its path there. Never add `"storage"` or `"cache"`: they would delete the Service Worker and its precache, so the PWA could no longer start offline.
+- Sign-out / account deletion clear the session cookies with Better Auth's own Set-Cookie (`multiSession` expires every account's cookie on sign-out); the client's `clearOfflineCaches` removes the cached board and user. There is no `Clear-Site-Data` (dropped as a redundant third layer that Safari ignores); if you add one, never include `"storage"` or `"cache"`: they would delete the Service Worker and its precache, so the PWA could no longer start offline.
 - Google's access / refresh / id tokens are never stored: `databaseHooks.account` in `auth/index.ts` nulls them on create and on every sign-in update (HAY-37). The app does not call Google APIs; if it ever needs to, that is a decision to revisit (e.g. `encryptOAuthTokens`), not a hook to delete quietly.
 - Put `.use(requireAuth)` first in any chain that needs a signed-in user. It returns `401 { error: "Unauthorized" }` and narrows `c.get("user")` to non-null through `AuthedEnv`, so do not add `if (!user)` checks or `!` after it.
 - Take the user id from `c.get("user").id`, never from the request body. When the body carries a user id (as PUT /api/board does), it is only a check against the session (`409 UserMismatch`), not the identity.
@@ -82,7 +82,7 @@ Do this even for a few lines: a route test alone can't pin edge cases cheaply, a
 - Tests sit next to the file as `<name>.test.ts` (vitest includes `worker/**/*.test.ts`, node environment).
   - Pure modules: plain unit tests (`board-sync.test.ts`, `shared/in-app-browser.test.ts`).
   - Routes: mount the sub-app in a test Hono app with a middleware that sets a fixed `user` / `session`, and call `app.request(path, init, { DB: db })` with the `db` fixture from `worker/d1-test.ts` — a fresh local D1 (`getPlatformProxy`, `drizzle/` migrations applied) per test (`board/routes.test.ts`). This hits the real SQLite limits, which mocks would hide.
-  - Wiring in `index.ts` (what the whole app does to a response, e.g. Clear-Site-Data or security headers): call `worker.fetch(request, env)` from `index.test.ts` with test secrets and a signed session cookie on the same per-test D1, so Better Auth's real handler runs.
+  - Wiring in `index.ts` (what the whole app does to a response, e.g. security headers): call `worker.fetch(request, env)` from `index.test.ts` with test secrets and a signed session cookie on the same per-test D1, so Better Auth's real handler runs.
   - How to write these tests (fixtures, concurrency, what to assert) is in the `writing-tests` skill.
 
 ## Security headers

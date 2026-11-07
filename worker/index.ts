@@ -3,7 +3,6 @@ import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { secureHeaders } from "hono/secure-headers";
 
-import { withClearSiteData } from "./auth/clear-site-data";
 import { authMiddleware } from "./auth/middleware";
 import { deleteExpiredAuthRecords } from "./auth/sweep";
 import { boardRoutes, settingsRoutes } from "./board/routes";
@@ -64,10 +63,9 @@ app.on(
 );
 
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。
-// ログアウト / アカウント削除の成功時は Clear-Site-Data で cookie も消させる
-app.all("/api/auth/*", async (c) =>
-  withClearSiteData(c.req.raw, await c.get("auth").handler(c.req.raw)),
-);
+// ログアウト / アカウント削除で cookie を消すのは Better Auth の Set-Cookie と、端末のキャッシュは clearOfflineCaches に任せる。
+// Clear-Site-Data は重ねない: Safari は解さず、Set-Cookie で足りるため
+app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
 
 // RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
 const api = new Hono<AppEnv>().route("/board", boardRoutes).route("/settings", settingsRoutes);
