@@ -374,7 +374,7 @@ export function Board({
               size="xl"
               radius="xl"
               aria-label="セクションを追加"
-              style={{ boxShadow: "var(--mantine-shadow-md)" }}
+              style={{ boxShadow: "var(--poi-shadow-md)" }}
               onMouseDown={keepEditorFocus}
               onClick={addSection}
             >

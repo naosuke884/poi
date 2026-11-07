@@ -6,7 +6,7 @@ describe("affixInset", () => {
   it("板の端はスクロールバーを含まない % で取る (vw だとスクロールバーの半分ずれる。issue #131)", () => {
     for (const side of ["left", "right"] as const) {
       const inset = affixInset(side);
-      expect(inset).toContain("calc(50% - 30rem * var(--mantine-scale, 1) + 16px)");
+      expect(inset).toContain("calc(50% - 30rem + 16px)");
       expect(inset).not.toMatch(/vw/);
     }
   });

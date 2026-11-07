@@ -41,7 +41,7 @@ export function LifeLine({
   const days = Math.ceil(left / DAY_MS);
   const ratio = total > 0 ? Math.min(1, left / total) : 0;
   const soon = days <= 1;
-  const color = soon ? "var(--mantine-color-orange-filled)" : "var(--mantine-color-dimmed)";
+  const color = soon ? "var(--poi-color-warning)" : "var(--poi-color-dimmed)";
   return (
     <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
       {/* ラベルの幅を揃えて、どのセクションでもバーの始まりを同じ位置にする (長さを比べられるように) */}

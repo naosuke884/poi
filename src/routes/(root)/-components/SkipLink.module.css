@@ -2,14 +2,14 @@
 .skipLink {
   position: fixed;
   top: -100px;
-  left: var(--mantine-spacing-md);
+  left: var(--poi-space-md);
   z-index: 1000;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
-  border-radius: var(--mantine-radius-sm);
-  background-color: var(--mantine-color-body);
-  color: var(--mantine-color-text);
-  box-shadow: var(--mantine-shadow-md);
+  padding: var(--poi-space-xs) var(--poi-space-md);
+  border-radius: var(--poi-radius-sm);
+  background-color: var(--poi-color-body);
+  color: var(--poi-color-text);
+  box-shadow: var(--poi-shadow-md);
 }
 .skipLink:focus-visible {
-  top: var(--mantine-spacing-md);
+  top: var(--poi-space-md);
 }

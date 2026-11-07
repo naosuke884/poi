@@ -7,6 +7,6 @@
 // 幅は vw ではなく % で取る: Affix は position: fixed なので % はスクロールバーを除いたビューポート基準で、
 // 中央寄せの板と同じ幅になる。vw はスクロールバーの幅を含むので、スクロールバーが幅を取る環境
 // (Windows / Linux) では板の端から半分 (約 7px) ずれる (issue #131)。
-// 16px は Container 自身の padding-inline (--mantine-spacing-md) と合わせる
+// 16px は Container 自身の padding-inline (--poi-space-md) と合わせる
 export const affixInset = (side: "left" | "right") =>
-  `max(calc(16px + env(safe-area-inset-${side})), calc(50% - 30rem * var(--mantine-scale, 1) + 16px))`;
+  `max(calc(16px + env(safe-area-inset-${side})), calc(50% - 30rem + 16px))`;

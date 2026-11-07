@@ -24,7 +24,7 @@ export function SiteFooter() {
       mx="auto"
       mt="xl"
       pt="md"
-      style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
+      style={{ borderTop: "1px solid var(--poi-color-border)" }}
     >
       {/* 間隔 (lg = 20px) はタップの取り違えを防ぐため。折り返すときもリンクの単位で折れる */}
       <Group gap="lg" justify="center" style={{ rowGap: 0 }}>

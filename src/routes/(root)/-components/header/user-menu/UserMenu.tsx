@@ -194,7 +194,7 @@ export function UserMenu() {
           {/* 文字色は Menu.Item の color (red 6 固定) ではなく、コントラストを確保した red-text にする (app.tsx) */}
           <Menu.Item
             color="red"
-            c="var(--mantine-color-red-text)"
+            c="var(--poi-color-danger)"
             disabled={offline || busy}
             onClick={() => void logout()}
           >
@@ -202,7 +202,7 @@ export function UserMenu() {
           </Menu.Item>
           <Menu.Item
             color="red"
-            c="var(--mantine-color-red-text)"
+            c="var(--poi-color-danger)"
             disabled={offline || busy}
             onClick={() => setConfirmingDelete(true)}
           >

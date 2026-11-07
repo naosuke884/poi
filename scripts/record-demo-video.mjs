@@ -212,7 +212,7 @@ const showPress = (page, x, y) =>
         height: `${size}px`,
         ...(touch
           ? { background: "rgb(128 128 128 / 0.35)", border: "2px solid rgb(255 255 255 / 0.6)" }
-          : { border: "2px solid var(--mantine-primary-color-filled)" }),
+          : { border: "2px solid var(--poi-color-primary)" }),
       });
       document.body.append(mark);
       const frames = touch
@@ -304,15 +304,15 @@ async function installEndCard(page) {
       #demo-card {
         position: fixed; inset: 0; z-index: 2147483646; pointer-events: none;
         display: grid; place-content: center; justify-items: center; gap: ${small ? 14 : 24}px;
-        background: color-mix(in srgb, var(--mantine-color-body) 82%, transparent);
+        background: color-mix(in srgb, var(--poi-color-body) 82%, transparent);
         backdrop-filter: blur(14px);
         transition: opacity 600ms ease;
       }
       #demo-card[hidden] { display: grid; opacity: 0; }
       #demo-card .name { display: flex; align-items: center; gap: ${small ? 14 : 20}px; }
       #demo-card img { width: ${small ? 60 : 104}px; height: ${small ? 60 : 104}px; }
-      #demo-card .name span { font-size: ${small ? 48 : 84}px; font-weight: 700; color: var(--mantine-color-bright); }
-      #demo-card p { margin: 0; font-size: ${small ? 22 : 36}px; color: var(--mantine-color-dimmed); }
+      #demo-card .name span { font-size: ${small ? 48 : 84}px; font-weight: 700; color: var(--poi-color-bright); }
+      #demo-card p { margin: 0; font-size: ${small ? 22 : 36}px; color: var(--poi-color-dimmed); }
     `,
   });
   await page.evaluate((tagline) => {
@@ -517,13 +517,13 @@ async function record() {
   try {
     await page.goto("http://localhost:5173/board", { waitUntil: "networkidle" });
     // サイドカーには中国語のフォントしか無く、日本語の字形が違って見えるので、録画のときだけ日本語のフォントを足す。
-    // 見出しは body を継がず Mantine の変数で字体を決めるので、変数ごと (Mantine が後から入れる :root より強く) 置き換える
+    // 見出しは body を継がず変数で字体を決めるので、body ではなく変数ごと置き換える
     const stack = `"Inter Variable", "${FONT.family}", sans-serif`;
     await page.addStyleTag({
       url: `https://fonts.googleapis.com/css2?family=${FONT.query}&display=block`,
     });
     await page.addStyleTag({
-      content: `:root { --mantine-font-family: ${stack} !important; --mantine-font-family-headings: ${stack} !important; }`,
+      content: `:root { --poi-font-family: ${stack} !important; }`,
     });
     // 字はページに出てから読み込まれるので、本文と見出し (太字) の分を先に読み込んでから撮り始める
     await page.evaluate(async (family) => {

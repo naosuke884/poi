@@ -2,7 +2,7 @@
    MarkdownView.module.css の見た目に揃える。
    CodeMirror 自身のテーマのセレクタはクラス 2 つ (.ͼ1 .cm-content など) なので、ここはクラス 3 つ
    (.root + .cm-editor + 対象) にして、読み込み順によらず必ずこちらが勝つようにする。
-   色は Mantine の CSS 変数に任せる (ダークモードも変数で切り替わる) */
+   色は tokens.css の変数に任せる (ダークモードも変数で切り替わる) */
 
 .root :global(.cm-editor.cm-focused) {
   outline: none;
@@ -11,7 +11,7 @@
 /* 既定の overflow: auto だと箱の中でスクロールしてしまう。Textarea (autosize) と同じく内容の高さに広がる。
    行間は MarkdownView の lh と同じ値 */
 .root :global(.cm-editor .cm-scroller) {
-  font-family: var(--mantine-font-family);
+  font-family: var(--poi-font-family);
   line-height: 1.7;
   overflow: visible;
 }
@@ -19,9 +19,9 @@
 /* 16px 以上なら iOS でフォーカス時に拡大されない (Textarea size="md" と同じ)。
    caret-color の既定は light / dark の facet 依存 (Mantine のカラースキームを知らない) ので文字色に合わせる */
 .root :global(.cm-editor .cm-content) {
-  font-size: var(--mantine-font-size-md);
+  font-size: var(--poi-font-size-md);
   padding: 0;
-  caret-color: var(--mantine-color-text);
+  caret-color: var(--poi-color-text);
   overflow-wrap: anywhere;
 }
 
@@ -35,7 +35,7 @@
    高さ (5 行ぶん) まで伸びてキャレットがその高さで描かれる (特にモバイルで巨大に見える。issue #53)。
    inline なら placeholder は普通のテキストと同じく行ボックスごとに割れ、1 行目 (キャレットの行) は 1 行ぶんのまま */
 .root :global(.cm-editor .cm-placeholder) {
-  color: var(--mantine-color-placeholder);
+  color: var(--poi-color-placeholder);
   white-space: pre-line;
   display: inline;
   vertical-align: baseline;
@@ -47,7 +47,7 @@
    MarkdownView の左の縦棒は編集中は出さない (行頭が動いて書きにくい)。レベルは大きさだけで示す */
 .root :global(.cm-editor .cm-line:is(.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6)) {
   font-weight: 700;
-  padding-top: var(--mantine-spacing-md);
+  padding-top: var(--poi-space-md);
 }
 .root :global(.cm-editor .cm-content > .cm-line:first-child) {
   padding-top: 0;
@@ -66,34 +66,34 @@
 }
 /* 見出しの記号 (#) は薄い灰色 (レベルによらず。色を付けると箇条書きの色と紛れる) */
 .root :global(.cm-editor .md-mark) {
-  color: var(--mantine-color-dimmed);
+  color: var(--poi-color-dimmed);
 }
 
 /* URL はリンクの見た目。カーソルは text のまま (通常クリックはカーソル移動で、開くのは Ctrl / Cmd + クリック) */
 .root :global(.cm-editor .md-url) {
-  color: var(--mantine-color-anchor);
+  color: var(--poi-color-link);
   text-decoration: underline;
 }
 
 /* 箇条書き: レイアウト (インデント幅・記号の位置) は変えず、色でネストの深さを示す。
    記号は深さの色、行頭のインデント (空白) は同じ色の薄い帯 (幅はそのまま。スペース 2 つの字下げは細くて見えにくい)。
    深さ 1 → primary、2 → teal、3 → grape、4 → orange で一巡 (src/routes/board/-lib/editor/section-markdown.ts の LIST_COLORS と同じ数)。
-   色は Mantine の変数 (filled / light) なのでダークモードでもそのまま使える */
+   色は tokens.css の変数なのでダークモードでもそのまま使える */
 .root :global(.cm-editor .md-li-c1) {
-  --md-li-color: var(--mantine-primary-color-filled);
-  --md-li-band: var(--mantine-primary-color-light);
+  --md-li-color: var(--poi-color-primary);
+  --md-li-band: var(--poi-color-primary-light);
 }
 .root :global(.cm-editor .md-li-c2) {
-  --md-li-color: var(--mantine-color-teal-filled);
-  --md-li-band: var(--mantine-color-teal-light);
+  --md-li-color: var(--poi-color-teal);
+  --md-li-band: var(--poi-color-teal-light);
 }
 .root :global(.cm-editor .md-li-c3) {
-  --md-li-color: var(--mantine-color-grape-filled);
-  --md-li-band: var(--mantine-color-grape-light);
+  --md-li-color: var(--poi-color-grape);
+  --md-li-band: var(--poi-color-grape-light);
 }
 .root :global(.cm-editor .md-li-c4) {
-  --md-li-color: var(--mantine-color-orange-filled);
-  --md-li-band: var(--mantine-color-orange-light);
+  --md-li-color: var(--poi-color-warning);
+  --md-li-band: var(--poi-color-warning-light);
 }
 .root :global(.cm-editor .md-li-mark) {
   color: var(--md-li-color);

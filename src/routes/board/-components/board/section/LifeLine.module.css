@@ -4,7 +4,7 @@
 .track {
   position: relative;
   flex: 1;
-  border-block-start: 1px solid var(--mantine-color-default-border);
+  border-block-start: 1px solid var(--poi-color-border);
 }
 
 /* 残りの期間の濃い線。長さ (--life-line-ratio) と色 (--life-line-color) は LifeLine.tsx から渡す。

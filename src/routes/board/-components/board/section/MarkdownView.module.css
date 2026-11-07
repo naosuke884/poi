@@ -1,9 +1,9 @@
 /* 編集に切り替えられる表示: キーボードでフォーカスしたときだけ枠を出す (クリックでは出さない) */
 .editable {
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--poi-radius-sm);
 }
 .editable:focus-visible {
-  outline: 2px solid var(--mantine-primary-color-filled);
+  outline: 2px solid var(--poi-color-primary);
   outline-offset: 4px;
 }
 
@@ -25,7 +25,7 @@
    下マージン (xs) を付けるが、エディタの見出し行は本文の 1.7 を継承して下の余白も無い
    (違うと表示と編集を切り替えるたびに見出しより下の行が上下に動く。issue #117) */
 .root :where(h1, h2, h3, h4, h5, h6) {
-  margin-top: var(--mantine-spacing-md);
+  margin-top: var(--poi-space-md);
   margin-bottom: 0;
   line-height: inherit;
 }
@@ -72,10 +72,10 @@
    本文の行の高さは lh と同じ 1.7 (見出しの中では 1lh が見出しの大きさになるので lh 単位は使わない)。
    Mantine の :first-child の margin-top: 0 やセクション先頭の 0 より後に書いて勝たせる (先頭の空行もエディタでは 1 行) */
 .root [data-blank-lines] {
-  margin-top: calc(1.7 * var(--mantine-font-size-md));
+  margin-top: calc(1.7 * var(--poi-font-size-md));
 }
 .root :where(h1, h2, h3, h4, h5, h6)[data-blank-lines] {
-  margin-top: calc(var(--mantine-spacing-md) + 1.7 * var(--mantine-font-size-md));
+  margin-top: calc(var(--poi-space-md) + 1.7 * var(--poi-font-size-md));
 }
 
 /* sourceBlankLines={false} (まとめ表示) では空行を見ないので、並んだ段落・箇条書きの間に 1 行ぶん空けて区切る
@@ -112,12 +112,12 @@
 .root :where(h1) {
   padding-left: 8px;
   border-left-width: 4px;
-  border-left-color: var(--mantine-primary-color-filled);
+  border-left-color: var(--poi-color-primary);
 }
 .root :where(h2) {
   padding-left: 9px;
   border-left-width: 3px;
-  border-left-color: var(--mantine-color-default-border);
+  border-left-color: var(--poi-color-border);
 }
 
 /* 本文中のリンクは常に下線を出す (Mantine の Typography はホバー時だけ)。
