@@ -1,7 +1,11 @@
 # 静的アセット (index.html・JS・画像など) に付けるセキュリティ関連のヘッダー (Cloudflare Workers の静的アセット配信が読む)。
 # /api/* は Worker が返すのでここは効かない。そちらは worker/index.ts の secureHeaders で付ける。
 # CSP は強制 (違反した読み込みや実行はブラウザが止める。HAY-36)。インラインスクリプト・eval・
-# 外部スクリプトを足すとここで止まる。style-src はまだ指定しない (プリレンダーの HTML に style 属性が残っている。HAY-171 で足す)。
+# 外部スクリプトを足すとここで止まる。
+# style-src は指定しない (HAY-171 で見送り): エディタ (CodeMirror の style-mod) が自分の CSS を <style> 要素で
+# 差し込むので、'self' に絞ると本番でエディタの見た目が壊れる。直すには style-mod を手直しした版に差し替えて
+# 保守し続けることになり、HTML を差し込まれる穴が無い今は守りの上積みに見合わない。
+# 'unsafe-inline' 付きで足すのは、主な差し込み口の <style> を通してしまい意味が薄いのでしない
 # default-src も指定しない: Google のアバター画像や「画像にする」の data: / blob: を個別に許すことになり、漏れると壊れる。
 # base-uri は 'none' にしない: 「画像にする」(modern-screenshot) が CSS 内の相対 URL (フォント) を解決するのに
 # 作業用ドキュメントへ同じオリジンの <base> を入れる。
