@@ -66,7 +66,7 @@
 }
 /* 見出しの記号 (#) は薄い灰色 (レベルによらず。色を付けると箇条書きの色と紛れる) */
 .root :global(.cm-editor .md-mark) {
-  color: var(--poi-color-dimmed);
+  color: var(--poi-color-text-muted);
 }
 
 /* URL はリンクの見た目。カーソルは text のまま (通常クリックはカーソル移動で、開くのは Ctrl / Cmd + クリック) */
@@ -77,23 +77,23 @@
 
 /* 箇条書き: レイアウト (インデント幅・記号の位置) は変えず、色でネストの深さを示す。
    記号は深さの色、行頭のインデント (空白) は同じ色の薄い帯 (幅はそのまま。スペース 2 つの字下げは細くて見えにくい)。
-   深さ 1 → primary、2 → teal、3 → grape、4 → orange で一巡 (src/routes/board/-lib/editor/section-markdown.ts の LIST_COLORS と同じ数)。
+   深さ 1 〜 4 で一巡 (src/routes/board/-lib/editor/section-markdown.ts の LIST_COLORS と同じ数)。
    色は tokens.css の変数なのでダークモードでもそのまま使える */
 .root :global(.cm-editor .md-li-c1) {
-  --md-li-color: var(--poi-color-primary);
-  --md-li-band: var(--poi-color-primary-light);
+  --md-li-color: var(--poi-color-list-1);
+  --md-li-band: var(--poi-color-list-1-band);
 }
 .root :global(.cm-editor .md-li-c2) {
-  --md-li-color: var(--poi-color-teal);
-  --md-li-band: var(--poi-color-teal-light);
+  --md-li-color: var(--poi-color-list-2);
+  --md-li-band: var(--poi-color-list-2-band);
 }
 .root :global(.cm-editor .md-li-c3) {
-  --md-li-color: var(--poi-color-grape);
-  --md-li-band: var(--poi-color-grape-light);
+  --md-li-color: var(--poi-color-list-3);
+  --md-li-band: var(--poi-color-list-3-band);
 }
 .root :global(.cm-editor .md-li-c4) {
-  --md-li-color: var(--poi-color-warning);
-  --md-li-band: var(--poi-color-warning-light);
+  --md-li-color: var(--poi-color-list-4);
+  --md-li-band: var(--poi-color-list-4-band);
 }
 .root :global(.cm-editor .md-li-mark) {
   color: var(--md-li-color);

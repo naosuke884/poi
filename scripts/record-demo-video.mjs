@@ -304,15 +304,15 @@ async function installEndCard(page) {
       #demo-card {
         position: fixed; inset: 0; z-index: 2147483646; pointer-events: none;
         display: grid; place-content: center; justify-items: center; gap: ${small ? 14 : 24}px;
-        background: color-mix(in srgb, var(--poi-color-body) 82%, transparent);
+        background: color-mix(in srgb, var(--poi-color-bg) 82%, transparent);
         backdrop-filter: blur(14px);
         transition: opacity 600ms ease;
       }
       #demo-card[hidden] { display: grid; opacity: 0; }
       #demo-card .name { display: flex; align-items: center; gap: ${small ? 14 : 20}px; }
       #demo-card img { width: ${small ? 60 : 104}px; height: ${small ? 60 : 104}px; }
-      #demo-card .name span { font-size: ${small ? 48 : 84}px; font-weight: 700; color: var(--poi-color-bright); }
-      #demo-card p { margin: 0; font-size: ${small ? 22 : 36}px; color: var(--poi-color-dimmed); }
+      #demo-card .name span { font-size: ${small ? 48 : 84}px; font-weight: 700; color: var(--poi-color-text-strong); }
+      #demo-card p { margin: 0; font-size: ${small ? 22 : 36}px; color: var(--poi-color-text-muted); }
     `,
   });
   await page.evaluate((tagline) => {

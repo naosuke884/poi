@@ -72,13 +72,13 @@ const theme = createTheme({
 const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {},
   light: {
-    "--mantine-color-dimmed": "var(--poi-color-dimmed)",
+    "--mantine-color-dimmed": "var(--poi-color-text-muted)",
     "--mantine-color-placeholder": "var(--poi-color-placeholder)",
     "--mantine-color-red-text": "var(--poi-color-danger)",
     "--mantine-color-red-outline": "var(--poi-color-danger-outline)",
   },
   dark: {
-    "--mantine-color-dimmed": "var(--poi-color-dimmed)",
+    "--mantine-color-dimmed": "var(--poi-color-text-muted)",
     "--mantine-color-placeholder": "var(--poi-color-placeholder)",
   },
 });

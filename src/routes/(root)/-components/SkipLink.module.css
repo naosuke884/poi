@@ -6,7 +6,7 @@
   z-index: 1000;
   padding: var(--poi-space-xs) var(--poi-space-md);
   border-radius: var(--poi-radius-sm);
-  background-color: var(--poi-color-body);
+  background-color: var(--poi-color-bg);
   color: var(--poi-color-text);
   box-shadow: var(--poi-shadow-md);
 }

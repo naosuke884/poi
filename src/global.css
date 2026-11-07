@@ -19,7 +19,7 @@ body {
   font-family: var(--poi-font-family);
   font-size: var(--poi-font-size-md);
   line-height: var(--poi-line-height);
-  background-color: var(--poi-color-body);
+  background-color: var(--poi-color-bg);
   color: var(--poi-color-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

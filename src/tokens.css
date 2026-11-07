@@ -25,25 +25,27 @@
     0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 1.25rem 1.5625rem -0.3125rem rgb(0 0 0 / 0.05),
     0 0.625rem 0.625rem -0.3125rem rgb(0 0 0 / 0.04);
 
-  --poi-color-body: #fff;
+  --poi-color-bg: #fff;
   --poi-color-text: #000;
   /* 見出しのカードなど、本文より一段強い文字 */
-  --poi-color-bright: #000;
+  --poi-color-text-strong: #000;
   --poi-color-border: #ced4da;
   /*
    * 控えめな文字。灰色の 6 番 (#868e96) は白地でコントラストが 3.3 しかなく、小さな文字の AA (4.5) に届かない。
    * 4.5 を超えつつ薄く見える色がパレットに無いので、6 番と 7 番の中間色にする (白地で 5.2。e2e/a11y.spec.ts の axe で確認)
    */
-  --poi-color-dimmed: color-mix(in srgb, #868e96, #495057);
-  --poi-color-placeholder: var(--poi-color-dimmed);
+  --poi-color-text-muted: color-mix(in srgb, #868e96, #495057);
+  --poi-color-placeholder: var(--poi-color-text-muted);
 
   /*
    * 主要色は藍 (6 番 = #3a5a9b。アイコン public/icon.svg などと同じ色。issue #96)。
    * Mantine 既定の青は白い文字とのコントラストが AA (4.5) に届かない (藍の 6 番は 6.7)
    */
   --poi-color-primary: #3a5a9b;
-  --poi-color-primary-light: #dde4f4;
-  --poi-color-primary-light-text: #203255;
+  /* 藍の薄い面 (控えめなボタンや箇条書きの帯) */
+  --poi-color-primary-subtle: #dde4f4;
+  /* 背景に対してはっきり見える藍 (ライトは濃く、ダークは明るい) */
+  --poi-color-primary-strong: #203255;
   --poi-color-link: #3a5a9b;
 
   /* 赤の文字。赤の 6 番 (#fa5252) は白地で 3.3 しかないので 9 番 (5.5) にする */
@@ -53,29 +55,35 @@
   /* 期限が近いことを示す橙 */
   --poi-color-warning: #fd7e14;
   --poi-color-warning-text: #fd7e14;
-  --poi-color-warning-light: #ffe8cc;
 
-  /* 箇条書きの入れ子の段ごとの色 (SectionEditor.module.css)。1 段目は主要色 */
-  --poi-color-teal: #12b886;
-  --poi-color-teal-light: #c3fae8;
-  --poi-color-grape: #be4bdb;
-  --poi-color-grape-light: #f3d9fa;
+  /*
+   * 箇条書きの深さの色 (SectionEditor.module.css)。記号の色と、字下げに敷く薄い帯 (band) の組。
+   * 1 段目は藍、2 → 緑、3 → 紫、4 → 橙。4 段目は warning と同じ値でも参照しない (意味が違い、片方だけ変えることがある)
+   */
+  --poi-color-list-1: var(--poi-color-primary);
+  --poi-color-list-1-band: var(--poi-color-primary-subtle);
+  --poi-color-list-2: #12b886;
+  --poi-color-list-2-band: #c3fae8;
+  --poi-color-list-3: #be4bdb;
+  --poi-color-list-3-band: #f3d9fa;
+  --poi-color-list-4: #fd7e14;
+  --poi-color-list-4-band: #ffe8cc;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     /* 背景は index.html の theme-color と最初のフレームの <style> (#242424) に揃える */
-    --poi-color-body: #242424;
+    --poi-color-bg: #242424;
     --poi-color-text: #c9c9c9;
-    --poi-color-bright: #fff;
+    --poi-color-text-strong: #fff;
     --poi-color-border: #424242;
     /* #b8b8b8 と #828282 の中間色。#828282 だけだと #242424 地で 4.0 で AA に届かない (中間色は 6.0、メニューの #2e2e2e 地で 5.3) */
-    --poi-color-dimmed: color-mix(in srgb, #b8b8b8, #828282);
+    --poi-color-text-muted: color-mix(in srgb, #b8b8b8, #828282);
 
     /* 塗りの色は 7 番にする (Mantine 既定の 8 番だと暗い背景 #242424 に沈む)。橙・緑・紫も同じ段 */
     --poi-color-primary: #314b82;
-    --poi-color-primary-light: #10192b;
-    --poi-color-primary-light-text: #eff3fa;
+    --poi-color-primary-subtle: #10192b;
+    --poi-color-primary-strong: #eff3fa;
     --poi-color-link: #7390c9;
 
     --poi-color-danger: #ff8787;
@@ -83,11 +91,12 @@
 
     --poi-color-warning: #f76707;
     --poi-color-warning-text: #ffa94d;
-    --poi-color-warning-light: #6d2408;
 
-    --poi-color-teal: #0ca678;
-    --poi-color-teal-light: #04402e;
-    --poi-color-grape: #ae3ec9;
-    --poi-color-grape-light: #43174e;
+    --poi-color-list-2: #0ca678;
+    --poi-color-list-2-band: #04402e;
+    --poi-color-list-3: #ae3ec9;
+    --poi-color-list-3-band: #43174e;
+    --poi-color-list-4: #f76707;
+    --poi-color-list-4-band: #6d2408;
   }
 }

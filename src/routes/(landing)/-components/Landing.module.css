@@ -94,7 +94,7 @@
   height: 0.7em;
   margin-inline: 0.2em;
   /* light-color: ダーク配色では明るい段の色になり、暗い背景に沈まない */
-  border: solid var(--poi-color-primary-light-text);
+  border: solid var(--poi-color-primary-strong);
   border-width: 0 2px 2px 0;
   transform: translateY(-0.15em) rotate(45deg);
 }
@@ -146,7 +146,7 @@
   display: flex;
   align-items: center;
   gap: var(--poi-space-xs);
-  color: var(--poi-color-dimmed);
+  color: var(--poi-color-text-muted);
   font-size: var(--poi-font-size-xs);
 }
 
@@ -225,10 +225,10 @@
 @keyframes age-soon {
   0% {
     --life-demo-left: var(--life-demo-from);
-    color: var(--poi-color-dimmed);
+    color: var(--poi-color-text-muted);
   }
   92% {
-    color: var(--poi-color-dimmed);
+    color: var(--poi-color-text-muted);
   }
   100% {
     --life-demo-left: var(--life-demo-to);
@@ -255,7 +255,7 @@
 .heroMemoGone {
   place-self: center;
   opacity: 0;
-  color: var(--poi-color-dimmed);
+  color: var(--poi-color-text-muted);
   font-size: var(--poi-font-size-sm);
 }
 

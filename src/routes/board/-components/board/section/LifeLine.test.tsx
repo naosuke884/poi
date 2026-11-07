@@ -68,7 +68,7 @@ describe("LifeLine", () => {
     });
     const bar = container.querySelectorAll<HTMLElement>("[aria-hidden]")[1];
     expect(bar.style.getPropertyValue("--life-line-ratio")).toBe("50%");
-    expect(bar.style.getPropertyValue("--life-line-color")).toBe("var(--poi-color-dimmed)");
+    expect(bar.style.getPropertyValue("--life-line-color")).toBe("var(--poi-color-text-muted)");
     expect(container.textContent).toContain("あと 15 日");
   });
 
