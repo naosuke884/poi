@@ -1,7 +1,7 @@
-import { Box, Text, Title } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
 
 import classes from "./Landing.module.css";
+import typography from "@/components/typography.module.css";
 
 // 特徴。「何ができるか」の一行だけにし、実装の言葉 (PWA 等) は避ける。
 // 細かい決まり (保存期間の幅、Markdown、オフライン) は使い方とよくある質問のページに任せる (HAY-53)。
@@ -19,17 +19,17 @@ const FEATURES = [
  */
 export function FeatureList() {
   return (
-    <Box component="section" aria-labelledby="features" maw={720} w="100%">
-      <Title order={2} id="features" size="h3" className={classes.sectionTitle}>
+    <section aria-labelledby="features" className={classes.column}>
+      <h2 id="features" className={classes.sectionTitle}>
         できること
-      </Title>
-      <Box component="ul" className={classes.features}>
+      </h2>
+      <ul className={classes.features}>
         {FEATURES.map((feature) => (
-          <Text component="li" key={feature} size="lg" className={classes.feature}>
+          <li key={feature} className={`${typography.lg} ${classes.feature}`}>
             {feature}
-          </Text>
+          </li>
         ))}
-      </Box>
-    </Box>
+      </ul>
+    </section>
   );
 }

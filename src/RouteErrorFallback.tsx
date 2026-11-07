@@ -1,8 +1,12 @@
-import { Alert, Anchor, Button, Group, Stack } from "@mantine/core";
 import { type ErrorComponentProps, Link, useRouter } from "@tanstack/react-router";
 
+import { Alert } from "@/components/Alert";
+import { Button } from "@/components/Button";
 import { OfflineError } from "@/lib/offline";
 import { useDocumentTitle } from "@/lib/use-document-title";
+
+import classes from "./RouteErrorFallback.module.css";
+import typography from "@/components/typography.module.css";
 
 /**
  * ルートの loader / beforeLoad が throw したときの表示 (createRouter の defaultErrorComponent)。
@@ -16,18 +20,18 @@ export function RouteErrorFallback({ error }: ErrorComponentProps) {
   // 見出し (h1) は無いので、遷移後のフォーカスは #main に移る
   useDocumentTitle(title);
   return (
-    <Stack>
-      <Alert color={offline ? "yellow" : "red"} title={title}>
+    <div className={classes.root}>
+      <Alert tone={offline ? "attention" : "danger"} title={title}>
         {error instanceof Error ? error.message : String(error)}
       </Alert>
-      <Group>
+      <div className={classes.actions}>
         <Button variant="default" onClick={() => void router.invalidate()}>
           再試行
         </Button>
-        <Anchor component={Link} to="/">
+        <Link to="/" className={typography.link}>
           トップへ戻る
-        </Anchor>
-      </Group>
-    </Stack>
+        </Link>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,3 @@
-import { Stack, Title } from "@mantine/core";
-
 import { LoginCta } from "./LoginCta";
 
 import classes from "./Landing.module.css";
@@ -11,19 +9,11 @@ import classes from "./Landing.module.css";
  */
 export function ClosingCta() {
   return (
-    // 上に余白を足し、特徴の一覧から一段離して締めくくりに見せる
-    <Stack
-      component="section"
-      aria-labelledby="closing"
-      gap="lg"
-      align="center"
-      ta="center"
-      pt="xl"
-    >
-      <Title order={2} id="closing" size="h3" className={classes.sectionTitle}>
+    <section aria-labelledby="closing" className={classes.closing}>
+      <h2 id="closing" className={classes.sectionTitle}>
         片付けは、poi にまかせる
-      </Title>
+      </h2>
       <LoginCta />
-    </Stack>
+    </section>
   );
 }

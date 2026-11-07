@@ -1,9 +1,9 @@
-import { Anchor, Box, Text, Title } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
 import { LifeLineDemo } from "./LifeLineDemo";
 
 import classes from "./Landing.module.css";
+import typography from "@/components/typography.module.css";
 
 // 使い道の例。どんなメモに向いているかを具体的に示し、その中に実際に検索されそうな語
 // (消えるメモ・一時メモ・期限付きのメモ・自動で削除) が自然に入るようにする (issue #150)。
@@ -44,35 +44,30 @@ const USE_CASES: { title: string; body: string; from: number; to: number }[] = [
  */
 export function UseCaseList() {
   return (
-    <Box component="section" aria-labelledby="use-cases" maw={720} w="100%">
-      <Title order={2} id="use-cases" size="h3" className={classes.sectionTitle}>
+    <section aria-labelledby="use-cases" className={classes.column}>
+      <h2 id="use-cases" className={classes.sectionTitle}>
         消えるメモの使い道
-      </Title>
-      <Box component="ul" className={classes.mockBoard}>
+      </h2>
+      <ul className={classes.mockBoard}>
         {USE_CASES.map((u) => (
           <li key={u.title}>
             <LifeLineDemo from={u.from} to={u.to} />
-            <Text component="h3" className={classes.mockHeading}>
-              {u.title}
-            </Text>
-            {/* 板の本文と同じ大きさと行送り */}
-            <Text fz="md" lh={1.7}>
-              {u.body}
-            </Text>
+            <h3 className={classes.mockHeading}>{u.title}</h3>
+            <p className={classes.boardText}>{u.body}</p>
           </li>
         ))}
-      </Box>
-      <Text size="sm" mt="xl" className={classes.lead}>
+      </ul>
+      <p className={`${typography.sm} ${classes.text} ${classes.lead} ${classes.more}`}>
         くわしくは
-        <Anchor component={Link} to="/guide" size="sm" underline="always">
+        <Link to="/guide" className={`${typography.link} ${typography.underline}`}>
           使い方
-        </Anchor>
+        </Link>
         と
-        <Anchor component={Link} to="/faq" size="sm" underline="always">
+        <Link to="/faq" className={`${typography.link} ${typography.underline}`}>
           よくある質問
-        </Anchor>
+        </Link>
         をご覧ください。
-      </Text>
-    </Box>
+      </p>
+    </section>
   );
 }

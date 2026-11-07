@@ -1,5 +1,3 @@
-import { Stack } from "@mantine/core";
-
 import { SiteFooter } from "@/components/SiteFooter";
 
 import { ClosingCta } from "./ClosingCta";
@@ -8,6 +6,8 @@ import { FeatureList } from "./FeatureList";
 import { LandingHero } from "./LandingHero";
 import { UseCaseList } from "./UseCaseList";
 
+import classes from "./Landing.module.css";
+
 /**
  * トップ (/) のランディング。何ができるか + 消えていく板の見本 + デモ動画 + 特徴 + 末尾のログイン導線。
  * ログイン専用ページは無く、CTA がそのまま Google OAuth を開始する (同意文もここに置く)。
@@ -15,13 +15,13 @@ import { UseCaseList } from "./UseCaseList";
  */
 export function Landing() {
   return (
-    <Stack gap={88} py="xl" align="center">
+    <div className={classes.page}>
       <LandingHero />
       <UseCaseList />
       <DemoVideo />
       <FeatureList />
       <ClosingCta />
       <SiteFooter />
-    </Stack>
+    </div>
   );
 }

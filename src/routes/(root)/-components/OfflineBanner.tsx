@@ -1,7 +1,10 @@
-import { Alert } from "@mantine/core";
 import { useRouter } from "@tanstack/react-router";
 
+import { Alert } from "@/components/Alert";
+
 import { useOnBackOnline, useOnline } from "../-lib/use-online";
+
+import classes from "./OfflineBanner.module.css";
 
 /**
  * navigator.onLine が false の間、ヘッダー下に「オフラインです」バナーを出す。
@@ -21,7 +24,7 @@ export function OfflineBanner() {
   return (
     <div role="status">
       {!online && (
-        <Alert color="yellow" title="オフラインです" role="note" mb="md">
+        <Alert tone="attention" title="オフラインです" role="note" className={classes.alert}>
           表示しているのは前回取得した内容です。編集はオンラインに戻ってから保存されます。
         </Alert>
       )}

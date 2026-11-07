@@ -1,9 +1,6 @@
-import { Anchor, type AnchorProps, Group, Stack, Text } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 
-// フッターのリンクの見た目。本文より目立たせないよう dimmed (AA に引き上げ済み) にし、
-// 12px の文字でもタップしやすいよう上下の余白で当たり判定を 24px 以上にする
-const linkProps: AnchorProps = { size: "xs", c: "dimmed", py: 6, display: "inline-block" };
+import classes from "./SiteFooter.module.css";
 
 /**
  * ページ下端のフッター (使い方・よくある質問・GitHub・利用規約・プライバシーポリシーへのリンクとコピーライト)。ランディングと文章のページで共通 (#139)。
@@ -14,46 +11,32 @@ const linkProps: AnchorProps = { size: "xs", c: "dimmed", py: 6, display: "inlin
  */
 export function SiteFooter() {
   return (
-    // 上に区切り線を引いて本文と分ける。幅は規約のページの本文 (720px) に揃える
-    <Stack
-      component="footer"
-      gap={0}
-      align="center"
-      w="100%"
-      maw={720}
-      mx="auto"
-      mt="xl"
-      pt="md"
-      style={{ borderTop: "1px solid var(--poi-color-border)" }}
-    >
-      {/* 間隔 (lg = 20px) はタップの取り違えを防ぐため。折り返すときもリンクの単位で折れる */}
-      <Group gap="lg" justify="center" style={{ rowGap: 0 }}>
-        <Anchor component={Link} to="/guide" {...linkProps}>
+    <footer className={classes.footer}>
+      <div className={classes.row}>
+        <Link to="/guide" className={classes.link}>
           使い方
-        </Anchor>
-        <Anchor component={Link} to="/faq" {...linkProps}>
+        </Link>
+        <Link to="/faq" className={classes.link}>
           よくある質問
-        </Anchor>
-        <Anchor
+        </Link>
+        <a
           href="https://github.com/naosuke884/poi"
           target="_blank"
           rel="noopener noreferrer"
-          {...linkProps}
+          className={classes.link}
         >
           GitHub
-        </Anchor>
-      </Group>
-      <Group gap="lg" justify="center" style={{ rowGap: 0 }}>
-        <Anchor component={Link} to="/terms" {...linkProps}>
+        </a>
+      </div>
+      <div className={classes.row}>
+        <Link to="/terms" className={classes.link}>
           利用規約
-        </Anchor>
-        <Anchor component={Link} to="/privacy" {...linkProps}>
+        </Link>
+        <Link to="/privacy" className={classes.link}>
           プライバシーポリシー
-        </Anchor>
-        <Text size="xs" c="dimmed">
-          © {new Date().getFullYear()} poi
-        </Text>
-      </Group>
-    </Stack>
+        </Link>
+        <p className={classes.copyright}>© {new Date().getFullYear()} poi</p>
+      </div>
+    </footer>
   );
 }

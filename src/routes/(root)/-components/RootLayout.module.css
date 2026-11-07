@@ -1,0 +1,31 @@
+/*
+ * 本文の列。ヘッダーの中身と本文で同じ幅にする。
+ * 幅 (60rem) と左右の余白 (16px) は src/lib/affix.ts が下部固定の要素を板の端に揃える計算と同じ値なので、変えるなら揃えて変える
+ */
+.container {
+  width: 100%;
+  max-width: 60rem;
+  margin-inline: auto;
+  padding-inline: var(--poi-space-md);
+}
+
+/*
+ * 本文。ノッチ / ホームインジケータのある端末 (viewport-fit=cover) で内容が隠れないよう、余白に env(safe-area-inset-*) を足す。
+ * Main → 列 → ページ を縦の flex にして、板が画面の下端まで広がれるようにする
+ */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-top: calc(var(--poi-header-height) + var(--poi-page-padding));
+  padding-inline-start: calc(var(--poi-page-padding) + env(safe-area-inset-left));
+  padding-inline-end: calc(var(--poi-page-padding) + env(safe-area-inset-right));
+  padding-bottom: calc(var(--poi-page-padding) + env(safe-area-inset-bottom));
+}
+
+.page {
+  composes: container;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

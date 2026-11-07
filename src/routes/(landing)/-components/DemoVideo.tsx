@@ -1,6 +1,6 @@
-import { Box, Title, useComputedColorScheme } from "@mantine/core";
-import { useMediaQuery, useReducedMotion } from "@mantine/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useMediaQuery, usePrefersDark, useReducedMotion } from "@/lib/use-media-query";
 
 import classes from "./Landing.module.css";
 
@@ -10,7 +10,7 @@ import classes from "./Landing.module.css";
  */
 const COLOR_SCHEME_KNOWN = typeof document !== "undefined";
 
-/** スマホ版の動画を出す画面の幅 (Mantine の sm 未満)。Landing.module.css の .demoVideo の比率と揃える */
+/** スマホ版の動画を出す画面の幅 (48em 未満)。Landing.module.css の .demoVideo の比率と揃える */
 const PHONE_QUERY = "(max-width: 47.99em)";
 
 /** 実際に使う様子 (README と同じデモ動画)。音声が無いので muted で自動再生・ループにする */
@@ -22,10 +22,10 @@ export function DemoVideo() {
   // 初回の描画から実際の配色を使う (効果の後に直すと明るい版を読みかけてしまう)。
   // プリレンダーした HTML には動画もポスターも入れない (配色が分からず、明るい版を読み込ませてしまうため)。
   // 場所は aspect-ratio で取ってある
-  const dark = useComputedColorScheme("light", { getInitialValueInEffect: false }) === "dark";
+  const dark = usePrefersDark();
   // スマホの幅では、スマホの画面を撮った縦長の版を出す (PC 版を縮めると字が 4px 前後になり読めない。HAY-53)。
   // 配色と同じく初回の描画から実際の幅で選ぶ
-  const phone = useMediaQuery(PHONE_QUERY, false, { getInitialValueInEffect: false });
+  const phone = useMediaQuery(PHONE_QUERY);
   const suffix = `${dark ? "-dark" : ""}${phone ? "-phone" : ""}`;
   // 自動再生が始まる (または止まる) と video のイベントで追従する。「動きを減らす」では止まったまま始まる
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -61,19 +61,11 @@ export function DemoVideo() {
     // 広い画面でもページの列 (Container md = 960px。余白を除くと 928px、0.73 倍で本文 12px 前後) に収める。
     // スマホの幅では、スマホの画面 (390×720) を撮った縦長の版を出す (scripts/record-demo-video.mjs)。
     // スクロールで画面が起き上がる飾りは付けない (動画の中で寄ったり引いたりするので、動きが重なる)
-    <Box component="section" aria-labelledby="demo" maw={960} w="100%">
+    <section aria-labelledby="demo" className={classes.demo}>
       {/* 見出しは本文の列 (720px) に揃える。動画だけは広い画面でその外まで広げる */}
-      <Title
-        order={2}
-        id="demo"
-        size="h3"
-        maw={720}
-        mx="auto"
-        mb="lg"
-        className={classes.sectionTitle}
-      >
+      <h2 id="demo" className={`${classes.sectionTitle} ${classes.demoTitle}`}>
         実際の画面
-      </Title>
+      </h2>
       {/* 自動で動き続けるものは止められるようにする (WCAG 2.2.2)。動画の下に操作のボタンや説明は置かず
         (見た目を動画だけにする)、動画そのものを押すと止まる・動くボタンにする */}
       <button
@@ -97,6 +89,6 @@ export function DemoVideo() {
           onPause={() => setPlaying(false)}
         />
       </button>
-    </Box>
+    </section>
   );
 }

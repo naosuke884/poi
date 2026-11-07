@@ -1,7 +1,9 @@
-import { Button } from "@mantine/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
+import { Button } from "@/components/Button";
+
+import classes from "./PwaUpdateBanner.module.css";
 
 /**
  * Service Worker を登録し、新バージョンが待機状態になったら「更新があります」のバナーを出す。
@@ -25,7 +27,7 @@ export function PwaUpdateBanner() {
   return (
     // 通知は左下に揃える。左下角は板の「削除の取り消し」通知 (Board.tsx) が使うので、その上に出す
     <BottomLeftNotice raised title="更新があります" onClose={() => setNeedRefresh(false)}>
-      <Button size="xs" mt="xs" onClick={() => void updateServiceWorker(true)}>
+      <Button size="xs" className={classes.reload} onClick={() => void updateServiceWorker(true)}>
         リロード
       </Button>
     </BottomLeftNotice>

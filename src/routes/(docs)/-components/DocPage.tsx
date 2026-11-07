@@ -1,4 +1,3 @@
-import { Anchor, Stack, Text, Title, Typography } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
@@ -6,10 +5,11 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 import classes from "./DocPage.module.css";
+import typography from "@/components/typography.module.css";
 
 /**
  * 文章だけのページ (利用規約 / プライバシーポリシー / 使い方 / よくある質問) の共通レイアウト。
- * 本文は Typography で見出し・リスト・段落の既定スタイルを当てる (ログイン不要で読める)。
+ * 本文は prose.module.css で見出し・リスト・段落の既定スタイルを当てる (ログイン不要で読める)。
  */
 export function DocPage({
   title,
@@ -27,32 +27,17 @@ export function DocPage({
 }) {
   useDocumentTitle(title);
   return (
-    <Stack maw={720} mx="auto" w="100%" pb="xl">
-      {/* 本文の見出し (第 N 条 = h2、26px) より大きくする (同じ大きさだと階層が平らに見える)。
-          既定の h1 (34px) のままだとスマホ幅で「プライバシーポリシー」が 1 行に収まらないので、狭い画面では縮める。
-          それでも折り返すときは語の途中で切らず文節の切れ目で (auto-phrase。未対応のブラウザは通常の折り返し)。
-          tabIndex={-1} はページを移ったときのフォーカス先にするため (#121)。操作できる物ではないので枠は出さない */}
-      <Title
-        order={1}
-        fz="clamp(1.75rem, 1rem + 4vw, 2.125rem)"
-        style={{ wordBreak: "auto-phrase", outline: "none" }}
-        tabIndex={-1}
-      >
+    <div className={classes.page}>
+      <h1 className={classes.title} tabIndex={-1}>
         {heading}
-      </Title>
-      {updatedAt && (
-        <Text c="dimmed" size="sm">
-          最終更新日: {updatedAt}
-        </Text>
-      )}
-      <Typography className={classes.body} fz="md" lh={1.7}>
-        {children}
-      </Typography>
-      <Anchor component={Link} to="/" size="sm">
+      </h1>
+      {updatedAt && <p className={classes.updatedAt}>最終更新日: {updatedAt}</p>}
+      <div className={classes.body}>{children}</div>
+      <Link to="/" className={`${typography.link} ${typography.sm}`}>
         トップへ戻る
-      </Anchor>
+      </Link>
       {/* 文章のページからも他のページ (規約、GitHub など) へ移れるように (#139) */}
       <SiteFooter />
-    </Stack>
+    </div>
   );
 }

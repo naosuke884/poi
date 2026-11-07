@@ -1,0 +1,46 @@
+/* 上部固定のヘッダー。高さは tokens.css の --poi-header-height (本文の上の余白と同じ値) */
+.header {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 100;
+  height: var(--poi-header-height);
+  /* ノッチのある端末 (viewport-fit=cover) を横向きにしたとき、左右の内容が隠れないようにする */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  border-bottom: 1px solid var(--poi-color-divider);
+  background-color: var(--poi-color-bg);
+}
+
+.bar {
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--poi-space-md);
+}
+
+.logo {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.logoInner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logoImage {
+  display: block;
+}
+
+/* 折り返し禁止: 折り返すと 2 行目が 56px のヘッダーからはみ出して本文に重なる */
+.actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--poi-space-md);
+}

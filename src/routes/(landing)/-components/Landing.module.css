@@ -2,11 +2,56 @@
    動き (ヒーローのメモが消える、寿命のバー) はどれも
    prefers-reduced-motion: no-preference のときだけ付ける。「動きを減らす」の人には最後の状態だけを見せる */
 
+/* ---- 並び ---- */
+
+/* ページ全体の縦の並び。節の間を大きく空けて、節ごとに一つのことを見せる */
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5.5rem;
+  padding-block: var(--poi-space-xl);
+}
+
+/* 本文の列。規約などのページの本文 (720px) に揃える */
+.column {
+  width: 100%;
+  max-width: 45rem;
+}
+
+/* 中央に寄せた縦の並び (ヒーローと末尾のログイン導線) */
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--poi-space-lg);
+  text-align: center;
+}
+
+/* 文の段落。ブラウザ既定の上下の余白を消し、間隔は並べる側 (gap) で決める */
+.text {
+  margin: 0;
+}
+
+/* 板の本文と同じ大きさと行送り */
+.boardText {
+  margin: 0;
+  font-size: var(--poi-font-size-md);
+  line-height: 1.7;
+}
+
+/* 節の見出し。ヒーローの見出しと同じく文節の切れ目で折り返す */
+.sectionTitle {
+  composes: h3 from "../../../components/typography.module.css";
+  word-break: auto-phrase;
+}
+
 /* ---- ヒーロー ---- */
 
 /* 画面幅に応じて伸びる見出し (Title の固定サイズより狭い画面で収まり、広い画面で映える)。
    折り返すときは語の途中で切らず文節の切れ目で (auto-phrase。FeatureList と同じ。未対応のブラウザは通常の折り返し) */
 .heroTitle {
+  composes: title from "../../../components/typography.module.css";
   font-size: clamp(2.1rem, 5vw + 0.6rem, 3.75rem);
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -24,7 +69,57 @@
   word-break: auto-phrase;
 }
 
+.heroCta {
+  margin-top: var(--poi-space-lg);
+}
+
+/* ---- ログインの CTA (LoginCta) ---- */
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--poi-space-sm);
+  text-align: center;
+}
+
+.loginButton {
+  margin-bottom: var(--poi-space-sm);
+}
+
+.inAppNote {
+  max-width: 26.25rem;
+}
+
+.copyButton {
+  margin-top: var(--poi-space-xs);
+}
+
+.error {
+  color: var(--poi-color-danger);
+}
+
+/* ---- 末尾のログイン導線 (ClosingCta) ---- */
+
+/* 上に余白を足し、特徴の一覧から一段離して締めくくりに見せる */
+.closing {
+  composes: centered;
+  padding-top: var(--poi-space-xl);
+}
+
 /* ---- デモ動画 ---- */
+
+.demo {
+  width: 100%;
+  max-width: 60rem;
+}
+
+/* .demo を前に付けるのは、見出しの共通クラス (typography.module.css) の margin: 0 より確実に優先させるため
+   (読み込みの順は CSS Module ごとに変わりうる) */
+.demo .demoTitle {
+  max-width: 45rem;
+  margin: 0 auto var(--poi-space-lg);
+}
 
 /* aspect-ratio: ポスターや動画が読み込まれる前から動画の高さ分の場所を取る (無いと既定の 300×150 の比率で
    描かれ、読み込み後に動画の比率へ伸びて下の特徴リストとフッターが押し下げられる。issue #118)。
@@ -100,11 +195,6 @@
 }
 
 /* ---- 使い道 (UseCaseList) ---- */
-
-/* 節の見出し。ヒーローの見出しと同じく文節の切れ目で折り返す */
-.sectionTitle {
-  word-break: auto-phrase;
-}
 
 /* 使い道を板のセクションに見立てた並び (寿命のバー + 見出し + 本文)。板と同じく記号なしで縦に並べる */
 .mockBoard {
@@ -243,6 +333,8 @@
    動かないとき (「動きを減らす」や未対応のブラウザ) は「あと 1 日」のメモのまま見せる。
    消えた後も高さは変えない (最初の画面で下の内容が動かないように)。本文と「消えました」を同じ場所に重ねる */
 .heroMemo {
+  width: 100%;
+  max-width: 22.5rem;
   display: grid;
   text-align: start;
 }
@@ -257,6 +349,11 @@
   opacity: 0;
   color: var(--poi-color-text-muted);
   font-size: var(--poi-font-size-sm);
+}
+
+/* 使い道の末尾の、使い方・よくある質問への案内 */
+.more {
+  margin-top: var(--poi-space-xl);
 }
 
 /* 本文の箇条書き。板の本文と同じく行頭を見出しの文字にそろえる */

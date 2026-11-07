@@ -1,12 +1,13 @@
-import { Anchor, Button, Stack, Text } from "@mantine/core";
 import { isInAppBrowser } from "@shared/in-app-browser";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { Button } from "@/components/Button";
 import { startGoogleLogin } from "@/lib/auth-client";
 import { isStandalone } from "@/lib/install-prompt";
 
 import classes from "./Landing.module.css";
+import typography from "@/components/typography.module.css";
 
 // UA は開いている間に変わらないので購読するものは無い
 const subscribeNothing = () => () => {};
@@ -46,19 +47,19 @@ function OpenInBrowserNotice() {
     }
   };
   return (
-    <Stack gap="sm" align="center" ta="center">
-      <Text maw={420}>
+    <div className={classes.cta}>
+      <p className={`${classes.text} ${classes.inAppNote}`}>
         アプリ内のブラウザでは Google でログインできません。Safari や Chrome
         などのブラウザで開いてください。
-      </Text>
-      <Button size="md" mt="xs" onClick={() => void copyUrl()}>
+      </p>
+      <Button size="md" className={classes.copyButton} onClick={() => void copyUrl()}>
         URL をコピー
       </Button>
       {/* 結果を読み上げるため、空のときも置いておく */}
-      <Text size="sm" role="status">
+      <p className={`${typography.sm} ${classes.text}`} role="status">
         {copyResult}
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }
 
@@ -87,30 +88,30 @@ function LoginButton() {
     }
   };
   return (
-    <Stack gap="sm" align="center" ta="center">
-      <Button size="md" mb="sm" loading={busy} onClick={() => void login()}>
+    <div className={classes.cta}>
+      <Button size="md" className={classes.loginButton} loading={busy} onClick={() => void login()}>
         Google でログインして始める
       </Button>
       {error && (
-        <Text size="sm" c="red" role="alert">
+        <p className={`${typography.sm} ${classes.text} ${classes.error}`} role="alert">
           {error}
-        </Text>
+        </p>
       )}
       {/* 押す前の「お金はかかる？」「人に見られない？」に答える (どちらも FAQ と同じ事実) */}
-      <Text size="sm" className={classes.lead}>
+      <p className={`${typography.sm} ${classes.text} ${classes.lead}`}>
         無料で使えます。書いたメモを読めるのは、ログインした本人だけです。
-      </Text>
-      <Text c="dimmed" size="xs">
+      </p>
+      <p className={`${typography.xs} ${typography.muted} ${classes.text}`}>
         ログインすると、
-        <Anchor component={Link} to="/terms" size="xs" underline="always">
+        <Link to="/terms" className={`${typography.link} ${typography.underline}`}>
           利用規約
-        </Anchor>
+        </Link>
         と
-        <Anchor component={Link} to="/privacy" size="xs" underline="always">
+        <Link to="/privacy" className={`${typography.link} ${typography.underline}`}>
           プライバシーポリシー
-        </Anchor>
+        </Link>
         に同意したものとみなします。
-      </Text>
-    </Stack>
+      </p>
+    </div>
   );
 }

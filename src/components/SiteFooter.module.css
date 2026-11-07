@@ -1,0 +1,40 @@
+/* 上に区切り線を引いて本文と分ける。幅は規約のページの本文 (720px) に揃える */
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 45rem;
+  margin: var(--poi-space-xl) auto 0;
+  padding-top: var(--poi-space-md);
+  border-top: 1px solid var(--poi-color-border);
+}
+
+/* 間隔 (lg = 20px) はタップの取り違えを防ぐため。折り返すときもリンクの単位で折れる */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 var(--poi-space-lg);
+}
+
+/* 本文より目立たせないよう控えめな色 (AA に引き上げ済み) にし、
+   12px の文字でもタップしやすいよう上下の余白で当たり判定を 24px 以上にする */
+.link {
+  composes: xs from "./typography.module.css";
+  display: inline-block;
+  padding-block: 6px;
+  color: var(--poi-color-text-muted);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .link:hover {
+    text-decoration: underline;
+  }
+}
+
+.copyright {
+  composes: muted xs from "./typography.module.css";
+  margin: 0;
+}

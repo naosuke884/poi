@@ -1,4 +1,3 @@
-import { Box, Text } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
 
 import { LifeLineDemo } from "./LifeLineDemo";
@@ -12,17 +11,16 @@ import classes from "./Landing.module.css";
  */
 export function HeroMemo() {
   return (
-    <Box aria-hidden className={classes.heroMemo} maw={360} w="100%">
+    <div aria-hidden className={classes.heroMemo}>
       <div className={classes.heroMemoContent}>
         <LifeLineDemo from={MEMO_TTL_DAYS} to={1} />
         <div className={classes.mockHeading}>思いついたこと</div>
-        {/* 板の本文と同じ大きさと行送り */}
-        <Text component="ul" fz="md" lh={1.7} className={classes.heroMemoList}>
+        <ul className={`${classes.boardText} ${classes.heroMemoList}`}>
           <li>駅前のパン屋が気になる</li>
           <li>週末に洗車</li>
-        </Text>
+        </ul>
       </div>
       <span className={classes.heroMemoGone}>このメモは消えました</span>
-    </Box>
+    </div>
   );
 }

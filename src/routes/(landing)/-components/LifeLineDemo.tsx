@@ -1,5 +1,5 @@
-import { Box } from "@mantine/core";
 import { MEMO_TTL_DAYS } from "@shared/constants";
+import type { CSSProperties } from "react";
 
 import classes from "./Landing.module.css";
 
@@ -12,21 +12,23 @@ import classes from "./Landing.module.css";
  */
 export function LifeLineDemo({ from, to }: { from: number; to: number }) {
   return (
-    <Box
+    <div
       aria-hidden
       className={classes.lifeDemo}
       // 残り 1 日まで減るものだけ、板と同じく最後にオレンジにする
       data-soon={to <= 1 || undefined}
-      style={{
-        "--life-demo-from": from,
-        "--life-demo-to": to,
-        "--life-demo-total": MEMO_TTL_DAYS,
-      }}
+      style={
+        {
+          "--life-demo-from": from,
+          "--life-demo-to": to,
+          "--life-demo-total": MEMO_TTL_DAYS,
+        } as CSSProperties
+      }
     >
       <span className={classes.lifeDemoLabel} />
       <span className={classes.lifeDemoTrack}>
         <span className={classes.lifeDemoRemaining} />
       </span>
-    </Box>
+    </div>
   );
 }
