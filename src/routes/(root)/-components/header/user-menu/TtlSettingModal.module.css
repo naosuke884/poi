@@ -1,0 +1,117 @@
+/* 保存期間の選択肢 (Mantine の Radio.Group と Radio の size sm と同じ大きさ・色) */
+
+.skeleton {
+  height: 3.75rem;
+}
+
+.field {
+  line-height: var(--poi-line-height);
+}
+
+.label {
+  display: inline-block;
+  font-size: var(--poi-font-size-sm);
+  font-weight: 600;
+  overflow-wrap: break-word;
+  cursor: default;
+}
+
+/* 7 つの選択肢を折り返して並べる */
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--poi-space-md);
+  margin-top: var(--poi-space-xs);
+}
+
+.choice {
+  display: flex;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 丸と中の点を重ねる入れ物 */
+.control {
+  position: relative;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.input {
+  --radio-disabled-border: var(--poi-color-divider);
+
+  display: flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  /* 既定の丸は OS ごとに見た目が違うので、自前で描く */
+  appearance: none;
+  border: 1px solid var(--poi-color-border);
+  border-radius: 50%;
+  background-color: var(--poi-color-surface);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.input:checked {
+  border-color: var(--poi-color-primary);
+  background-color: var(--poi-color-primary);
+}
+
+.input:disabled {
+  border-color: var(--radio-disabled-border);
+  background-color: var(--poi-color-disabled);
+  cursor: not-allowed;
+}
+
+/* 選ばれたときだけ出る中の白い点。下から少し持ち上がって大きくなる (Mantine と同じ) */
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  color: var(--poi-color-on-primary);
+  opacity: 0;
+  translate: -50% -50%;
+  transform: scale(0.2) translateY(0.625rem);
+  pointer-events: none;
+}
+
+/* 色と点の変化は動きなので、動きを減らす設定では切り替えるだけにする */
+@media (prefers-reduced-motion: no-preference) {
+  .input {
+    transition:
+      background-color 100ms ease,
+      border-color 100ms ease;
+  }
+  .dot {
+    transition:
+      opacity 100ms ease,
+      transform 200ms ease;
+  }
+}
+
+.input:checked + .dot {
+  opacity: 1;
+  transform: none;
+}
+
+.input:disabled + .dot {
+  color: var(--poi-color-disabled-text);
+}
+
+.choiceLabel {
+  padding-inline-start: var(--poi-space-sm);
+  font-size: var(--poi-font-size-sm);
+  line-height: 1.25rem;
+}
+
+.choice:has(.input:disabled) .choiceLabel {
+  color: var(--poi-color-disabled-text);
+  cursor: not-allowed;
+}
+
+/* 過ぎているセクションの数を出すときだけ、選択肢との間を空ける (空のときは高さ 0 のまま) */
+.notice {
+  margin-top: var(--poi-space-sm);
+}

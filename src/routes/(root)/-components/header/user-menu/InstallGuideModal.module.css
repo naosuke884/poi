@@ -1,0 +1,13 @@
+/* 手順の番号付きリスト (Mantine の List type="ordered" size="sm" spacing="xs" と同じ) */
+.steps {
+  margin: 0;
+  /* 番号の幅。番号は外側に出す */
+  padding: 0 0 0 var(--poi-space-lg);
+  list-style-position: outside;
+  font-size: var(--poi-font-size-sm);
+  line-height: 1.45;
+}
+
+.steps li + li {
+  margin-top: var(--poi-space-xs);
+}

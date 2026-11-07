@@ -1,0 +1,39 @@
+/* ユーザーのアイコン (Mantine の Avatar size="sm" radius="xl" と同じ大きさ・色) */
+.avatar {
+  --avatar-bg: var(--poi-color-avatar-bg);
+  --avatar-color: var(--poi-color-icon);
+
+  position: relative;
+  display: block;
+  flex: none;
+  width: 1.625rem;
+  height: 1.625rem;
+  overflow: hidden;
+  border-radius: 50%;
+  user-select: none;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  color: var(--avatar-color);
+}
+
+.placeholder svg {
+  width: 70%;
+  height: 70%;
+}

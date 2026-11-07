@@ -1,0 +1,170 @@
+/*
+ * ボタンと項目の一覧 (Menu.tsx)。大きさ・色は Mantine の Menu (shadow md, width 200) と同じにする
+ * (移行で見た目を変えないため)
+ */
+
+/* 一覧の位置の基準 (ボタンの下に置く) */
+.root {
+  --menu-border: var(--poi-color-menu-border);
+  --menu-item-hover: var(--poi-color-menu-hover);
+  --menu-danger-hover: var(--poi-color-danger-subtle-hover);
+
+  position: relative;
+  display: flex;
+}
+
+/* ボタンの既定の見た目 (枠・面・余白) を消す */
+.trigger {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--poi-font-size-md);
+  text-align: start;
+  cursor: pointer;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* メニューボタンの中身 (アイコンや名前) にポインターを当てさせない。
+   pointer-events は継承されないので、子孫もまとめて消す。
+   Safari は、子要素のあるボタンをタップしたあと別の要素へ focus() すると
+   :focus-visible を付けてしまう (WebKit 241408)。タップがボタン自身に当たれば、この誤判定は起きない。
+   メニューは開いたとき最初の項目へフォーカスを移すので、誤判定のままだと
+   「アカウントを追加」が選ばれたように見える (HAY-15) */
+.triggerContent,
+.triggerContent * {
+  pointer-events: none;
+}
+
+.triggerContent {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--poi-space-xs);
+}
+
+/* ボタンの下 8px、ボタンの中央に揃えて置く。はみ出す分は Menu.tsx が --menu-shift で横にずらす */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 300;
+  box-sizing: border-box;
+  width: 12.5rem;
+  padding: 0.25rem;
+  translate: calc(-50% + var(--menu-shift, 0px)) 0;
+  border: 1px solid var(--menu-border);
+  border-radius: var(--poi-radius-md);
+  background: var(--poi-color-surface);
+  box-shadow: var(--poi-shadow-md);
+  /* ヘッダーの文字の指定を受け継がない */
+  font-size: var(--poi-font-size-md);
+  line-height: var(--poi-line-height);
+}
+
+.dropdown:focus {
+  outline: none;
+}
+
+/* 開くときに薄く出す (Mantine の fade, 150ms)。動きを減らす設定では出すだけにする */
+@media (prefers-reduced-motion: no-preference) {
+  .dropdown {
+    transition: opacity 150ms ease;
+  }
+  @starting-style {
+    .dropdown {
+      opacity: 0;
+    }
+  }
+}
+
+.label {
+  padding: calc(var(--poi-space-xs) / 2) var(--poi-space-sm);
+  color: var(--poi-color-text-muted);
+  font-size: var(--poi-font-size-xs);
+  font-weight: 600;
+  cursor: default;
+}
+
+.divider {
+  margin: 0.25rem 0;
+  border-top: 1px solid var(--menu-border);
+}
+
+/* 項目。<button> と <a> の既定の見た目を消して揃える */
+.item {
+  --item-hover: var(--menu-item-hover);
+
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: calc(var(--poi-space-xs) / 1.5) var(--poi-space-sm);
+  border: 0;
+  border-radius: var(--poi-radius-md);
+  background: transparent;
+  color: var(--poi-color-text);
+  font: inherit;
+  font-size: var(--poi-font-size-sm);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 赤の文字はコントラストを確保した --poi-color-danger にする (Mantine の red 6 は白地で 3.3 しかない) */
+.danger {
+  --item-hover: var(--menu-danger-hover);
+  color: var(--poi-color-danger);
+}
+
+/* ホバーとフォーカスの面。:where で詳細度を下げ、下の .flat で打ち消せるようにする */
+.item:where(:hover, :focus):where(:not(:disabled)) {
+  background-color: var(--item-hover);
+}
+
+.item:disabled {
+  color: var(--poi-color-disabled-text);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.itemSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-end: var(--poi-space-xs);
+}
+
+/* 名前やメールを省略 (…) できるよう、幅を縮められるようにする */
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 上の回避が効かないとき (ホーム画面から開いた直後の iPhone など) でも、
+   ポインターで開いたあいだは項目の背景と輪郭を出さない。
+   :focus-visible では判定しない。Safari がタップなのに :focus-visible を付けるため。
+   .flat はポインターで開いたあいだだけ付き、キーで項目を動かし始めたら外れる */
+.flat .item:focus:not(:hover) {
+  background-color: transparent;
+  /* global.css の :focus-visible の輪郭。上と同じ誤判定で出る */
+  outline: none;
+}
+
+/* タッチではタップのあと :hover が残ることがある。マウスが無いときだけ、
+   ポインターで開いた直後の hover 背景も強調と見なして消す。
+   実マウスが項目に乗った hover は (hover: hover) のまま残す */
+@media (hover: none) {
+  .flat .item:is(:hover, :focus) {
+    background-color: transparent;
+    outline: none;
+  }
+}

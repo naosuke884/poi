@@ -1,0 +1,26 @@
+/*
+ * 読み込み中の仮の面 (Mantine の Skeleton と同じ色・角・明滅)。大きさは使う側のクラスで決める。
+ */
+.skeleton {
+  --skeleton-bg: var(--poi-color-skeleton);
+
+  border-radius: var(--poi-radius-md);
+  background: var(--skeleton-bg);
+}
+
+/* 明滅は動きなので、動きを減らす設定では止める */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: pulse 1500ms linear infinite;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}

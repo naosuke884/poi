@@ -4,6 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { installDialogPolyfill } from "../../dialog-test";
+
 type Res = { ok: boolean; status: number; json: () => Promise<unknown> };
 type Reply = "ok" | "error" | "offline";
 
@@ -45,6 +47,7 @@ vi.mock("@/lib/api", () => {
 const { TtlSettingModal } = await import("./TtlSettingModal");
 
 let root: Root;
+let container: HTMLDivElement;
 const onClose = vi.fn();
 const onSaved = vi.fn();
 
@@ -59,11 +62,7 @@ beforeAll(() => {
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as typeof window.matchMedia;
-  window.ResizeObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
+  installDialogPolyfill();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
@@ -72,11 +71,12 @@ beforeEach(async () => {
   server.memoTtlDays = 30;
   server.sections = [];
   server.reply = {};
-  root = createRoot(document.createElement("div"));
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
 });
 
 async function open() {
-  // Modal は body へのポータルに描かれる
   await act(async () =>
     root.render(
       <MantineProvider>
@@ -94,6 +94,7 @@ const alertText = () => document.querySelector('[role="alert"]')?.textContent;
 
 afterEach(() => {
   act(() => root.unmount());
+  container.remove();
 });
 
 describe("TtlSettingModal", () => {

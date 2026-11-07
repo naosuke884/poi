@@ -151,8 +151,7 @@ test.describe("ログイン済み (板)", () => {
     await expectNoViolations(page, testInfo, "アカウント削除の確認");
   });
 
-  // 開いた直後のフォーカスは最初の項目に置く (withInitialFocusPlaceholder={false}。UserMenu.tsx) が、
-  // その印はキーボードで開いたときだけ出す (HAY-15)
+  // 最初の項目の強調は、キーボードで開いたときだけ出す (クリックで開いたときに出すと選んだように見える。Menu.tsx。HAY-15)
   test("ユーザーメニューはクリックで開くと項目を強調せず、キーボードで開くと最初の項目を強調する", async ({
     page,
   }) => {

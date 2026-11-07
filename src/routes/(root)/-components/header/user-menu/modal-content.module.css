@@ -1,0 +1,32 @@
+/* ユーザーメニューから開くモーダルの中身の並び (Mantine の Stack gap="md" / Group gap="sm" / Text size="sm" と同じ値) */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--poi-space-md);
+}
+
+/* 本文。<p> の既定の余白は消し、間隔は .stack の gap で決める */
+.text {
+  margin: 0;
+  font-size: var(--poi-font-size-sm);
+  line-height: 1.45;
+}
+
+.muted {
+  composes: text;
+  color: var(--poi-color-text-muted);
+}
+
+.error {
+  composes: text;
+  color: var(--poi-color-danger);
+}
+
+/* ボタンの列。狭い画面では折り返す */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--poi-space-sm);
+}

@@ -1,10 +1,13 @@
-import { List, Modal, Stack, Text } from "@mantine/core";
-import { useMediaQuery, useOs } from "@mantine/hooks";
 import { useState } from "react";
 
 import { promptInstall, useInstallState } from "@/lib/install-prompt";
+import { useMediaQuery } from "@/lib/use-media-query";
 
-import { useCloseWatcher } from "../../../-lib/use-close-watcher";
+import { isIos } from "../../../-lib/is-ios";
+import { Modal } from "../../Modal";
+
+import list from "./InstallGuideModal.module.css";
+import classes from "./modal-content.module.css";
 
 /**
  * メニューの「ホーム画面に追加」(PWA のインストール導線)。
@@ -15,15 +18,12 @@ import { useCloseWatcher } from "../../../-lib/use-close-watcher";
  * Chromium 系は beforeinstallprompt を受け取れているのでブラウザのインストールダイアログを出す。
  * iOS の Safari にはその API が無いため、共有メニューからの手順を Modal で案内する。
  *
- * Menu.Dropdown は閉じると中身ごとアンマウントされる (Modal も一緒に消える) ので、
- * Menu.Item と Modal は別々に置けるよう、状態はこのフックが持ち、Modal は Menu の外に描く。
+ * メニューは閉じると中身ごとアンマウントされる (中に置いた Modal も一緒に消える) ので、
+ * メニューの項目と Modal は別々に置けるよう、状態はこのフックが持ち、Modal はメニューの外に描く。
  */
 export function useInstallApp() {
-  const os = useOs();
-  // ホバーできない粗いポインタ = スマホ / タブレット。メニューを開く前から値が要るので即時評価する
-  const touch = useMediaQuery("(hover: none) and (pointer: coarse)", false, {
-    getInitialValueInEffect: false,
-  });
+  // ホバーできない粗いポインタ = スマホ / タブレット。メニューを開く前から値が要るので、最初の描画から実際の値を使う
+  const touch = useMediaQuery("(hover: none) and (pointer: coarse)");
   const { installed } = useInstallState();
   const [guideOpened, setGuideOpened] = useState(false);
 
@@ -37,42 +37,32 @@ export function useInstallApp() {
       });
     },
     /** <InstallGuideModal {...guide} /> にそのまま渡す */
-    guide: { os, opened: guideOpened, onClose: () => setGuideOpened(false) },
+    guide: { opened: guideOpened, onClose: () => setGuideOpened(false) },
   };
 }
 
-export function InstallGuideModal({
-  os,
-  opened,
-  onClose,
-}: {
-  os: ReturnType<typeof useOs>;
-  opened: boolean;
-  onClose: () => void;
-}) {
-  // Android の戻る操作でもモーダルだけを閉じる
-  useCloseWatcher(opened, onClose);
+export function InstallGuideModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   return (
-    <Modal opened={opened} onClose={onClose} title="ホーム画面に追加" centered>
-      <Stack gap="md">
-        <List type="ordered" spacing="xs" size="sm">
-          {os === "ios" ? (
+    <Modal opened={opened} onClose={onClose} title="ホーム画面に追加">
+      <div className={classes.stack}>
+        <ol className={list.steps}>
+          {isIos() ? (
             <>
-              <List.Item>画面下 (または上) の共有ボタン (□ に ↑) をタップ</List.Item>
-              <List.Item>メニューを下にたどって「ホーム画面に追加」を選ぶ</List.Item>
-              <List.Item>右上の「追加」をタップ</List.Item>
+              <li>画面下 (または上) の共有ボタン (□ に ↑) をタップ</li>
+              <li>メニューを下にたどって「ホーム画面に追加」を選ぶ</li>
+              <li>右上の「追加」をタップ</li>
             </>
           ) : (
             <>
-              <List.Item>ブラウザのメニュー (⋮ など) を開く</List.Item>
-              <List.Item>「ホーム画面に追加」または「アプリをインストール」を選ぶ</List.Item>
+              <li>ブラウザのメニュー (⋮ など) を開く</li>
+              <li>「ホーム画面に追加」または「アプリをインストール」を選ぶ</li>
             </>
           )}
-        </List>
-        <Text size="sm" c="dimmed">
+        </ol>
+        <p className={classes.muted}>
           追加するとアプリのように全画面で開けて、オフラインでも前回の板を読めます。
-        </Text>
-      </Stack>
+        </p>
+      </div>
     </Modal>
   );
 }

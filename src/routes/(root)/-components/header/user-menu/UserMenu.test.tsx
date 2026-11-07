@@ -6,7 +6,9 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import { createTestRouter, WithRouter } from "@/lib/router-test";
 
-import classes from "./UserMenu.module.css";
+import { installDialogPolyfill } from "../../dialog-test";
+
+import classes from "./Menu.module.css";
 
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -47,11 +49,7 @@ const matchMediaNone = ((query: string) => ({
 
 beforeAll(() => {
   window.matchMedia ??= matchMediaNone;
-  window.ResizeObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
+  installDialogPolyfill();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
@@ -91,18 +89,12 @@ function menu() {
   return node;
 }
 
-// フォーカス移動は Mantine が setTimeout で行う (use-focus-trap)
-async function settleFocus() {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 async function openWithPointer() {
   const button = trigger();
   const inner = button.firstElementChild ?? button;
   await run(async () => {
     inner.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }));
     button.click();
-    await settleFocus();
   });
 }
 
@@ -111,7 +103,6 @@ async function openWithKeyboard() {
   await run(async () => {
     button.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     button.click();
-    await settleFocus();
   });
 }
 
@@ -120,6 +111,16 @@ async function closeMenu() {
     trigger().click();
   });
 }
+
+async function press(key: string, options: KeyboardEventInit = {}) {
+  const target = document.activeElement;
+  if (!(target instanceof HTMLElement)) throw new Error("フォーカスが無い");
+  await run(async () => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...options }));
+  });
+}
+
+const focusedLabel = () => document.activeElement?.textContent;
 
 describe("ユーザーメニュー", () => {
   beforeEach(() => renderMenu());
@@ -151,6 +152,82 @@ describe("ユーザーメニュー", () => {
       item.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
     });
     expect(menu().classList.contains(classes.flat)).toBe(false);
+  });
+});
+
+describe("ユーザーメニューのキーボード操作", () => {
+  beforeEach(() => renderMenu());
+
+  it("ボタンは menu を開くことを伝え、開いている間だけ一覧を指す", async () => {
+    expect(trigger().getAttribute("aria-haspopup")).toBe("menu");
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
+    expect(trigger().getAttribute("aria-controls")).toBeNull();
+    await openWithKeyboard();
+    expect(trigger().getAttribute("aria-expanded")).toBe("true");
+    expect(trigger().getAttribute("aria-controls")).toBe(menu().id);
+    expect(menu().getAttribute("aria-labelledby")).toBe(trigger().id);
+  });
+
+  it("↑↓ で項目を移り、端では反対の端へ回る", async () => {
+    await openWithKeyboard();
+    expect(focusedLabel()).toBe("アカウントを追加");
+    await press("ArrowDown");
+    expect(focusedLabel()).toBe("保存期間の設定");
+    await press("ArrowUp");
+    await press("ArrowUp");
+    expect(focusedLabel()).toBe("アカウント削除");
+    await press("ArrowDown");
+    expect(focusedLabel()).toBe("アカウントを追加");
+  });
+
+  it("Home で最初、End で最後の項目へ移る", async () => {
+    await openWithKeyboard();
+    await press("End");
+    expect(focusedLabel()).toBe("アカウント削除");
+    await press("Home");
+    expect(focusedLabel()).toBe("アカウントを追加");
+  });
+
+  it("Esc で閉じてボタンへフォーカスを戻す", async () => {
+    await openWithKeyboard();
+    await press("Escape");
+    expect(container.querySelector("[role=menu]")).toBeNull();
+    expect(document.activeElement).toBe(trigger());
+  });
+
+  it("Tab で閉じ、ボタンから次の要素へ進めるようフォーカスをボタンへ戻す", async () => {
+    await openWithKeyboard();
+    await press("Tab");
+    expect(container.querySelector("[role=menu]")).toBeNull();
+    expect(document.activeElement).toBe(trigger());
+  });
+
+  it("外側を押すと閉じ、ボタンを押すと閉じたまま開き直さない", async () => {
+    await openWithPointer();
+    await run(async () => {
+      document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    });
+    expect(container.querySelector("[role=menu]")).toBeNull();
+
+    await openWithPointer();
+    await openWithPointer();
+    expect(container.querySelector("[role=menu]")).toBeNull();
+  });
+
+  it("項目を選ぶと閉じてボタンへフォーカスを戻し、閉じたモーダルからもボタンへ戻る", async () => {
+    await openWithKeyboard();
+    await press("ArrowDown");
+    await run(async () => {
+      (document.activeElement as HTMLElement).click();
+    });
+    expect(container.querySelector("[role=menu]")).toBeNull();
+    const dialog = document.querySelector("dialog[open]");
+    expect(dialog?.getAttribute("aria-labelledby")).toBeTruthy();
+    await run(async () => {
+      dialog?.querySelector<HTMLButtonElement>('button[aria-label="閉じる"]')?.click();
+    });
+    expect(document.querySelector("dialog[open]")).toBeNull();
+    expect(document.activeElement).toBe(trigger());
   });
 });
 
@@ -220,7 +297,7 @@ describe("ホーム画面に追加 (HAY-125)", () => {
     await run(async () => {
       item.click();
     });
-    const dialog = document.querySelector("[role=dialog]");
+    const dialog = document.querySelector("dialog[open]");
     expect(dialog).not.toBeNull();
     expect(dialog?.textContent).toMatch(/ブラウザのメニュー|共有ボタン/);
   });

@@ -1,0 +1,128 @@
+/*
+ * 中央に出すモーダル (Modal.tsx)。大きさ・余白・影・角は Mantine の Modal (size md, centered) と同じにする
+ * (移行で見た目を変えないため)
+ */
+.dialog {
+  --modal-close-color: var(--poi-color-close);
+  --modal-close-hover: var(--poi-color-close-hover);
+  --modal-shadow: var(--poi-shadow-xl);
+
+  /* <dialog> の既定 (枠線・内側の余白・Canvas の色) を消す */
+  box-sizing: border-box;
+  width: 27.5rem;
+  /* 画面の端との間を上下 5dvh・左右 5vw 空ける (Mantine の Modal の inner の余白) */
+  max-width: 90vw;
+  max-height: 90dvh;
+  margin: auto;
+  padding: 0;
+  overflow-y: auto;
+  border: 0;
+  border-radius: var(--poi-radius-md);
+  background: var(--poi-color-bg);
+  color: var(--poi-color-text);
+  box-shadow: var(--modal-shadow);
+  /* ヘッダーの中に置くので、ヘッダーの文字の指定を受け継がないよう本文の値に戻す */
+  font-family: var(--poi-font-family);
+  font-size: var(--poi-font-size-md);
+  line-height: var(--poi-line-height);
+}
+
+/*
+ * 背景を暗くする。配色に関わらず同じ黒の 60% (Mantine の Overlay と同じ)。
+ * ::backdrop は要素の変数を受け継がないブラウザ (Safari 17 まで) があるので、変数にせず直に書く
+ */
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+/* 開くときに上から降りてくる (Mantine の fade-down)。動きを減らす設定では出すだけにする */
+@media (prefers-reduced-motion: no-preference) {
+  .dialog {
+    transition:
+      opacity 200ms ease,
+      translate 200ms ease;
+  }
+  .dialog::backdrop {
+    transition: opacity 200ms ease;
+  }
+  @starting-style {
+    .dialog[open] {
+      opacity: 0;
+      translate: 0 -30px;
+    }
+    .dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+}
+
+/* 見出しと ×。中身がスクロールしても見出しは上に残す */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.75rem;
+  /* × は右端の余白を 5px 詰める (× の 28px の中に余白があるので、見た目の右端を本文に揃える) */
+  padding: var(--poi-space-md) calc(var(--poi-space-md) - 0.3125rem) var(--poi-space-md)
+    var(--poi-space-md);
+  background: var(--poi-color-bg);
+}
+
+/* 見出しは本文と同じ大きさ・太さで控えめに (Mantine の Modal の title) */
+.title {
+  margin: 0;
+  font-size: var(--poi-font-size-md);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.close {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--poi-radius-md);
+  background: transparent;
+  color: var(--modal-close-color);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.close svg {
+  width: 70%;
+  height: 70%;
+}
+
+/* ホバーはマウスのときだけ (タッチではタップ後も色が残る)。タッチでは押している間だけ */
+@media (hover: hover) {
+  .close:hover {
+    background: var(--modal-close-hover);
+  }
+}
+@media (hover: none) {
+  .close:active {
+    background: var(--modal-close-hover);
+  }
+}
+
+/* 押した感触 (1px 沈む。Mantine の mantine-active) */
+.close:active {
+  transform: translateY(1px);
+}
+
+.body {
+  padding: 0 var(--poi-space-md) var(--poi-space-md);
+}
+
+/* 見出しが無いときは上にも余白を取る */
+.body:only-child {
+  padding-top: var(--poi-space-md);
+}

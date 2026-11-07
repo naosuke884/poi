@@ -1,30 +1,50 @@
-/* メニューボタンの中身 (アイコンや名前) にポインターを当てさせない。
-   pointer-events は継承されないので、子孫もまとめて消す。
-   Safari は、子要素のあるボタンをタップしたあと別の要素へ focus() すると
-   :focus-visible を付けてしまう (WebKit 241408)。タップがボタン自身に当たれば、この誤判定は起きない。
-   メニューは開いたとき最初の項目へフォーカスを移すので、誤判定のままだと
-   「アカウントを追加」が選ばれたように見える (HAY-15) */
-.triggerContent,
-.triggerContent * {
-  pointer-events: none;
+/* ボタン・実行中の印を横に並べる (折り返すとヘッダーの 56px からはみ出す) */
+.root {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--poi-space-xs);
 }
 
-/* 上の回避が効かないとき (ホーム画面から開いた直後の iPhone など) でも、
-   ポインターで開いたあいだは項目の背景と輪郭を出さない。
-   :focus-visible では判定しない。Safari がタップなのに :focus-visible を付けるため。
-   .flat はポインターで開いたあいだだけ付き、キーで項目を動かし始めたら外れる */
-.flat .item:focus:not(:hover, [data-menu-active]) {
-  background-color: transparent;
-  /* mantine-focus-auto の輪郭 (:focus-visible の outline)。上と同じ誤判定で出る */
-  outline: none;
+/* セッションを取得している間の仮の面 (ボタンと同じくらいの大きさ) */
+.skeleton {
+  width: 100px;
+  height: 2rem;
 }
 
-/* タッチではタップのあと :hover が残ることがある。マウスが無いときだけ、
-   ポインターで開いた直後の hover 背景も強調と見なして消す。
-   実マウスが項目に乗った hover は (hover: hover) のまま残す */
-@media (hover: none) {
-  .flat .item:is(:hover, :focus):not([data-menu-active]) {
-    background-color: transparent;
-    outline: none;
+/* ボタンの中の名前。長い名前は省略 (…) する。狭い画面 (36em 未満) ではアイコンだけにする */
+.name {
+  display: block;
+  max-width: 10rem;
+  overflow: hidden;
+  font-size: var(--poi-font-size-sm);
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 35.99em) {
+  .name {
+    display: none;
   }
+}
+
+/* 他アカウントの名前とメール。メニューの幅に収まらない分は省略 (…) する */
+.sessionName,
+.sessionEmail {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionName {
+  font-size: var(--poi-font-size-sm);
+  line-height: 1.45;
+}
+
+.sessionEmail {
+  color: var(--poi-color-text-muted);
+  font-size: var(--poi-font-size-xs);
+  line-height: 1.4;
 }

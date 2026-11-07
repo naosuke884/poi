@@ -63,11 +63,11 @@ describe("RunningStatus", () => {
 
   it("Loader は見た目だけで読み上げの対象から外す (issue #125)", async () => {
     await render("logout");
-    const loader = container.querySelector(".mantine-Loader-root");
+    const loader = container.querySelector("[data-loader]");
     expect(loader?.getAttribute("aria-hidden")).toBe("true");
     expect(loader?.getAttribute("aria-label")).toBeNull();
 
     await render(null);
-    expect(container.querySelector(".mantine-Loader-root")).toBeNull();
+    expect(container.querySelector("[data-loader]")).toBeNull();
   });
 });
