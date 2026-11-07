@@ -1,0 +1,12 @@
+/* 画面には出さず、読み上げには残す (display: none や hidden だと読み上げからも消える) */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

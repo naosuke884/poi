@@ -6,10 +6,13 @@
 :root {
   /* 欧文は Inter、日本語などそれ以外の文字は各環境のシステムフォントに任せる (fonts.css) */
   --poi-font-family: "Inter Variable", system-ui, sans-serif;
+  --poi-font-family-monospace:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
 
   --poi-font-size-xs: 0.75rem;
   --poi-font-size-sm: 0.875rem;
   --poi-font-size-md: 1rem;
+  --poi-font-size-lg: 1.125rem;
   --poi-line-height: 1.55;
 
   --poi-space-xs: 0.625rem;
@@ -47,10 +50,30 @@
   /* 背景に対してはっきり見える藍 (ライトは濃く、ダークは明るい) */
   --poi-color-primary-strong: #203255;
   --poi-color-link: #3a5a9b;
+  /* 塗りのボタンのホバー (1 段濃い藍) と、薄い面のホバー */
+  --poi-color-primary-hover: #314b82;
+  --poi-color-primary-subtle-hover: #bccae7;
+
+  /* 目立たせないボタン (variant="default") の面とホバー。文字は --poi-color-text-strong */
+  --poi-color-surface: #fff;
+  --poi-color-surface-hover: #f8f9fa;
+  /* 使えないボタン */
+  --poi-color-disabled: #e9ecef;
+  --poi-color-disabled-text: #adb5bd;
+  /* インラインのコードや <pre> の面と、区切りの線 (<hr>) */
+  --poi-color-code-bg: #f8f9fa;
+  --poi-color-pre-bg: #f8f9fa;
+  --poi-color-rule: #dee2e6;
 
   /* 赤の文字。赤の 6 番 (#fa5252) は白地で 3.3 しかないので 9 番 (5.5) にする */
   --poi-color-danger: #c92a2a;
   --poi-color-danger-outline: #c92a2a;
+  --poi-color-danger-subtle: #ffe3e3;
+  --poi-color-danger-strong: #c92a2a;
+
+  /* 注意 (オフラインの案内など) の黄色の面と文字。期限の橙 (warning) とは別の意味 */
+  --poi-color-attention-subtle: #fff3bf;
+  --poi-color-attention-strong: #e67700;
 
   /* 期限が近いことを示す橙 */
   --poi-color-warning: #fd7e14;
@@ -85,9 +108,24 @@
     --poi-color-primary-subtle: #10192b;
     --poi-color-primary-strong: #eff3fa;
     --poi-color-link: #7390c9;
+    --poi-color-primary-hover: #283e6c;
+    --poi-color-primary-subtle-hover: #16233b;
+
+    --poi-color-surface: #2e2e2e;
+    --poi-color-surface-hover: #3b3b3b;
+    --poi-color-disabled: #2e2e2e;
+    --poi-color-disabled-text: #696969;
+    --poi-color-code-bg: #3b3b3b;
+    --poi-color-pre-bg: #1f1f1f;
+    --poi-color-rule: #696969;
 
     --poi-color-danger: #ff8787;
     --poi-color-danger-outline: #ffa8a8;
+    --poi-color-danger-subtle: #651515;
+    --poi-color-danger-strong: #fff5f5;
+
+    --poi-color-attention-subtle: #733c00;
+    --poi-color-attention-strong: #fff9db;
 
     --poi-color-warning: #f76707;
     --poi-color-warning-text: #ffa94d;

@@ -1,0 +1,26 @@
+/* 回るリング。aria-hidden で置き、状況の文言は別のライブリージョンで読ませる (RunningStatus) */
+.loader {
+  --loader-size: 2.25rem;
+  display: inline-block;
+  flex: none;
+  width: var(--loader-size);
+  height: var(--loader-size);
+  border: calc(var(--loader-size) / 8) solid var(--loader-color, var(--poi-color-primary));
+  border-inline-start-color: transparent;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+}
+
+.xs {
+  --loader-size: 1.125rem;
+}
+.sm {
+  --loader-size: 1.375rem;
+}
+
+/* 動きを減らす設定でも止めない: 止まったリングは「読み込み中」に見えず、壊れて見える */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

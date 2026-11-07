@@ -1,0 +1,140 @@
+/*
+ * 書かれた文章 (利用規約などの本文、板の Markdown) の要素ごとの見た目。値は Mantine の Typography と同じ。
+ * :where で詳細度を 0 にして、使う側の CSS Module (MarkdownView.module.css など) が素直に上書きできるようにする
+ */
+.prose :where(:first-child) {
+  margin-top: 0;
+}
+.prose :where(:last-child) {
+  margin-bottom: 0;
+}
+
+.prose :where(h1, h2, h3, h4, h5, h6) {
+  margin-bottom: var(--poi-space-xs);
+  font-family: var(--poi-font-family);
+  font-weight: 700;
+  text-wrap: balance;
+}
+.prose :where(h1) {
+  margin-top: calc(1.5 * var(--poi-space-xl));
+  font-size: 2.125rem;
+  line-height: 1.3;
+}
+.prose :where(h2) {
+  margin-top: var(--poi-space-xl);
+  font-size: 1.625rem;
+  line-height: 1.35;
+}
+.prose :where(h3) {
+  margin-top: calc(0.8 * var(--poi-space-xl));
+  font-size: 1.375rem;
+  line-height: 1.4;
+}
+.prose :where(h4) {
+  margin-top: calc(0.8 * var(--poi-space-xl));
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+.prose :where(h5) {
+  margin-top: calc(0.5 * var(--poi-space-xl));
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.prose :where(h6) {
+  margin-top: calc(0.5 * var(--poi-space-xl));
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.prose :where(p) {
+  margin-top: 0;
+  margin-bottom: var(--poi-space-lg);
+}
+
+.prose :where(img) {
+  max-width: 100%;
+  margin-bottom: var(--poi-space-xs);
+}
+
+.prose :where(a) {
+  color: var(--poi-color-link);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .prose :where(a):hover {
+    text-decoration: underline;
+  }
+}
+
+.prose :where(hr) {
+  margin-block: var(--poi-space-md);
+  border: 0;
+  border-top: 1px solid var(--poi-color-rule);
+}
+
+.prose :where(code) {
+  padding: 0.0625rem 0.3125rem;
+  border-radius: var(--poi-radius-sm);
+  background-color: var(--poi-color-code-bg);
+  color: var(--poi-color-text-strong);
+  font-family: var(--poi-font-family-monospace);
+  font-size: var(--poi-font-size-xs);
+  line-height: var(--poi-line-height);
+}
+
+.prose :where(pre) {
+  margin-block: var(--poi-space-md);
+  padding: var(--poi-space-xs);
+  overflow-x: auto;
+  border-radius: var(--poi-radius-sm);
+  background-color: var(--poi-color-pre-bg);
+  font-family: var(--poi-font-family-monospace);
+  font-size: var(--poi-font-size-xs);
+  line-height: var(--poi-line-height);
+}
+.prose :where(pre) :where(code) {
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: inherit;
+}
+
+/* 箇条書き: Mantine と同じく、字下げと項目の間隔 */
+.prose :where(ul, ol):not([data-type="taskList"]) {
+  margin-bottom: var(--poi-space-md);
+  padding-inline-start: var(--poi-space-xl);
+  list-style-position: outside;
+}
+
+.prose :where(table) {
+  width: 100%;
+  margin-bottom: var(--poi-space-md);
+  border-collapse: collapse;
+  caption-side: bottom;
+}
+.prose :where(th, td) {
+  padding: var(--poi-space-xs) var(--poi-space-sm);
+  font-size: var(--poi-font-size-sm);
+}
+.prose :where(th) {
+  text-align: start;
+  font-weight: bold;
+}
+.prose :where(thead th) {
+  border-bottom: 1px solid var(--poi-color-border);
+}
+.prose :where(td) {
+  border-bottom: 1px solid var(--poi-color-border);
+}
+.prose :where(tr:last-of-type td) {
+  border-bottom: 0;
+}
+
+.prose :where(blockquote) {
+  margin: var(--poi-space-md) 0;
+  padding: var(--poi-space-md) var(--poi-space-lg);
+  border-radius: var(--poi-radius-sm);
+  background-color: var(--poi-color-pre-bg);
+  font-size: var(--poi-font-size-lg);
+  line-height: var(--poi-line-height);
+}

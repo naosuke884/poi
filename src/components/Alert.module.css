@@ -1,0 +1,31 @@
+/* 画面上部の案内 (オフライン、読み込みの失敗)。色は注意 (黄) か危険 (赤) */
+.alert {
+  padding: var(--poi-space-md);
+  border: 1px solid transparent;
+  border-radius: var(--poi-radius-md);
+  background: var(--alert-bg);
+  font-size: var(--poi-font-size-sm);
+  /* 本文は読ませる文なので、薄い面の上でも最も強い文字色にする (面の色の文字だとコントラストが足りない) */
+  color: var(--poi-color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.attention {
+  --alert-bg: var(--poi-color-attention-subtle);
+  --alert-title: var(--poi-color-attention-strong);
+}
+.danger {
+  --alert-bg: var(--poi-color-danger-subtle);
+  --alert-title: var(--poi-color-danger-strong);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--poi-space-xs);
+}
+
+.title {
+  font-weight: 700;
+  color: var(--alert-title);
+}

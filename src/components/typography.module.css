@@ -1,0 +1,71 @@
+/*
+ * 見出しと文字の大きさ、控えめな文字、リンクの共通クラス。部品の CSS Module から composes で使うか、
+ * className に直接付ける。値は Mantine の Title / Text / Anchor と同じ (移行で見た目を変えないため)
+ */
+
+/* 見出し。margin を消すのは、間隔を並べる側 (gap) で決めるため */
+.title {
+  margin: 0;
+  font-family: var(--poi-font-family);
+  font-weight: 700;
+  /* 折り返すとき各行の長さを揃える (最後の行が 1 文字だけになるのを防ぐ)。行数は変わらない */
+  text-wrap: balance;
+}
+.h1 {
+  composes: title;
+  font-size: 2.125rem;
+  line-height: 1.3;
+}
+.h2 {
+  composes: title;
+  font-size: 1.625rem;
+  line-height: 1.35;
+}
+.h3 {
+  composes: title;
+  font-size: 1.375rem;
+  line-height: 1.4;
+}
+.h4 {
+  composes: title;
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+/* 文字の大きさと、それに合う行の高さ */
+.xs {
+  font-size: var(--poi-font-size-xs);
+  line-height: 1.4;
+}
+.sm {
+  font-size: var(--poi-font-size-sm);
+  line-height: 1.45;
+}
+.md {
+  font-size: var(--poi-font-size-md);
+  line-height: 1.55;
+}
+.lg {
+  font-size: var(--poi-font-size-lg);
+  line-height: 1.6;
+}
+
+/* 控えめな文字。ラベル・補足・フッター用で、読ませる本文には使わない (AA は満たすが弱い) */
+.muted {
+  color: var(--poi-color-text-muted);
+}
+
+/* リンク。色だけでは見分けられない (ダークでは特に) ので、文中のリンクは .underline も付ける */
+.link {
+  color: var(--poi-color-link);
+  text-decoration: none;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .link:hover {
+    text-decoration: underline;
+  }
+}
+.underline {
+  text-decoration: underline;
+}

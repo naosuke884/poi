@@ -1,0 +1,124 @@
+/* ボタンの見た目。<button> にも、ボタンの形をしたリンク (<Link className={buttonClass(…)}>) にも付ける */
+.button {
+  --button-height: 2.25rem;
+  --button-padding-x: 1.125rem;
+  --button-fz: var(--poi-font-size-sm);
+  --button-bg: var(--poi-color-primary);
+  --button-hover: var(--poi-color-primary-hover);
+  --button-color: #fff;
+  --button-bd: transparent;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--button-height);
+  padding-inline: var(--button-padding-x);
+  border: 1px solid var(--button-bd);
+  border-radius: var(--poi-radius-md);
+  background: var(--button-bg);
+  color: var(--button-color);
+  font-size: var(--button-fz);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ホバーはマウスのときだけ (タッチではタップ後も色が残る)。タッチでは押している間だけ色を変える */
+@media (hover: hover) {
+  .button:hover:not(:disabled, [data-loading]) {
+    background: var(--button-hover);
+  }
+}
+@media (hover: none) {
+  .button:active:not(:disabled, [data-loading]) {
+    background: var(--button-hover);
+  }
+}
+
+/* 押した感触 (1px 沈む) */
+.button:active:not(:disabled, [data-loading]) {
+  transform: translateY(1px);
+}
+
+.button:disabled:not([data-loading]) {
+  --button-bg: var(--poi-color-disabled);
+  --button-color: var(--poi-color-disabled-text);
+  --button-bd: transparent;
+  cursor: not-allowed;
+}
+
+.button[data-loading] {
+  cursor: not-allowed;
+}
+
+/* 読み込み中は文字を薄くして、上にスピナーを重ねる (幅が変わらないよう文字は消さない) */
+.label {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+.button[data-loading] .label {
+  opacity: 0.2;
+}
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section {
+  display: flex;
+  margin-inline-end: var(--poi-space-xs);
+}
+.button:has(.section) {
+  padding-inline-start: calc(var(--button-padding-x) / 1.5);
+}
+
+.full {
+  display: flex;
+  width: 100%;
+}
+
+/* 大きさ (高さ・左右の余白・文字) */
+.xs {
+  --button-height: 1.875rem;
+  --button-padding-x: 0.875rem;
+  --button-fz: var(--poi-font-size-xs);
+}
+/* ヘッダーなど高さに余裕の無いところ用の詰めた形 */
+.compact {
+  --button-height: 1.625rem;
+  --button-padding-x: 0.5rem;
+}
+.md {
+  --button-height: 2.625rem;
+  --button-padding-x: 1.375rem;
+  --button-fz: var(--poi-font-size-md);
+}
+
+/* 種類。filled (既定) は 1 つの画面に 1 つだけの主な操作に使う */
+.light {
+  --button-bg: var(--poi-color-primary-subtle);
+  --button-hover: var(--poi-color-primary-subtle-hover);
+  --button-color: var(--poi-color-primary-strong);
+}
+.default {
+  --button-bg: var(--poi-color-surface);
+  --button-hover: var(--poi-color-surface-hover);
+  --button-color: var(--poi-color-text-strong);
+  --button-bd: var(--poi-color-border);
+}
+.outlineDanger {
+  --button-bg: transparent;
+  --button-hover: color-mix(in srgb, var(--poi-color-danger-outline) 5%, transparent);
+  --button-color: var(--poi-color-danger-outline);
+  --button-bd: var(--poi-color-danger-outline);
+}
