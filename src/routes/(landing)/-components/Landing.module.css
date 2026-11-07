@@ -229,7 +229,7 @@
 }
 
 /* 板の LifeLine と同じ並び (「あと N 日」+ バー)。色は文字とバーで共有する (currentColor)。
-   --life-demo-from / --life-demo-to / --life-demo-total は LifeLineDemo.tsx から渡す。
+   --life-demo-from / --life-demo-to / --life-demo-total は LifeLineDemo.module.css が data 属性から決める。
    動かないとき (「動きを減らす」や未対応のブラウザ) は減りきった後の to を見せる。動くときはアニメーションが from から上書きする */
 .lifeDemo {
   --life-demo-left: var(--life-demo-to);

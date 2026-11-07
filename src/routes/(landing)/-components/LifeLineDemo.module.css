@@ -1,0 +1,191 @@
+/*
+ * 寿命のデモの日数 (LifeLineDemo.tsx)。値は style 属性ではなく data 属性で渡し、ここで CSS 変数にする:
+ * ランディングはビルド時に HTML にするので、style 属性だと HTML に焼き込まれ、CSP に style-src を足すと止まる
+ * (今は足していない。public/_headers)。
+ * attr() で数値として読む書き方は対応ブラウザがまだ少ないので、取りうる日数 (1〜30) を並べておく。
+ * 30 は保存期間の既定値 (shared/constants.ts の MEMO_TTL_DAYS)。デモの日数はこれを超えない。
+ * 既定値を変えたら揃える (LifeLineDemo.test.ts が確かめる)
+ */
+.days {
+  --life-demo-total: 30;
+}
+.days[data-from="1"] {
+  --life-demo-from: 1;
+}
+.days[data-from="2"] {
+  --life-demo-from: 2;
+}
+.days[data-from="3"] {
+  --life-demo-from: 3;
+}
+.days[data-from="4"] {
+  --life-demo-from: 4;
+}
+.days[data-from="5"] {
+  --life-demo-from: 5;
+}
+.days[data-from="6"] {
+  --life-demo-from: 6;
+}
+.days[data-from="7"] {
+  --life-demo-from: 7;
+}
+.days[data-from="8"] {
+  --life-demo-from: 8;
+}
+.days[data-from="9"] {
+  --life-demo-from: 9;
+}
+.days[data-from="10"] {
+  --life-demo-from: 10;
+}
+.days[data-from="11"] {
+  --life-demo-from: 11;
+}
+.days[data-from="12"] {
+  --life-demo-from: 12;
+}
+.days[data-from="13"] {
+  --life-demo-from: 13;
+}
+.days[data-from="14"] {
+  --life-demo-from: 14;
+}
+.days[data-from="15"] {
+  --life-demo-from: 15;
+}
+.days[data-from="16"] {
+  --life-demo-from: 16;
+}
+.days[data-from="17"] {
+  --life-demo-from: 17;
+}
+.days[data-from="18"] {
+  --life-demo-from: 18;
+}
+.days[data-from="19"] {
+  --life-demo-from: 19;
+}
+.days[data-from="20"] {
+  --life-demo-from: 20;
+}
+.days[data-from="21"] {
+  --life-demo-from: 21;
+}
+.days[data-from="22"] {
+  --life-demo-from: 22;
+}
+.days[data-from="23"] {
+  --life-demo-from: 23;
+}
+.days[data-from="24"] {
+  --life-demo-from: 24;
+}
+.days[data-from="25"] {
+  --life-demo-from: 25;
+}
+.days[data-from="26"] {
+  --life-demo-from: 26;
+}
+.days[data-from="27"] {
+  --life-demo-from: 27;
+}
+.days[data-from="28"] {
+  --life-demo-from: 28;
+}
+.days[data-from="29"] {
+  --life-demo-from: 29;
+}
+.days[data-from="30"] {
+  --life-demo-from: 30;
+}
+.days[data-to="1"] {
+  --life-demo-to: 1;
+}
+.days[data-to="2"] {
+  --life-demo-to: 2;
+}
+.days[data-to="3"] {
+  --life-demo-to: 3;
+}
+.days[data-to="4"] {
+  --life-demo-to: 4;
+}
+.days[data-to="5"] {
+  --life-demo-to: 5;
+}
+.days[data-to="6"] {
+  --life-demo-to: 6;
+}
+.days[data-to="7"] {
+  --life-demo-to: 7;
+}
+.days[data-to="8"] {
+  --life-demo-to: 8;
+}
+.days[data-to="9"] {
+  --life-demo-to: 9;
+}
+.days[data-to="10"] {
+  --life-demo-to: 10;
+}
+.days[data-to="11"] {
+  --life-demo-to: 11;
+}
+.days[data-to="12"] {
+  --life-demo-to: 12;
+}
+.days[data-to="13"] {
+  --life-demo-to: 13;
+}
+.days[data-to="14"] {
+  --life-demo-to: 14;
+}
+.days[data-to="15"] {
+  --life-demo-to: 15;
+}
+.days[data-to="16"] {
+  --life-demo-to: 16;
+}
+.days[data-to="17"] {
+  --life-demo-to: 17;
+}
+.days[data-to="18"] {
+  --life-demo-to: 18;
+}
+.days[data-to="19"] {
+  --life-demo-to: 19;
+}
+.days[data-to="20"] {
+  --life-demo-to: 20;
+}
+.days[data-to="21"] {
+  --life-demo-to: 21;
+}
+.days[data-to="22"] {
+  --life-demo-to: 22;
+}
+.days[data-to="23"] {
+  --life-demo-to: 23;
+}
+.days[data-to="24"] {
+  --life-demo-to: 24;
+}
+.days[data-to="25"] {
+  --life-demo-to: 25;
+}
+.days[data-to="26"] {
+  --life-demo-to: 26;
+}
+.days[data-to="27"] {
+  --life-demo-to: 27;
+}
+.days[data-to="28"] {
+  --life-demo-to: 28;
+}
+.days[data-to="29"] {
+  --life-demo-to: 29;
+}
+.days[data-to="30"] {
+  --life-demo-to: 30;
+}

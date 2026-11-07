@@ -1,6 +1,8 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
+import classes from "./HeaderSlot.module.css";
+
 /**
  * ヘッダーの差し込み口。ページ (ルート) が自分用の操作をヘッダーに出すために使う
  * (板の表示切替・追加ボタン・保存状態など)。
@@ -19,12 +21,11 @@ export function HeaderSlotProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * ヘッダーの中の差し込み位置。display: contents なので、中身はヘッダーの Group の子として並ぶ
- * (間隔は Group の gap がそのまま効き、空のときは場所を取らない)
+ * ヘッダーの中の差し込み位置。中身はヘッダーの並びの子として並ぶ (HeaderSlot.module.css)
  */
 export function HeaderSlotTarget() {
   const ctx = useContext(TargetContext);
-  return <div ref={ctx?.setTarget} data-header-slot="" style={{ display: "contents" }} />;
+  return <div ref={ctx?.setTarget} data-header-slot="" className={classes.target} />;
 }
 
 /** 中身をヘッダーの差し込み位置に出す (Provider の外や、差し込み位置がまだ無いときは何も出さない) */
