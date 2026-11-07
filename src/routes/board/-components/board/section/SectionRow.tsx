@@ -1,4 +1,3 @@
-import { Box, Group } from "@mantine/core";
 import { memo, type RefObject } from "react";
 
 import type { EditableSection } from "../../../-lib/data/board";
@@ -7,6 +6,8 @@ import { LifeLine } from "./LifeLine";
 import { MarkdownView } from "./MarkdownView";
 import { SectionActions, SectionDeleteButton } from "./SectionActions";
 import { type EditAnchor, SectionEditor, type SectionEditorHandle } from "./SectionEditor";
+
+import classes from "./SectionRow.module.css";
 
 /**
  * セクションへの操作 (Board が持つ)。どれも対象のセクションの key を受け取る。
@@ -90,24 +91,13 @@ export const SectionRow = memo(function SectionRow({
   const label = `セクション ${i + 1}`;
   const empty = s.content.trim() === "";
   return (
-    <Box
+    <div
       data-section
       ref={register(refs.boxes, s.key)}
-      style={{
-        // scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)
-        scrollMarginTop: "calc(var(--app-shell-header-offset, 0rem) + var(--app-shell-padding))",
-        // ↑ でのフォーカス移動 (focusView) は nearest で下端に合わせることがある。ぴったりに合うと
-        // フォーカスリング (outline 2px + offset 4px。MarkdownView) が画面の外に出るので、そのぶん余白を残す
-        scrollMarginBottom: 12,
-        // 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
-        // (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る)
-        minHeight: fillScreen
-          ? "calc(100dvh - var(--app-shell-header-offset, 0rem) - var(--app-shell-padding))"
-          : undefined,
-      }}
+      className={fillScreen ? `${classes.section} ${classes.fillScreen}` : classes.section}
     >
       {/* 区切り: 線は寿命のバー (左に残り日数)、コピー / スクショ / 削除は線の外の右端 */}
-      <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
+      <div className={i === 0 ? classes.divider : `${classes.divider} ${classes.spaced}`}>
         <LifeLine createdAt={s.createdAt} expiresAt={s.expiresAt} ttlDays={ttlDays} />
         {!empty && (
           <SectionActions
@@ -122,7 +112,7 @@ export const SectionRow = memo(function SectionRow({
             onDelete={(viaKeyboard) => h.remove(s.key, viaKeyboard)}
           />
         )}
-      </Group>
+      </div>
       {(readOnly || !editing) && !empty ? (
         <MarkdownView
           content={s.content}
@@ -152,6 +142,6 @@ export const SectionRow = memo(function SectionRow({
           ref={register(refs.editors, s.key)}
         />
       )}
-    </Box>
+    </div>
   );
 });

@@ -1,0 +1,7 @@
+/* PC 幅 (sm = 48em) 以上だけに出す。!important は、ボタン自身の display (Button.module.css) との
+   読み込み順に左右されずに隠すため */
+@media (max-width: 47.99em) {
+  .wideOnly {
+    display: none !important;
+  }
+}

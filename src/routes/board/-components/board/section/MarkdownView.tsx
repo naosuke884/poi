@@ -1,4 +1,3 @@
-import { Box, Typography } from "@mantine/core";
 import { type KeyboardEvent, type MouseEvent, memo, type Ref } from "react";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkBreaks from "remark-breaks";
@@ -120,7 +119,9 @@ export function MarkdownView({
 }) {
   const editable = onEdit !== undefined;
   return (
-    <Box
+    // ハンドラを付けるのは編集できるとき (role="group") だけだが、条件付きの role は規則からは見えない
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
       ref={ref}
       className={editable ? classes.editable : undefined}
       role={editable ? "group" : undefined}
@@ -160,16 +161,10 @@ export function MarkdownView({
             }
           : undefined
       }
-      style={{ cursor: editable ? "text" : undefined }}
     >
-      {/* 行間は日本語向けに広め。エディタ (SectionEditor.module.css) と同じ値にする (違うと切り替えで高さが変わる) */}
-      <Typography
-        className={sourceBlankLines ? classes.root : `${classes.root} ${classes.fixedGaps}`}
-        fz="md"
-        lh={1.7}
-      >
+      <div className={sourceBlankLines ? classes.root : `${classes.root} ${classes.fixedGaps}`}>
         <MarkdownBody content={content} sourceBlankLines={sourceBlankLines} />
-      </Typography>
-    </Box>
+      </div>
+    </div>
   );
 }

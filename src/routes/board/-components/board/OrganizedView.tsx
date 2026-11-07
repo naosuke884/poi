@@ -1,4 +1,3 @@
-import { Box, Divider, Group, Text } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
 
 import type { EditableSection } from "../../-lib/data/board";
@@ -11,6 +10,9 @@ import {
 import type { DeleteFocus } from "../../-lib/sections/use-undoable-delete";
 import { MarkdownView } from "./section/MarkdownView";
 import { SectionActions, SectionDeleteButton } from "./section/SectionActions";
+
+import classes from "./OrganizedView.module.css";
+import typography from "@/components/typography.module.css";
 
 /**
  * 見出しごとにまとめた表示 (#37)。タイムライン (通常の板) と切り替えて使う閲覧用のビュー。
@@ -72,14 +74,14 @@ export function OrganizedView({
 
   if (groups.length === 0) {
     return (
-      <Text c="dimmed" mt="md">
+      <p className={`${typography.md} ${typography.muted} ${classes.empty}`}>
         まだメモがありません。タイムラインで書いたメモが、ここに見出しごとにまとまります。
-      </Text>
+      </p>
     );
   }
 
   return (
-    <Box>
+    <div>
       {groups.map((g, i) => {
         const subject = g.heading !== null ? `「${g.heading}」のまとめ` : "見出しなしのまとめ";
         const label = [
@@ -87,7 +89,7 @@ export function OrganizedView({
           ...(g.chunkCount >= 2 ? [`${g.chunkCount} か所`] : []),
         ].join(" · ");
         return (
-          <Box
+          <div
             key={g.key}
             ref={(el) => {
               if (el) boxesRef.current.set(g.key, el);
@@ -95,12 +97,14 @@ export function OrganizedView({
             }}
           >
             {/* タイムラインのセクションの区切り線と同じ並び (コピー / スクショ / 期限は線の外の右端) */}
-            <Group gap="md" wrap="nowrap" mt={i === 0 ? 0 : "md"} mb="xs">
-              <Divider
-                labelPosition="left"
-                style={{ flex: 1, minWidth: 0 }}
-                label={label === "" ? undefined : label}
-              />
+            <div className={i === 0 ? classes.divider : `${classes.divider} ${classes.spaced}`}>
+              <div
+                role="separator"
+                aria-orientation="horizontal"
+                className={label === "" ? classes.rule : classes.labeledRule}
+              >
+                {label !== "" && <span className={classes.label}>{label}</span>}
+              </div>
               <SectionActions
                 subject={subject}
                 onCopy={() => copySectionText(g.content)}
@@ -113,7 +117,7 @@ export function OrganizedView({
                   onDelete={(viaKeyboard) => remove(g, i, viaKeyboard)}
                 />
               )}
-            </Group>
+            </div>
             <MarkdownView
               content={g.content}
               sourceBlankLines={false}
@@ -131,9 +135,9 @@ export function OrganizedView({
                 else viewsRef.current.delete(g.key);
               }}
             />
-          </Box>
+          </div>
         );
       })}
-    </Box>
+    </div>
   );
 }

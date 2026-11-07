@@ -1,7 +1,9 @@
-import { Button } from "@mantine/core";
+import { Button } from "@/components/Button";
 
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
 import { PlusIcon } from "../PlusIcon";
+
+import classes from "./AddSectionButton.module.css";
 
 /**
  * ヘッダーの「セクションを追加」ボタン (PC 幅 = sm 以上のみ。狭い画面では Board の右下固定ボタン)。
@@ -13,7 +15,7 @@ export function AddSectionButton({ onClick }: { onClick: () => void }) {
     <Button
       size="xs"
       variant="light"
-      visibleFrom="sm"
+      className={classes.wideOnly}
       leftSection={<PlusIcon size={16} />}
       onMouseDown={keepEditorFocus}
       onClick={onClick}

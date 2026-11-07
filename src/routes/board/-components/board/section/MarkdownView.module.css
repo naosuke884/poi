@@ -1,17 +1,35 @@
 /* 編集に切り替えられる表示: キーボードでフォーカスしたときだけ枠を出す (クリックでは出さない) */
 .editable {
   border-radius: var(--poi-radius-sm);
+  cursor: text;
 }
 .editable:focus-visible {
   outline: 2px solid var(--poi-color-primary);
   outline-offset: 4px;
 }
 
-/* ユーザーが書いた内容なので、長い URL や区切りの無い文字列でも板の幅で折り返す。
-   flow-root: 先頭の要素の上の余白 (先頭の空行。下の data-blank-lines) を外へ相殺させず、この中に収める */
+/* 要素ごとの見た目は共通の .prose (利用規約などの本文と同じ) を土台に、以下でメモ向けに詰める。
+   composes にするのは、.prose の規則をこのファイルの規則より必ず前に置くため (どちらも詳細度が同じ規則が多く、
+   className を並べるだけだと読み込み順で勝ち負けが変わる)。
+   ユーザーが書いた内容なので、長い URL や区切りの無い文字列でも板の幅で折り返す。
+   flow-root: 先頭の要素の上の余白 (先頭の空行。下の data-blank-lines) を外へ相殺させず、この中に収める。
+   行間は日本語向けに広め。エディタ (SectionEditor.module.css) と同じ値にする (違うと切り替えで高さが変わる) */
 .root {
+  composes: prose from "../../../../../components/prose.module.css";
   overflow-wrap: anywhere;
   display: flow-root;
+  font-size: var(--poi-font-size-md);
+  line-height: 1.7;
+}
+
+/* 入れ子の中の先頭 / 末尾 (箇条書きの中の段落など) の余白を消す。.prose にも同じ規則があるが、ここにも書く:
+   以下の規則 (空行の margin-top など) はこれと同じ詳細度で、後に書いて勝たせている。.prose の規則だけだと、
+   CSS の読み込み順によっては以下の規則より後になり、そちらが勝ってしまう */
+.root :first-child {
+  margin-top: 0;
+}
+.root :last-child {
+  margin-bottom: 0;
 }
 
 /* Markdown 表示の最後の要素の下マージンを消し、エディタに切り替わったときの高さの差を小さくする */
@@ -19,9 +37,9 @@
   margin-bottom: 0;
 }
 
-/* 見出しの上の余白: Mantine の Typography は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める
+/* 見出しの上の余白: prose は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める
    (エディタの見出し行の padding-top と同じ)。セクション先頭の見出しは区切り線の直後なので余白なし。
-   行の高さと下の余白はエディタに合わせる: Mantine は見出しごとの line-height (h1 1.3 〜 h6 1.5) と
+   行の高さと下の余白はエディタに合わせる: prose は見出しごとの line-height (h1 1.3 〜 h6 1.5) と
    下マージン (xs) を付けるが、エディタの見出し行は本文の 1.7 を継承して下の余白も無い
    (違うと表示と編集を切り替えるたびに見出しより下の行が上下に動く。issue #117) */
 .root :where(h1, h2, h3, h4, h5, h6) {
@@ -53,10 +71,10 @@
   white-space: pre;
 }
 
-/* 段落・箇条書きの上下の余白 (Mantine は p の下に lg と ul / ol の下に md、ブラウザは ul / ol の上に 1em) も消す。
+/* 段落・箇条書きの上下の余白 (prose は p の下に lg と ul / ol の下に md、ブラウザは ul / ol の上に 1em) も消す。
    ブロックの間の余白はエディタと同じく、元テキストにある空行のぶんだけ空ける (下の data-blank-lines)。
    段落の直後の見出しも、見出しの上の余白だけになる。
-   ul / ol は Mantine のセレクタ (:where(ul, ol):not([data-type='taskList'])) と同じ強さにして後から上書きする */
+   ul / ol は prose のセレクタ (:where(ul, ol):not([data-type="taskList"])) と同じ強さにして後から上書きする */
 .root :where(p) {
   margin-top: 0;
   margin-bottom: 0;
@@ -70,7 +88,7 @@
    見出しは見出しの上の余白に足す (エディタでは空行の次の見出し行に padding-top が付くため)。
    セクションの中の空行は続けて 1 つまで (2 つでセクションが分かれる) なので、数によらず 1 行ぶんにする。
    本文の行の高さは lh と同じ 1.7 (見出しの中では 1lh が見出しの大きさになるので lh 単位は使わない)。
-   Mantine の :first-child の margin-top: 0 やセクション先頭の 0 より後に書いて勝たせる (先頭の空行もエディタでは 1 行) */
+   上の :first-child の margin-top: 0 やセクション先頭の 0 より後に書いて勝たせる (先頭の空行もエディタでは 1 行) */
 .root [data-blank-lines] {
   margin-top: calc(1.7 * var(--poi-font-size-md));
 }
@@ -120,7 +138,7 @@
   border-left-color: var(--poi-color-border);
 }
 
-/* 本文中のリンクは常に下線を出す (Mantine の Typography はホバー時だけ)。
+/* 本文中のリンクは常に下線を出す (prose はホバー時だけ)。
    ダークではリンクの色と本文の色の差が小さく (1.9)、色だけではリンクと分からないため (WCAG 1.4.1) */
 .root :where(a) {
   text-decoration: underline;

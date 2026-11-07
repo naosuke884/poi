@@ -1,0 +1,39 @@
+.empty {
+  margin: var(--poi-space-md) 0 0;
+}
+
+/* 区切り線の並び (タイムラインの SectionRow と同じ): 線は残りの幅いっぱい、ボタンは右端 */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--poi-space-md);
+  margin-bottom: var(--poi-space-xs);
+}
+.spaced {
+  margin-top: var(--poi-space-md);
+}
+
+.rule,
+.labeledRule {
+  flex: 1;
+  min-width: 0;
+}
+.rule {
+  border-top: 1px solid var(--poi-color-divider);
+}
+
+/* ラベル付き: 左にラベル、その右に線 */
+.label {
+  display: flex;
+  align-items: center;
+  color: var(--poi-color-text-muted);
+  font-size: var(--poi-font-size-xs);
+  white-space: nowrap;
+}
+.label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  margin-inline-start: var(--poi-space-xs);
+  border-top: 1px solid var(--poi-color-divider);
+}

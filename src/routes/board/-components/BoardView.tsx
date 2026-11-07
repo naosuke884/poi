@@ -1,9 +1,13 @@
-import { Alert, Stack, VisuallyHidden } from "@mantine/core";
 import { useRef } from "react";
+
+import { Alert } from "@/components/Alert";
+import { VisuallyHidden } from "@/components/VisuallyHidden";
 
 import { formatDateTime } from "../-lib/data/board";
 import type { BoardData } from "../-lib/data/board-loader";
 import { Board } from "./board/Board";
+
+import classes from "./BoardView.module.css";
 
 /** ログイン済みのときの板 (オフラインでキャッシュしか無ければ閲覧専用の注意書きを添える) */
 export function BoardView({
@@ -29,18 +33,18 @@ export function BoardView({
   const ttlDaysRef = useRef(ttlDays);
   if (ttlDays !== undefined) ttlDaysRef.current = ttlDays;
   return (
-    // gap は 0 にして、注意書きとの間隔は Alert の mb で取る (常在の空のライブリージョンに間隔が付かないように)
-    <Stack gap={0} style={{ flex: 1 }}>
+    // 並びの間隔 (gap) は付けず、注意書きとの間隔は Alert の下の余白で取る (常在の空のライブリージョンに間隔が付かないように)
+    <div className={classes.root}>
       {/* 見出しで画面の構造をたどれるよう、画面には出さない h1 を置く (板の見た目はメモだけにしておく。#120)。
           ページを移ったときのフォーカス先にもなる (tabIndex={-1}。#121) */}
-      <VisuallyHidden component="h1" tabIndex={-1}>
+      <VisuallyHidden as="h1" tabIndex={-1}>
         板
       </VisuallyHidden>
       {/* ライブリージョンは中身と同時に挿入されると読み上げられないことが多いので、入れ物は常に置いておき
           Alert だけを出し入れする (#126)。Alert の既定の role="alert" は入れ物と二重になるので note にする */}
       <div role="status">
         {readOnly && (
-          <Alert color="yellow" role="note" mb="md">
+          <Alert tone="attention" role="note" className={classes.offlineNote}>
             {`オフラインのため閲覧のみです (${cachedAt !== null ? formatDateTime(cachedAt) : "前回取得"} 時点の内容)。`}
             オンラインに戻ると自動的に最新の内容を読み込みます。
           </Alert>
@@ -57,6 +61,6 @@ export function BoardView({
         readOnly={readOnly}
         ttlDays={ttlDaysRef.current}
       />
-    </Stack>
+    </div>
   );
 }

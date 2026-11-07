@@ -1,8 +1,8 @@
-import { Box, Group, Text } from "@mantine/core";
 import { DAY_MS } from "@shared/constants";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import classes from "./LifeLine.module.css";
+import typography from "@/components/typography.module.css";
 
 /**
  * セクションの区切り線を兼ねた寿命のバー (issue #95)。
@@ -26,12 +26,10 @@ export function LifeLine({
 }) {
   if (createdAt === null || expiresAt === null) {
     return (
-      <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
-        <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>
-          新しいセクション
-        </Text>
+      <div className={classes.line}>
+        <p className={`${typography.xs} ${typography.muted} ${classes.label}`}>新しいセクション</p>
         <Track />
-      </Group>
+      </div>
     );
   }
   const end = new Date(expiresAt).getTime();
@@ -43,32 +41,31 @@ export function LifeLine({
   const soon = days <= 1;
   const color = soon ? "var(--poi-color-warning)" : "var(--poi-color-text-muted)";
   return (
-    <Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
-      {/* ラベルの幅を揃えて、どのセクションでもバーの始まりを同じ位置にする (長さを比べられるように) */}
-      <Text
-        size="xs"
-        c={soon ? "orange" : "dimmed"}
-        style={{ whiteSpace: "nowrap", minWidth: "5.5em", fontVariantNumeric: "tabular-nums" }}
+    <div className={classes.line}>
+      <p
+        className={`${typography.xs} ${soon ? classes.soon : typography.muted} ${classes.label} ${classes.days}`}
       >
         あと {days} 日
-      </Text>
+      </p>
       <Track>
-        <Box
+        <div
           aria-hidden
           className={classes.remaining}
           // 長さと色だけ渡し、描き方は LifeLine.module.css に置く
-          style={{ "--life-line-ratio": `${ratio * 100}%`, "--life-line-color": color }}
+          style={
+            { "--life-line-ratio": `${ratio * 100}%`, "--life-line-color": color } as CSSProperties
+          }
         />
       </Track>
-    </Group>
+    </div>
   );
 }
 
 /** 全幅の薄い線 (Mantine の Divider と同じ色)。子に残りの期間の濃い線を重ねる */
 function Track({ children }: { children?: ReactNode }) {
   return (
-    <Box aria-hidden className={classes.track}>
+    <div aria-hidden className={classes.track}>
       {children}
-    </Box>
+    </div>
   );
 }

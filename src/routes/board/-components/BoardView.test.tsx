@@ -9,6 +9,8 @@ import { createTestRouter, WithRouter } from "@/lib/router-test";
 import type { BoardSection } from "../-lib/data/board";
 import type { BoardData } from "../-lib/data/board-loader";
 
+import visuallyHidden from "@/components/VisuallyHidden.module.css";
+
 // API の向こうのサーバー (プロセスの外にあるので、ここだけ偽物にする)。板と版を持つ。
 // 板 (Board) は本物なので、フォーカスなどで取り直しが走っても実際の通信には出ていかない。
 // 保存 ($put) は置かない: このファイルのテストは板を編集しない
@@ -146,7 +148,7 @@ describe("BoardView", () => {
     expect(headings).toHaveLength(1);
     expect(headings[0]?.textContent).toBe("板");
     // jsdom はスタイルを計算しないので、画面から隠す VisuallyHidden で描いていることを見る
-    expect(headings[0]?.className).toMatch(/VisuallyHidden/);
+    expect(headings[0]?.classList).toContain(visuallyHidden.hidden);
   });
 
   it("オンラインで開いた板にも空のライブリージョンを置いておく (issue #126)", async () => {

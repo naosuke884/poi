@@ -1,0 +1,10 @@
+/* 板の外枠。外側 (Main) の flex で画面の残りの高さいっぱいに広げ、中身を縦に並べる */
+.root {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.offlineNote {
+  margin-bottom: var(--poi-space-md);
+}

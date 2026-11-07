@@ -1,0 +1,25 @@
+.section {
+  /* scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ) */
+  scroll-margin-top: calc(var(--poi-header-height) + var(--poi-page-padding));
+  /* ↑ でのフォーカス移動 (focusView) は nearest で下端に合わせることがある。ぴったりに合うと
+     フォーカスリング (outline 2px + offset 4px。MarkdownView) が画面の外に出るので、そのぶん余白を残す */
+  scroll-margin-bottom: 12px;
+}
+
+/* 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
+   (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る) */
+.fillScreen {
+  min-height: calc(100dvh - var(--poi-header-height) - var(--poi-page-padding));
+}
+
+/* 区切り: 線 (LifeLine) は残りの幅いっぱい、コピー / スクショ / 削除は線の外の右端。
+   上下の余白は SectionActions.module.css のタッチ用の当たり判定の広げ方 (上 16px / 下 10px) と揃えてある */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--poi-space-md);
+  margin-bottom: var(--poi-space-xs);
+}
+.spaced {
+  margin-top: var(--poi-space-md);
+}
