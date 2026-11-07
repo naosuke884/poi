@@ -1,5 +1,8 @@
 import "./mantine-styles";
 import "./fonts.css";
+// Mantine の CSS より後に読み込む (同じ要素への指定は後のものが勝つ)
+import "./tokens.css";
+import "./global.css";
 import { type CSSVariablesResolver, createTheme, MantineProvider } from "@mantine/core";
 import { createRouter, type RouterHistory, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
@@ -31,12 +34,11 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// 欧文は Inter、日本語などそれ以外の文字は各環境のシステムフォントに任せる (fonts.css)。
-// 主要色は藍 (ai、6 番 = #3a5a9b。アイコン public/icon.svg などと同じ色。issue #96)。
-// Mantine 既定の青は白い文字とのコントラストが AA (4.5) に届かない (藍の 6 番は 6.7)。
-// ダークでは塗りの色を 7 番にする (既定の 8 番だと暗い背景 #242424 に沈む)
+// 色と文字の値は tokens.css にある。ここでは Mantine の部品がそれを使うように向けるだけ。
+// 藍のパレットは Mantine の部品の color="ai" 用 (塗りの 6 番 / ダークの 7 番は tokens.css の --poi-color-primary と同じ)
 const theme = createTheme({
-  fontFamily: '"Inter Variable", system-ui, sans-serif',
+  // 変数にしておくと、デモ動画の録画 (scripts/record-demo-video.mjs) が 1 か所の上書きで両方の字形を替えられる
+  fontFamily: "var(--poi-font-family)",
   colors: {
     ai: [
       "#eff3fa",
@@ -55,7 +57,7 @@ const theme = createTheme({
   primaryShade: { light: 6, dark: 7 },
   // 見出しが折り返すとき、各行の長さを揃える (最後の行が 1 文字だけになるのを防ぐ)。
   // 行数は変わらないので、板の見出しの表示と編集の高さの一致は崩れない。未対応のブラウザは通常の折り返し
-  headings: { textWrap: "balance" },
+  headings: { textWrap: "balance", fontFamily: "var(--poi-font-family)" },
   components: {
     // モーダルの見出し部分: Mantine は <header> で描画し、axe などはページの banner ランドマーク (2 つ目) と
     // みなす (ページのヘッダーと区別できない)。ランドマークにしないよう div にする
@@ -65,25 +67,19 @@ const theme = createTheme({
   },
 });
 
-// 控えめな文字 (c="dimmed") とプレースホルダーの色。Mantine 既定の dimmed は白地で 3.3 (gray 6)、
-// ダークの #242424 地で 4.0 (dark 2) と、小さな文字の AA (4.5) に届かない (placeholder はさらに薄い)。
-// パレットに 4.5 を超えつつ薄く見える段が無いので、隣り合う 2 段の中間色にする
-// (白地で 5.2 / #242424 地で 6.0 / メニューの #2e2e2e 地で 5.3。e2e/a11y.spec.ts の axe で確認)。
-// 赤の文字 (c="red"、メニューのログアウト、アカウント削除の確認の outline ボタンなど) も、ライトの既定 (red 6) は白地で 3.3 しかないので 9 番 (5.5) にする
-// (ダークの既定 red 4 は 5.9 で足りている)
+// 控えめな文字 (c="dimmed")・プレースホルダー・赤の文字 (c="red" など) は、コントラストを AA に上げた tokens.css の色にする
+// (理由は tokens.css)。Mantine 既定の dimmed は白地で 3.3、ダークの #242424 地で 4.0 しかない
 const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {},
   light: {
-    "--mantine-color-dimmed":
-      "color-mix(in srgb, var(--mantine-color-gray-6), var(--mantine-color-gray-7))",
-    "--mantine-color-placeholder": "var(--mantine-color-dimmed)",
-    "--mantine-color-red-text": "var(--mantine-color-red-9)",
-    "--mantine-color-red-outline": "var(--mantine-color-red-9)",
+    "--mantine-color-dimmed": "var(--poi-color-dimmed)",
+    "--mantine-color-placeholder": "var(--poi-color-placeholder)",
+    "--mantine-color-red-text": "var(--poi-color-danger)",
+    "--mantine-color-red-outline": "var(--poi-color-danger-outline)",
   },
   dark: {
-    "--mantine-color-dimmed":
-      "color-mix(in srgb, var(--mantine-color-dark-1), var(--mantine-color-dark-2))",
-    "--mantine-color-placeholder": "var(--mantine-color-dimmed)",
+    "--mantine-color-dimmed": "var(--poi-color-dimmed)",
+    "--mantine-color-placeholder": "var(--poi-color-placeholder)",
   },
 });
 

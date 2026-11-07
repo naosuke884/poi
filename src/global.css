@@ -1,0 +1,36 @@
+/* ページ全体の下地。色や寸法は tokens.css の変数から取る */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* フォーム部品はブラウザ既定の小さな文字ではなく、まわりの文字に揃える */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+body {
+  margin: 0;
+  font-family: var(--poi-font-family);
+  font-size: var(--poi-font-size-md);
+  line-height: var(--poi-line-height);
+  background-color: var(--poi-color-body);
+  color: var(--poi-color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * フォーカスリングはキーボード操作のときだけ出す。
+ * :where で詳細度を 0 にするのは、部品の CSS Module の指定 (tabIndex={-1} の見出しの outline: none など) を
+ * 上書きしないため
+ */
+:where(:focus-visible) {
+  outline: 2px solid var(--poi-color-primary);
+  outline-offset: 0.125rem;
+}
