@@ -1,6 +1,5 @@
 /*
- * ボタンと項目の一覧 (Menu.tsx)。大きさ・色は Mantine の Menu (shadow md, width 200) と同じにする
- * (移行で見た目を変えないため)
+ * ボタンと項目の一覧 (Menu.tsx)
  */
 
 /* 一覧の位置の基準 (ボタンの下に置く) */
@@ -70,7 +69,7 @@
   outline: none;
 }
 
-/* 開くときに薄く出す (Mantine の fade, 150ms)。動きを減らす設定では出すだけにする */
+/* 開くときに薄く出す。動きを減らす設定では出すだけにする */
 @media (prefers-reduced-motion: no-preference) {
   .dropdown {
     transition: opacity 150ms ease;
@@ -119,7 +118,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 赤の文字はコントラストを確保した --poi-color-danger にする (Mantine の red 6 は白地で 3.3 しかない) */
+/* 赤の文字はコントラストを確保した --poi-color-danger にする (明るい赤の --poi-color-danger-accent は白地で 3.3 しかない) */
 .danger {
   --item-hover: var(--menu-danger-hover);
   color: var(--poi-color-danger);

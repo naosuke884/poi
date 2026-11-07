@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -12,16 +11,6 @@ let root: Root;
 let container: HTMLDivElement;
 
 beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 beforeEach(() => {
@@ -37,11 +26,9 @@ describe("DocPage", () => {
     act(() =>
       root.render(
         <WithRouter router={createTestRouter()}>
-          <MantineProvider>
-            <DocPage title="利用規約" updatedAt="2026 年 9 月 24 日">
-              <p>本文</p>
-            </DocPage>
-          </MantineProvider>
+          <DocPage title="利用規約" updatedAt="2026 年 9 月 24 日">
+            <p>本文</p>
+          </DocPage>
         </WithRouter>,
       ),
     );

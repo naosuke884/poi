@@ -22,7 +22,7 @@
   color: var(--poi-color-warning-text);
 }
 
-/* セクションの区切り線 (全幅の薄い線。Mantine の Divider と同じ色)。
+/* セクションの区切り線 (全幅の薄い線)。
    背景ではなく枠線で描く: Windows のハイコントラスト (forced colors) では背景が Canvas に塗られて
    見えなくなるが、枠線はシステムの文字色で残る (issue #130) */
 .track {

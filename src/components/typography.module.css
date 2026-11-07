@@ -1,6 +1,6 @@
 /*
  * 見出しと文字の大きさ、控えめな文字、リンクの共通クラス。部品の CSS Module から composes で使うか、
- * className に直接付ける。値は Mantine の Title / Text / Anchor と同じ (移行で見た目を変えないため)
+ * className に直接付ける
  */
 
 /* 見出し。margin を消すのは、間隔を並べる側 (gap) で決めるため */

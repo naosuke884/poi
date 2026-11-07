@@ -9,7 +9,7 @@
       "files": [],
       "assertions": [
         "The button is inserted from the board side via HeaderSlot (AppHeader / __root header is not modified to know about the board)",
-        "The icon uses the existing Svg/Tabler-path approach; no new icon package or @mantine/notifications is added",
+        "The icon uses the existing Svg/Tabler-path approach; no new icon or toast/notification package is added",
         "Has a Japanese aria-label and Japanese tooltip text",
         "Success/failure feedback follows the SectionActions pattern (icon/tooltip change + live region), not a new toast system",
         "Uses onMouseDown={keepEditorFocus} (or equivalent reuse) so clicking does not blur the editor",
@@ -25,7 +25,7 @@
       "files": [],
       "assertions": [
         "The deletion can be undone via a 元に戻す action (BottomLeftNotice / useUndoableDelete)",
-        "The destructive control is red (color=\"red\")",
+        "The destructive control is red (the user menu item's `danger`, or `variant=\"outline-danger\"` / a red `IconButton`), not a hard-coded colour",
         "A past-tense Japanese result message (〜しました) is shown after deleting",
         "The action is disabled or guarded while offline",
         "No new dependencies are added to package.json",
@@ -41,7 +41,7 @@
       "files": [],
       "assertions": [
         "Reuses CONTACT_URL or ContactLink from src/components/ContactLink.tsx instead of hard-coding an address",
-        "Matches the existing footer items (Anchor size=\"xs\", the ・ separator)",
+        "Adds the link to SiteFooter (src/components/SiteFooter.tsx) in the row it belongs to, styled like the existing footer links (small, muted, spacing gaps rather than a ・ separator)",
         "The link label is Japanese (お問い合わせ)",
         "No hard-coded hex colours and no new dependencies",
         "npm run lint and npm run typecheck pass"

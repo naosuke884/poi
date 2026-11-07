@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { DAY_MS } from "@shared/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -11,16 +10,6 @@ let container: HTMLDivElement;
 let root: Root;
 
 beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
@@ -36,13 +25,7 @@ afterEach(() => {
 });
 
 const render = (props: Parameters<typeof LifeLine>[0]) =>
-  act(() =>
-    root.render(
-      <MantineProvider>
-        <LifeLine {...props} />
-      </MantineProvider>,
-    ),
-  );
+  act(() => root.render(<LifeLine {...props} />));
 
 describe("LifeLine", () => {
   const now = Date.parse("2026-09-28T00:00:00Z");

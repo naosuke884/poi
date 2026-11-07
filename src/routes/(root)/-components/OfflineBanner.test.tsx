@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -15,16 +14,6 @@ let container: HTMLDivElement;
 let onLine = true;
 
 beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => onLine });
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
@@ -39,9 +28,7 @@ beforeEach(async () => {
   await act(async () =>
     root.render(
       <WithRouter router={router}>
-        <MantineProvider>
-          <OfflineBanner />
-        </MantineProvider>
+        <OfflineBanner />
       </WithRouter>,
     ),
   );

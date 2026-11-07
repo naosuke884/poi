@@ -1,6 +1,5 @@
 /*
- * 中央に出すモーダル (Modal.tsx)。大きさ・余白・影・角は Mantine の Modal (size md, centered) と同じにする
- * (移行で見た目を変えないため)
+ * 中央に出すモーダル (Modal.tsx)
  */
 .dialog {
   --modal-close-color: var(--poi-color-close);
@@ -10,7 +9,7 @@
   /* <dialog> の既定 (枠線・内側の余白・Canvas の色) を消す */
   box-sizing: border-box;
   width: 27.5rem;
-  /* 画面の端との間を上下 5dvh・左右 5vw 空ける (Mantine の Modal の inner の余白) */
+  /* 画面の端との間を上下 5dvh・左右 5vw 空ける */
   max-width: 90vw;
   max-height: 90dvh;
   margin: auto;
@@ -28,14 +27,14 @@
 }
 
 /*
- * 背景を暗くする。配色に関わらず同じ黒の 60% (Mantine の Overlay と同じ)。
+ * 背景を暗くする。配色に関わらず同じ黒の 60%。
  * ::backdrop は要素の変数を受け継がないブラウザ (Safari 17 まで) があるので、変数にせず直に書く
  */
 .dialog::backdrop {
   background: rgb(0 0 0 / 0.6);
 }
 
-/* 開くときに上から降りてくる (Mantine の fade-down)。動きを減らす設定では出すだけにする */
+/* 開くときに上から降りてくる。動きを減らす設定では出すだけにする */
 @media (prefers-reduced-motion: no-preference) {
   .dialog {
     transition:
@@ -71,7 +70,7 @@
   background: var(--poi-color-bg);
 }
 
-/* 見出しは本文と同じ大きさ・太さで控えめに (Mantine の Modal の title) */
+/* 見出しは本文と同じ大きさ・太さで控えめに */
 .title {
   margin: 0;
   font-size: var(--poi-font-size-md);
@@ -113,7 +112,7 @@
   }
 }
 
-/* 押した感触 (1px 沈む。Mantine の mantine-active) */
+/* 押した感触 (1px 沈む) */
 .close:active {
   transform: translateY(1px);
 }

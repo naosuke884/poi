@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -47,9 +46,7 @@ function renderWithUserAgent(userAgent: string) {
   act(() =>
     root.render(
       <WithRouter router={createTestRouter()}>
-        <MantineProvider>
-          <LoginCta />
-        </MantineProvider>
+        <LoginCta />
       </WithRouter>,
     ),
   );

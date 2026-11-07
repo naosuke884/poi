@@ -7,16 +7,4 @@ try {
   if (location.pathname === "/" && localStorage.getItem("poi:session:v1")) {
     location.replace("/board" + location.search);
   }
-  // Mantine の配色 (data-mantine-color-scheme) を <html> へ付ける。JS が動くまでの間もダーク配色の人にはダークで見せる。
-  // 中身は Mantine の ColorSchemeScript と同じ (defaultColorScheme="auto")
-  var stored = localStorage.getItem("mantine-color-scheme-value");
-  var scheme = stored === "light" || stored === "dark" ? stored : "auto";
-  document.documentElement.setAttribute(
-    "data-mantine-color-scheme",
-    scheme !== "auto"
-      ? scheme
-      : matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light",
-  );
 } catch (e) {}

@@ -18,7 +18,7 @@ Test titles and comments are in Japanese. A title states the behaviour the test 
 The project follows the classical (Detroit) school of unit testing. Everything below follows from three rules.
 
 1. **A test checks a unit of behaviour, not a unit of code.** One behaviour may run through several modules, hooks and components. The *tests* are isolated from each other (no shared state, any order). The *code under test* is not isolated from its collaborators.
-2. **In-process collaborators are real.** Our own modules, React components (children included), TanStack Router, localStorage, CodeMirror, Mantine all run for real. Replace only dependencies that live **outside the process**:
+2. **In-process collaborators are real.** Our own modules, React components (children included), TanStack Router, localStorage, CodeMirror, the shared UI pieces in `src/components` all run for real. Replace only dependencies that live **outside the process**:
    - From the frontend: the Worker API (`@/lib/api`) and the Better Auth client (`@/lib/auth-client`), which talk HTTP. Replace them with a **stateful fake server** (below).
    - From the worker: D1 is out of process, but only this app uses it, so it is not faked. Each test gets its own fresh local D1 (below). Mocking it would hide production limits: `18eac46` (#76) fixed saves failing on D1's 100-bound-parameter limit, which only a real D1 shows.
 3. **Assert outcomes, not calls.** Check return values, state (D1 rows, the fake server's data, localStorage, `router.state.location`), and what is on screen. Don't check that a collaborator was called with certain arguments.
@@ -103,8 +103,9 @@ expect(loads).toBe(1);                            // data reloaded (router.inval
 
 - Put `// @vitest-environment jsdom` on **line 1**. Without it the file runs in node and `document` / `localStorage` are undefined.
 - Render with `createRoot` + `act` from `react`, and set `globalThis.IS_REACT_ACT_ENVIRONMENT = true` in `beforeAll`. To test a hook, render a tiny `Probe` component that stores the hook's return value in a module variable (`use-account-actions.test.tsx`).
-- Components using Mantine need `<MantineProvider>`. Board also needs `HeaderSlotProvider` + `HeaderSlotTarget`, because its add button lives in the header slot.
-- jsdom lacks layout. Copy Board.test's `beforeAll` stubs when mounting anything with CodeMirror or Mantine. Scroll position and visual-line behaviour cannot be tested in jsdom: check them in the running app (`verifying-in-app` skill).
+- Components render as they are, with no provider. Board needs `HeaderSlotProvider` + `HeaderSlotTarget`, because its add button lives in the header slot.
+- jsdom lacks layout. Copy Board.test's `beforeAll` stubs when mounting anything with CodeMirror. `useMediaQuery` (`@/lib/use-media-query`) falls back to its `serverValue` when `window.matchMedia` is missing; stub `matchMedia` only to test a media-query branch (UserMenu.test). Scroll position and visual-line behaviour cannot be tested in jsdom: check them in the running app (`verifying-in-app` skill).
+- jsdom has no `<dialog>` `showModal()` / `close()`. Call `installDialogPolyfill()` from `src/routes/(root)/-components/dialog-test.ts` in `beforeAll` when a test opens a `Modal` (directly or from the user menu, as UserMenu.test does).
 - Drive CodeMirror through its API, not synthetic typing. Find the view with `EditorView.findFromDOM(container.querySelector(".cm-editor"))`, then `view.dispatch({ changes, selection, userEvent: "input.type" })`, or dispatch a `KeyboardEvent("keydown")` on `view.contentDOM` for keymap commands. For editor commands alone, create a bare `EditorView` with a `|` cursor marker and destroy it in `afterEach` (`list-editing.test.ts`).
 - Timers are real in component tests. Board.test waits for autosave (`AUTOSAVE_DELAY_MS = 1000` in `use-board-autosave.ts`) with `waitForSave()`, which is `act` + a 1100 ms `setTimeout`. If you change the delay, change that helper.
 - Reset shared state in `beforeEach`: `localStorage.clear()`, the fake server. Unmount in `afterEach`. If a test unmounts itself, create a fresh root for `afterEach` (see "自動保存を待たずに離れても").

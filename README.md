@@ -24,7 +24,7 @@ https://github.com/user-attachments/assets/112d54a4-7a03-4376-b308-2a611e87d861
 | API       | [Hono](https://hono.dev/) with typed RPC client, [Zod](https://zod.dev/) validation |
 | Auth      | [Better Auth](https://www.better-auth.com/) (Google OAuth)                  |
 | DB        | [Drizzle ORM](https://orm.drizzle.team/) + drizzle-kit migrations           |
-| Frontend  | React 19, [TanStack Router](https://tanstack.com/router), [Mantine](https://mantine.dev/), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
+| Frontend  | React 19, [TanStack Router](https://tanstack.com/router), plain CSS Modules with design tokens (CSS custom properties), [react-markdown](https://github.com/remarkjs/react-markdown), [CodeMirror 6](https://codemirror.net/) (editor) |
 | Build     | [Vite+](https://viteplus.dev/) + `@cloudflare/vite-plugin` + `vite-plugin-pwa` |
 | Test      | [Vitest](https://vitest.dev/) via Vite+ (+ jsdom)                           |
 | Lint      | [Oxlint](https://oxc.rs/) + Oxfmt via `vp check`                            |

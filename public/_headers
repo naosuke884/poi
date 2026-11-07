@@ -1,7 +1,7 @@
 # 静的アセット (index.html・JS・画像など) に付けるセキュリティ関連のヘッダー (Cloudflare Workers の静的アセット配信が読む)。
 # /api/* は Worker が返すのでここは効かない。そちらは worker/index.ts の secureHeaders で付ける。
 # CSP は強制 (違反した読み込みや実行はブラウザが止める。HAY-36)。インラインスクリプト・eval・
-# 外部スクリプトを足すとここで止まる。style-src は Mantine がインライン style を入れるので指定しない。
+# 外部スクリプトを足すとここで止まる。style-src はまだ指定しない (プリレンダーの HTML に style 属性が残っている。HAY-171 で足す)。
 # default-src も指定しない: Google のアバター画像や「画像にする」の data: / blob: を個別に許すことになり、漏れると壊れる。
 # base-uri は 'none' にしない: 「画像にする」(modern-screenshot) が CSS 内の相対 URL (フォント) を解決するのに
 # 作業用ドキュメントへ同じオリジンの <base> を入れる。

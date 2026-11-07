@@ -27,7 +27,7 @@ type ModalProps = {
  * ブラウザに任せる。開いたときのフォーカスは [data-autofocus] の要素、無ければブラウザの既定 (最初の操作できる要素)。
  * 閉じるとフォーカスは開いたときの要素 (メニューのボタンなど) に戻る (これもブラウザが行う)。
  *
- * 閉じている間は何も描かない (中身の状態を開くたびに作り直す。Mantine の Modal と同じ)
+ * 閉じている間は何も描かない (中身の状態を開くたびに作り直す)
  */
 export function Modal(props: ModalProps) {
   // Android の戻る操作でもモーダルだけを閉じる。<dialog> 自体も Chromium では戻る操作で閉じるが、
@@ -124,7 +124,7 @@ function OpenModal({ onClose, title, "aria-label": ariaLabel, children }: ModalP
 }
 
 /**
- * 開いている間は後ろのページをスクロールさせない (Mantine の Modal と同じ)。<dialog> は背後を操作できなくするだけで、
+ * 開いている間は後ろのページをスクロールさせない。<dialog> は背後を操作できなくするだけで、
  * ホイールやタッチのスクロールは後ろのページに届く。
  * スクロールバーがあったときだけその幅を残す (消すと本文が横にずれる)。CSS の scrollbar-gutter: stable を常に付けないのは、
  * スクロールバーの無い短いページでも幅を空けてしまい、開くたびに本文がずれるため

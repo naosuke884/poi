@@ -16,8 +16,8 @@
   overflow: visible;
 }
 
-/* 16px 以上なら iOS でフォーカス時に拡大されない (Textarea size="md" と同じ)。
-   caret-color の既定は light / dark の facet 依存 (Mantine のカラースキームを知らない) ので文字色に合わせる */
+/* 16px 以上なら iOS でフォーカス時に拡大されない。
+   caret-color の既定は CodeMirror の light / dark の facet 依存 (アプリの配色を知らない) ので文字色に合わせる */
 .root :global(.cm-editor .cm-content) {
   font-size: var(--poi-font-size-md);
   padding: 0;

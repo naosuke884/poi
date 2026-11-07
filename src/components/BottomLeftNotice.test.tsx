@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -9,16 +8,6 @@ import { BottomLeftNotice } from "./BottomLeftNotice";
 let root: Root;
 
 beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
@@ -31,8 +20,7 @@ afterEach(() => {
 });
 
 // Affix は body へのポータルに描かれる
-const render = (node: ReactNode) =>
-  act(async () => root.render(<MantineProvider>{node}</MantineProvider>));
+const render = (node: ReactNode) => act(async () => root.render(node));
 
 const closeLabels = () =>
   [...document.querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));

@@ -48,7 +48,7 @@
     "should_trigger": false
   },
   {
-    "query": "Mantine 9 から 10 にアップグレードしたい。breaking changes 調べて",
+    "query": "CodeMirror 6 の最新版にアップグレードしたい。breaking changes 調べて",
     "should_trigger": false
   },
   {

@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeAll, expect, it, vi } from "vite-plus/test";
@@ -25,13 +24,7 @@ it("デモ動画には muted の属性が付く (iOS の Safari は属性が無�
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   const container = document.createElement("div");
   const root = createRoot(container);
-  act(() =>
-    root.render(
-      <MantineProvider>
-        <DemoVideo />
-      </MantineProvider>,
-    ),
-  );
+  act(() => root.render(<DemoVideo />));
   expect(container.querySelector("video")?.hasAttribute("muted")).toBe(true);
   act(() => root.unmount());
 });

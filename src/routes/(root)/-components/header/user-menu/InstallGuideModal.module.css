@@ -1,4 +1,4 @@
-/* 手順の番号付きリスト (Mantine の List type="ordered" size="sm" spacing="xs" と同じ) */
+/* 手順の番号付きリスト */
 .steps {
   margin: 0;
   /* 番号の幅。番号は外側に出す */

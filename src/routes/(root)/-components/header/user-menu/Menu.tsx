@@ -14,7 +14,7 @@ import {
 
 import classes from "./Menu.module.css";
 
-/** 画面の端からこれだけ離して出す (Mantine の Menu と同じ 5px) */
+/** 画面の端からこれだけ離して出す */
 const VIEWPORT_PADDING = 5;
 
 const ITEM_SELECTOR = "[data-menu-item]:not(:disabled)";
@@ -26,10 +26,10 @@ type MenuContextValue = {
 const MenuContext = createContext<MenuContextValue | null>(null);
 
 /**
- * ボタンと、その下に開く項目の一覧 (role="menu")。操作は Mantine の Menu と同じにする:
+ * ボタンと、その下に開く項目の一覧 (role="menu")。操作はメニューボタンの作法 (WAI-ARIA APG) に従う:
  * ↑↓ で項目を移り (端で反対側へ回る。使えない項目は飛ばす)、Home / End で最初 / 最後、
  * Esc で閉じてボタンへ戻る。Tab では閉じて、ボタンから次 (Shift+Tab なら前) の要素へ進む
- * (Mantine はフォーカスを閉じ込めて Tab では何もしなかったが、メニューボタンの作法 (WAI-ARIA APG) は閉じて進む)。
+ * (フォーカスを閉じ込めて Tab では何もしない形にしないのは、APG のメニューボタンは閉じて進むため)。
  * 外側を押しても閉じる。
  *
  * body 直下ではなくボタンの隣に描くので、ヘッダー (banner ランドマーク) の中に入る。

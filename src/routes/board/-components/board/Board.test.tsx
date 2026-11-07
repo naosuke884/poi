@@ -2,7 +2,6 @@
 
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { MantineProvider } from "@mantine/core";
 import { BOARD_MAX_LENGTH } from "@shared/constants";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -110,11 +109,6 @@ beforeAll(() => {
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as typeof window.matchMedia;
-  window.ResizeObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
   Element.prototype.scrollIntoView ??= () => {};
   // CodeMirror の計測 (coordsAtPos) が使う。レイアウトが無いので空の矩形を返す
   Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
@@ -168,12 +162,10 @@ async function render(ttlDays: number) {
   await act(async () => {
     root.render(
       <WithRouter router={router}>
-        <MantineProvider>
-          <HeaderSlotProvider>
-            <HeaderSlotTarget />
-            <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
-          </HeaderSlotProvider>
-        </MantineProvider>
+        <HeaderSlotProvider>
+          <HeaderSlotTarget />
+          <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
+        </HeaderSlotProvider>
       </WithRouter>,
     );
   });

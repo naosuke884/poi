@@ -34,3 +34,14 @@ body {
   outline: 2px solid var(--poi-color-primary);
   outline-offset: 0.125rem;
 }
+
+/*
+ * 小さな画面の端末を横向きにしたとき、ブラウザが文字を勝手に大きくしないようにする (iOS の Safari)。
+ * 幅のある画面では効かせない: 拡大の設定を使っている人の文字まで止めてしまうため
+ */
+@media screen and (max-device-width: 31.25em) {
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}

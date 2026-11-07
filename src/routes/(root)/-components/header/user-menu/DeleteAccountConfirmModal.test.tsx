@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -13,16 +12,6 @@ const onClose = vi.fn();
 const onConfirm = vi.fn();
 
 beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
   installDialogPolyfill();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
@@ -33,11 +22,7 @@ beforeEach(async () => {
   document.body.appendChild(container);
   root = createRoot(container);
   await act(async () =>
-    root.render(
-      <MantineProvider>
-        <DeleteAccountConfirmModal opened onClose={onClose} onConfirm={onConfirm} />
-      </MantineProvider>,
-    ),
+    root.render(<DeleteAccountConfirmModal opened onClose={onClose} onConfirm={onConfirm} />),
   );
 });
 

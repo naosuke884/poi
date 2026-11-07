@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -54,11 +53,6 @@ beforeAll(() => {
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as typeof window.matchMedia;
-  window.ResizeObserver ??= class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
   Element.prototype.scrollIntoView ??= () => {};
   Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
   Range.prototype.getBoundingClientRect ??= () => new DOMRect();
@@ -105,14 +99,12 @@ const render = (offline: boolean) => {
   };
   return act(async () =>
     root.render(
-      <MantineProvider>
-        <WithRouter router={router}>
-          <HeaderSlotProvider>
-            <HeaderSlotTarget />
-            <BoardView data={data} />
-          </HeaderSlotProvider>
-        </WithRouter>
-      </MantineProvider>,
+      <WithRouter router={router}>
+        <HeaderSlotProvider>
+          <HeaderSlotTarget />
+          <BoardView data={data} />
+        </HeaderSlotProvider>
+      </WithRouter>,
     ),
   );
 };

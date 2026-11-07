@@ -1,4 +1,4 @@
-/* 保存期間の選択肢 (Mantine の Radio.Group と Radio の size sm と同じ大きさ・色) */
+/* 保存期間の選択肢 */
 
 .skeleton {
   height: 3.75rem;
@@ -63,7 +63,7 @@
   cursor: not-allowed;
 }
 
-/* 選ばれたときだけ出る中の白い点。下から少し持ち上がって大きくなる (Mantine と同じ) */
+/* 選ばれたときだけ出る中の白い点。下から少し持ち上がって大きくなる */
 .dot {
   position: absolute;
   top: 50%;

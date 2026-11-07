@@ -41,7 +41,8 @@ export default defineConfig({
       "react/set-state-in-effect": "off",
       // CodeMirror のコマンドや vi.fn() は this を使わない関数なので、メソッドを外して渡しても壊れない
       "typescript/unbound-method": "off",
-      // role="status" は Mantine の部品に付けている。<output> にするとフォームに属する要素になり意味が変わる
+      // ライブリージョンは <span role="status"> などで作る。<output> にするとフォームに属する要素になり意味が変わる。
+      // まとめの区切りは中に見出しの文字を持つので <hr> にできない (中身を持てない)
       "jsx-a11y/prefer-tag-over-role": "off",
       "no-restricted-imports": [
         "error",

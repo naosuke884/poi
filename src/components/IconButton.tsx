@@ -92,7 +92,7 @@ export function CloseButton({
   );
 }
 
-// Mantine の CloseIcon (MIT) と同じ形。Tabler の x にしないのは、線の太さと端の形が変わって見た目が変わるため
+// 形は Mantine の CloseIcon (MIT) から写したもの。Tabler の x にしないのは、線の太さと端の形が変わって閉じるボタンの見た目が変わるため
 function CloseIcon() {
   return (
     <svg

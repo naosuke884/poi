@@ -46,7 +46,7 @@
 
   /*
    * 主要色は藍 (6 番 = #3a5a9b。アイコン public/icon.svg などと同じ色。issue #96)。
-   * Mantine 既定の青は白い文字とのコントラストが AA (4.5) に届かない (藍の 6 番は 6.7)
+   * よくある明るい青 (#228be6 など) は白い文字とのコントラストが AA (4.5) に届かない (藍の 6 番は 6.7)
    */
   --poi-color-primary: #3a5a9b;
   /* 藍の薄い面 (控えめなボタンや箇条書きの帯) */
@@ -98,7 +98,7 @@
   --poi-color-list-4: #fd7e14;
   --poi-color-list-4-band: #ffe8cc;
 
-  /* 部品の色。値は Mantine の部品と同じ (移行で見た目を変えないため) */
+  /* 部品の色 */
   --poi-color-on-primary: #fff;
   --poi-color-success: #12b886;
   --poi-color-icon: #212529;
@@ -143,7 +143,7 @@
     /* #b8b8b8 と #828282 の中間色。#828282 だけだと #242424 地で 4.0 で AA に届かない (中間色は 6.0、メニューの #2e2e2e 地で 5.3) */
     --poi-color-text-muted: color-mix(in srgb, #b8b8b8, #828282);
 
-    /* 塗りの色は 7 番にする (Mantine 既定の 8 番だと暗い背景 #242424 に沈む)。橙・緑・紫も同じ段 */
+    /* 塗りの色は 7 番にする (8 番だと暗い背景 #242424 に沈む)。橙・緑・紫も同じ段 */
     --poi-color-primary: #314b82;
     --poi-color-primary-subtle: #10192b;
     --poi-color-primary-strong: #eff3fa;

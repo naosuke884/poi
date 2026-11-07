@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -69,9 +68,7 @@ async function renderMenu() {
   await run(async () =>
     root.render(
       <WithRouter router={router}>
-        <MantineProvider env="test">
-          <UserMenu />
-        </MantineProvider>
+        <UserMenu />
       </WithRouter>,
     ),
   );
@@ -250,7 +247,6 @@ describe("ホーム画面に追加 (HAY-125)", () => {
     vi.resetModules();
     const react = await import("react");
     const { createRoot: createFreshRoot } = await import("react-dom/client");
-    const { MantineProvider: FreshProvider } = await import("@mantine/core");
     const { createTestRouter: createFreshRouter, WithRouter: FreshRouter } =
       await import("@/lib/router-test");
     const { UserMenu: FreshMenu } = await import("./UserMenu");
@@ -263,9 +259,7 @@ describe("ホーム画面に追加 (HAY-125)", () => {
     await run(async () =>
       root.render(
         <FreshRouter router={router}>
-          <FreshProvider env="test">
-            <FreshMenu />
-          </FreshProvider>
+          <FreshMenu />
         </FreshRouter>,
       ),
     );

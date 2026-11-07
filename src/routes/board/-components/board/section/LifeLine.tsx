@@ -61,7 +61,7 @@ export function LifeLine({
   );
 }
 
-/** 全幅の薄い線 (Mantine の Divider と同じ色)。子に残りの期間の濃い線を重ねる */
+/** 全幅の薄い線。子に残りの期間の濃い線を重ねる */
 function Track({ children }: { children?: ReactNode }) {
   return (
     <div aria-hidden className={classes.track}>

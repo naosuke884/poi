@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { MantineProvider } from "@mantine/core";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -52,16 +51,6 @@ const onClose = vi.fn();
 const onSaved = vi.fn();
 
 beforeAll(() => {
-  window.matchMedia ??= ((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  })) as typeof window.matchMedia;
   installDialogPolyfill();
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
@@ -78,11 +67,7 @@ beforeEach(async () => {
 
 async function open() {
   await act(async () =>
-    root.render(
-      <MantineProvider>
-        <TtlSettingModal opened onClose={onClose} onSaved={onSaved} />
-      </MantineProvider>,
-    ),
+    root.render(<TtlSettingModal opened onClose={onClose} onSaved={onSaved} />),
   );
 }
 

@@ -1,4 +1,4 @@
-/* ユーザーメニューから開くモーダルの中身の並び (Mantine の Stack gap="md" / Group gap="sm" / Text size="sm" と同じ値) */
+/* ユーザーメニューから開くモーダルの中身の並び */
 
 .stack {
   display: flex;
