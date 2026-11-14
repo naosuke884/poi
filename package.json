@@ -31,7 +31,7 @@
     "test:e2e": "e2e run"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.7.16",
+    "@better-auth/drizzle-adapter": "^1.7.18",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/language": "^6.13.1",
     "@codemirror/state": "^6.7.6",
@@ -40,7 +40,7 @@
     "@hono/zod-validator": "^0.9.1",
     "@lezer/markdown": "^1.8.0",
     "@tanstack/react-router": "^1.170.45",
-    "better-auth": "^1.7.16",
+    "better-auth": "^1.7.18",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.18",
     "modern-screenshot": "^4.7.0",
