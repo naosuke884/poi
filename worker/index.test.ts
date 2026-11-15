@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { inspect } from "node:util";
 
 import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS, SECTION_SEPARATOR } from "@shared/constants";
 import {
@@ -23,6 +24,8 @@ const ORIGIN = "http://localhost";
 /** テスト用の静的アセットが、ビルド時に描いた HTML の #root に入れる目印 */
 const prerenderedMarker = (assetPath: string) => `<h1>${assetPath}</h1>`;
 const USER_ID = "u1";
+/** ログに出てはいけないメモの本文 */
+const SECRET = "人に見られたくないメモ";
 
 /** Workers Rate Limiting の binding の代わり。key ごとに数え、limit 回を超えたら断る */
 function fakeRateLimiter(limit = Number.POSITIVE_INFINITY) {
@@ -445,6 +448,42 @@ describe.concurrent("想定外のエラー", () => {
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Internal Server Error" });
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("保存が DB のエラーで失敗しても、ログにメモの本文を出さない (HAY-223)", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    const cookie = await signIn();
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      logged.push(inspect(args, { depth: null }));
+    });
+    try {
+      // メモの行を作れない D1 (読み込みは通り、本文をバインドした書き込みだけが SQL エラーになる)
+      await env.DB.prepare(
+        "create trigger refuse_memo before insert on memo begin select raise(abort, 'refused'); end",
+      ).run();
+      const res = await request("/api/board", {
+        method: "PUT",
+        body: JSON.stringify({
+          userId: USER_ID,
+          revision: null,
+          sections: [{ id: randomUUID(), createdAt: new Date().toISOString(), content: SECRET }],
+        }),
+        headers: { Cookie: cookie },
+      });
+      expect(res.status).toBe(500);
+    } finally {
+      spy.mockRestore();
+    }
+    const boardLogs = logged.filter((line) => line.includes("PUT /api/board"));
+    expect(boardLogs).toHaveLength(1);
+    // 本文は db.batch でしかバインドしない。drizzle は batch 以外の失敗を、バインドした値入りのメッセージ
+    // (DrizzleQueryError) にして投げるので、本文を batch の外でバインドするとここで落ちる
+    expect(boardLogs[0]).toContain("refused");
+    expect(boardLogs[0]).not.toContain(SECRET);
   });
 });
 
