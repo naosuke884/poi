@@ -11,25 +11,10 @@
   /* 折り返すとき各行の長さを揃える (最後の行が 1 文字だけになるのを防ぐ)。行数は変わらない */
   text-wrap: balance;
 }
-.h1 {
-  composes: title;
-  font-size: 2.125rem;
-  line-height: 1.3;
-}
-.h2 {
-  composes: title;
-  font-size: 1.625rem;
-  line-height: 1.35;
-}
 .h3 {
   composes: title;
   font-size: 1.375rem;
   line-height: 1.4;
-}
-.h4 {
-  composes: title;
-  font-size: 1.125rem;
-  line-height: 1.45;
 }
 
 /* 文字の大きさと、それに合う行の高さ */
