@@ -1,7 +1,7 @@
 import { SUB_PAGES } from "@shared/site";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { ContactLink } from "@/components/ContactLink";
+import { ContactLink, OPERATOR_NAME } from "@/components/ContactLink";
 
 import { DocPage } from "./-components/DocPage";
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/(docs)/terms")({
 
 function Terms() {
   return (
-    <DocPage title={SUB_PAGES["/terms"].name} updatedAt="2026 年 10 月 22 日">
+    <DocPage title={SUB_PAGES["/terms"].name} updatedAt="2026 年 11 月 15 日">
       <p>
         この利用規約 (以下「本規約」) は、poi (以下「本サービス」) の利用条件を定めるものです。
         利用者は、本規約に同意したうえで本サービスを利用するものとします。
@@ -124,7 +124,7 @@ function Terms() {
 
       <h2>問い合わせ先</h2>
       <p>
-        本サービスは Hayashi Naoki (個人)
+        本サービスは {OPERATOR_NAME} (個人)
         が運営しています。本規約に関する問い合わせは、次のメールアドレスで受け付けています。
       </p>
       <p>

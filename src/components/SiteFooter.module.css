@@ -38,3 +38,17 @@
   composes: muted xs from "./typography.module.css";
   margin: 0;
 }
+
+/* 運営者と問い合わせ先の行。address のブラウザ既定は斜体なので、他の行と同じ立体にする */
+.contact {
+  composes: row;
+  font-style: normal;
+}
+
+/* ラベルと値 (運営者とその名前、問い合わせ先とメール) を一つの塊にする。
+   折り返すとメールアドレスだけが次の行に残り、何のアドレスか分からなくなる */
+.meta {
+  composes: muted xs from "./typography.module.css";
+  margin: 0;
+  white-space: nowrap;
+}
