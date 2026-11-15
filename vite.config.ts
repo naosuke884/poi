@@ -115,8 +115,13 @@ export default defineConfig({
         // 板から開く。この変更前にホーム画面に追加した人は / から開くが、ランディングが板へ転送する (issue #156)
         start_url: "/board",
         scope: "/",
-        // index.html の theme-color (light) と同じくページ背景 (白) に合わせる
-        theme_color: "#ffffff",
+        // theme_color は出さない (undefined で VitePWA の既定値 #42b883 を消す。ビルド時に「インストールできない」と
+        // 警告が出るが、Chrome のインストール条件に theme_color は無い)。Android の Chrome はホーム画面のアプリの
+        // 下端のナビゲーションバーをマニフェストの theme_color で塗り、マニフェストにはダーク用の色を書けないので、
+        // 白を書くとダークモードで下端だけ白くなる。書かなければ OS の配色に従う。上のバーの色は index.html の
+        // <meta name="theme-color"> が配色ごとに決める
+        theme_color: undefined,
+        // 起動時のスプラッシュの色。ページ背景 (light の白) に合わせる
         background_color: "#ffffff",
         icons: [
           { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },

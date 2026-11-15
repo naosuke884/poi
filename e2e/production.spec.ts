@@ -44,6 +44,16 @@ for (const path of ["/guide", "/faq", "/terms", "/privacy", "/no-such-page"]) {
   });
 }
 
+// Android の Chrome はホーム画面のアプリの下端のナビゲーションバーをマニフェストの theme_color で塗る。
+// マニフェストにはダーク用の色を書けないので、色を書くとダークモードでもその色のままになる (vite.config.ts)
+test("マニフェストは theme_color を持たない (Android のナビゲーションバーを OS の配色に任せる)", async ({
+  request,
+}) => {
+  const manifest = await (await request.get("/manifest.webmanifest")).json();
+  expect(manifest.name).toBe("poi");
+  expect(manifest).not.toHaveProperty("theme_color");
+});
+
 test.describe("ログイン済み", () => {
   test.use({ storageState: PERSISTENCE_STORAGE_STATE });
 

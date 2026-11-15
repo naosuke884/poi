@@ -47,7 +47,7 @@
       }
     </script>
     <!-- PWA: ブラウザ UI の色はページ背景 (src/tokens.css の --poi-color-bg: light #ffffff / dark #242424) に合わせる。
-         manifest.webmanifest の theme_color (vite.config.ts) は light と同じ値にしておく -->
+         manifest.webmanifest には theme_color を書かない (理由は vite.config.ts) -->
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#242424" media="(prefers-color-scheme: dark)" />
     <!-- フォームの部品やスクロールバーを OS の配色に合わせる。ページの背景は src/global.css (CSS は描画の前に読み込む) -->
