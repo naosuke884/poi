@@ -12,7 +12,7 @@ export const Route = createFileRoute("/(docs)/terms")({
 
 function Terms() {
   return (
-    <DocPage title={SUB_PAGES["/terms"].name} updatedAt="2026 年 11 月 15 日">
+    <DocPage title={SUB_PAGES["/terms"].name} updatedAt="2026 年 11 月 17 日">
       <p>
         この利用規約 (以下「本規約」) は、poi (以下「本サービス」) の利用条件を定めるものです。
         利用者は、本規約に同意したうえで本サービスを利用するものとします。
@@ -104,7 +104,9 @@ function Terms() {
       <h2>第 9 条 (知的財産権)</h2>
       <p>
         利用者が本サービスに書き込んだ内容の権利は利用者に帰属します。運営者は、本サービスを提供するために必要な範囲
-        (保存、同期、表示) でのみ、その内容を取り扱います。
+        (保存、同期、表示、障害の調査、不正な利用への対応)
+        でのみ、その内容を取り扱います。運営者がその内容を閲覧する場合については、
+        <Link to="/privacy">プライバシーポリシー</Link>に定めます。
       </p>
 
       <h2>第 10 条 (規約の変更)</h2>

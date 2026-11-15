@@ -97,9 +97,10 @@ function LoginButton() {
           {error}
         </p>
       )}
-      {/* 押す前の「お金はかかる？」「人に見られない？」に答える (どちらも FAQ と同じ事実) */}
+      {/* 押す前の「お金はかかる？」「人に見られない？」に答える (どちらも FAQ と同じ事実)。
+          「読めるのは本人だけ」とは書かない: 本文は運営者に読めない形では暗号化しておらず、言い過ぎになる (HAY-223) */}
       <p className={`${typography.sm} ${classes.text} ${classes.lead}`}>
-        無料で使えます。書いたメモを読めるのは、ログインした本人だけです。
+        無料で使えます。書いたメモは、他の利用者からは見えません。
       </p>
       <p className={`${typography.xs} ${typography.muted} ${classes.text}`}>
         ログインすると、
