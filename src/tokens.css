@@ -135,7 +135,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* 背景は index.html の theme-color と最初のフレームの <style> (#242424) に揃える */
+    /* 背景は index.html の theme-color (#242424) に揃える */
     --poi-color-bg: #242424;
     --poi-color-text: #c9c9c9;
     --poi-color-text-strong: #fff;
