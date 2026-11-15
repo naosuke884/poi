@@ -1,7 +1,7 @@
 import { SUB_PAGES } from "@shared/site";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { ContactLink } from "@/components/ContactLink";
+import { ContactLink, OPERATOR_NAME } from "@/components/ContactLink";
 
 import { DocPage } from "./-components/DocPage";
 
@@ -126,7 +126,7 @@ function Terms() {
 
       <h2>問い合わせ先</h2>
       <p>
-        本サービスは Hayashi Naoki (個人)
+        本サービスは {OPERATOR_NAME} (個人)
         が運営しています。本規約に関する問い合わせは、次のメールアドレスで受け付けています。
       </p>
       <p>

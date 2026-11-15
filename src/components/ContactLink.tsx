@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
 
-// 問い合わせ・削除依頼の窓口 (メール)。セルフホストする場合は自分のアドレスに差し替える
+// 運営者と問い合わせ先。セルフホストする場合は自分の名前・公開ページ・リポジトリ・アドレスに差し替える
+export const OPERATOR_NAME = "naosuke884";
+export const OPERATOR_URL = "https://github.com/naosuke884";
+export const SOURCE_URL = "https://github.com/naosuke884/poi";
+
 export const CONTACT_EMAIL = "884naoki.dev@gmail.com";
 export const CONTACT_URL = `mailto:${CONTACT_EMAIL}`;
 
 /** 問い合わせ先 (CONTACT_EMAIL) へのメールリンク。children を省略するとアドレスをそのまま表示する */
-export function ContactLink({ children }: { children?: ReactNode }) {
-  return <a href={CONTACT_URL}>{children ?? CONTACT_EMAIL}</a>;
+export function ContactLink({ children, className }: { children?: ReactNode; className?: string }) {
+  return (
+    <a href={CONTACT_URL} className={className}>
+      {children ?? CONTACT_EMAIL}
+    </a>
+  );
 }
