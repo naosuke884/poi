@@ -34,7 +34,7 @@ test("ランディングは CSP を強制した本番ビルドで違反なく表
 });
 
 // ランディング以外にもビルド時に HTML にするページがある
-for (const path of ["/guide", "/faq", "/terms", "/privacy", "/no-such-page"]) {
+for (const path of ["/docs/guide", "/terms", "/privacy", "/no-such-page"]) {
   test(`${path} は CSP を強制した本番ビルドで違反なく表示される`, async ({ page }) => {
     const violations = await collectCspViolations(page);
     const response = await page.goto(path);

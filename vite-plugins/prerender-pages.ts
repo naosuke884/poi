@@ -1,4 +1,4 @@
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -16,7 +16,7 @@ type ChunkInfo = { moduleIds: string[]; imports: string[]; css: string[] };
 
 /**
  * ランディングや使い方などのページ (shared/site.ts の PRERENDERED_PAGES) をビルド時に HTML にし、ビルドした
- * index.html の #root に入れて landing.html・guide.html などとして出す (issue #157)。JS を実行しないクローラーや
+ * index.html の #root に入れて landing.html・docs/guide.html などとして出す (issue #157)。JS を実行しないクローラーや
  * リンクのプレビューにも本文が見えるようにするため。描画は src/prerender.tsx を Node 向けに別途ビルドして行う。
  * ページのルートのチャンクの CSS も head で読み込ませる (遅延読み込みのチャンクの CSS なので、入れないと JS が動くまで
  * スタイルの無い本文が見える)。client のビルドの writeBundle で出すので、その後 (closeBundle) に動く VitePWA の
@@ -62,6 +62,7 @@ export function prerenderPages(): Plugin {
           .replace("</head>", `${links}</head>`)
           .replace('<div id="root"></div>', `<div id="root">${page.markup}</div>`);
         await assertCssModuleClasses(this, page, outDir, [...linkedCss(index), ...pageCss]);
+        await mkdir(path.dirname(path.join(outDir, page.file)), { recursive: true });
         await writeFile(path.join(outDir, page.file), html);
       }
     },
@@ -70,7 +71,7 @@ export function prerenderPages(): Plugin {
 
 /**
  * ルートのファイルのモジュールを含むチャンクから、静的に読み込むチャンクをたどって CSS を集める。
- * ルートの id が / で終わるもの ("/(landing)/") はディレクトリ全体、それ以外 ("/(docs)/guide") は
+ * ルートの id が / で終わるもの ("/(landing)/") はディレクトリ全体、それ以外 ("/(docs)/docs/guide") は
  * guide.tsx (分割されたものを含む) か guide/ の下をそのルートのファイルとみなす
  */
 function routeCss(chunks: Map<string, ChunkInfo>, routeId: string): string[] {

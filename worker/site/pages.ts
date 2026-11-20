@@ -15,6 +15,9 @@ import { buildSitemap } from "./sitemap";
  */
 export const PAGE_REDIRECTS: Record<string, string> = {
   "/login": "/",
+  // 使い方とよくある質問は 1 ページにまとめた
+  "/guide": "/docs/guide",
+  "/faq": "/docs/guide",
 };
 
 /** Worker に来たページのリクエスト (/api/* と静的アセット以外) をどう返すか */
@@ -62,7 +65,7 @@ export function resolvePage(pathname: string, search = "", signedIn = false): Pa
 }
 
 /**
- * 本文にする静的アセット。ランディングや使い方などはビルド時に本文まで描いた HTML (landing.html・guide.html など。
+ * 本文にする静的アセット。ランディングや使い方などはビルド時に本文まで描いた HTML (landing.html・docs/guide.html など。
  * issue #157)、それ以外は空の SPA の index.html。描いた HTML が無いとき (Vite の開発サーバー) は index.html にする。
  * 条件付きリクエストのヘッダーは渡さない (304 が返ると本文を返せない)
  */

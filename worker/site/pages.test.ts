@@ -33,6 +33,12 @@ describe("resolvePage", () => {
     });
   });
 
+  it("/guide と /faq は、まとめた先の /docs/guide へ転送する", () => {
+    for (const path of ["/guide", "/faq"]) {
+      expect(resolvePage(path)).toEqual({ kind: "redirect", location: "/docs/guide", status: 301 });
+    }
+  });
+
   it("末尾のスラッシュは外した URL へ転送する", () => {
     expect(resolvePage("/terms/", "?a=1")).toEqual({
       kind: "redirect",

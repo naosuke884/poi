@@ -73,8 +73,7 @@ async function forceFocusVisible(page: Page) {
 test.describe("未ログイン", () => {
   for (const { name, path } of [
     { name: "ランディング", path: "/" },
-    { name: "使い方", path: "/guide" },
-    { name: "よくある質問", path: "/faq" },
+    { name: "使い方とよくある質問", path: "/docs/guide" },
     { name: "利用規約", path: "/terms" },
     { name: "プライバシーポリシー", path: "/privacy" },
     { name: "404", path: "/no-such-page" },

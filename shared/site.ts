@@ -26,13 +26,9 @@ export const pageTitle = (name?: string) => (name ? `${name} | ${SITE_NAME}` : T
  * Worker は初期 HTML の <title> などをこれで書き換える (JS を実行しないクローラーにも区別できるように。issue #144)
  */
 export const SUB_PAGES = {
-  "/guide": {
-    name: "使い方",
-    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方です。メモの書き方、メモが消えるしくみと保存期間の変え方、見出しごとのまとめ表示、スマホのホーム画面への追加を説明します。`,
-  },
-  "/faq": {
-    name: "よくある質問",
-    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) についてのよくある質問です。消えたメモは戻せるか、保存期間は変えられるか、無料か、スマホで使えるかなどに答えます。`,
+  "/docs/guide": {
+    name: "使い方とよくある質問",
+    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方とよくある質問です。メモの書き方、メモが消えるしくみと保存期間の変え方、見出しごとのまとめ表示を説明し、消えたメモは戻せるか、無料か、スマホで使えるかなどに答えます。`,
   },
   "/terms": {
     name: "利用規約",
@@ -63,8 +59,7 @@ export const INDEXED_PAGE_PATHS = [
  */
 export const PRERENDERED_PAGES = {
   "/": "landing.html",
-  "/guide": "guide.html",
-  "/faq": "faq.html",
+  "/docs/guide": "docs/guide.html",
 } as const satisfies Partial<Record<(typeof INDEXED_PAGE_PATHS)[number], string>>;
 
 /**

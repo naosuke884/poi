@@ -8,7 +8,7 @@ import classes from "./DocPage.module.css";
 import typography from "@/components/typography.module.css";
 
 /**
- * 文章だけのページ (利用規約 / プライバシーポリシー / 使い方 / よくある質問) の共通レイアウト。
+ * 文章だけのページ (利用規約 / プライバシーポリシー / 使い方とよくある質問) の共通レイアウト。
  * 本文は prose.module.css で見出し・リスト・段落の既定スタイルを当てる (ログイン不要で読める)。
  */
 export function DocPage({

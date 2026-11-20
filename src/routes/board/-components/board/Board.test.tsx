@@ -594,7 +594,7 @@ describe("Board: 保存できないとき (HAY-54)", () => {
   }
   async function navigateAway() {
     await act(async () => {
-      await router.navigate({ to: "/guide" });
+      await router.navigate({ to: "/docs/guide" });
     });
     await settle();
   }
@@ -725,7 +725,7 @@ describe("Board: 保存できないとき (HAY-54)", () => {
 
     confirmAnswer = true;
     await navigateAway();
-    expect(currentPath()).toBe("/guide");
+    expect(currentPath()).toBe("/docs/guide");
   });
 
   it("端末がオフラインになったら、自動保存の前でもページを移る前に確かめる", async () => {
@@ -744,7 +744,7 @@ describe("Board: 保存できないとき (HAY-54)", () => {
     await type("- b");
     await navigateAway();
     expect(confirmations).toEqual([]);
-    expect(currentPath()).toBe("/guide");
+    expect(currentPath()).toBe("/docs/guide");
   });
 
   it("通信できずに保存できなかった後に書き足しても、保存できるまではページを移る前に確かめる", async () => {

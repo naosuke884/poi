@@ -9,7 +9,7 @@ export type PrerenderedPage = {
   file: string;
   /** #root に入れる HTML */
   markup: string;
-  /** 描いたルートの id ("/(docs)/guide" の形)。そのルートのチャンクの CSS を探すのに使う */
+  /** 描いたルートの id ("/(docs)/docs/guide" の形)。そのルートのチャンクの CSS を探すのに使う */
   routeId: string;
 };
 

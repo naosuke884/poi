@@ -302,13 +302,10 @@ describe.concurrent("ページのリクエスト (静的アセットに無いパ
     expect(await (await request("/terms")).text()).toContain('<div id="root"></div>');
   });
 
-  it("使い方とよくある質問は本文を描いた HTML を、そのページの head にして返す (issue #157)", async ({
+  it("使い方とよくある質問のページは本文を描いた HTML を、そのページの head にして返す (issue #157)", async ({
     request,
   }) => {
-    for (const [path, file] of [
-      ["/guide", "guide.html"],
-      ["/faq", "faq.html"],
-    ] as const) {
+    for (const [path, file] of [["/docs/guide", "docs/guide.html"]] as const) {
       const res = await request(path);
       expect(res.status).toBe(200);
       expect(res.headers.get("X-Robots-Tag")).toBeNull();

@@ -16,6 +16,7 @@ import { Route as docsPrivacyRouteImport } from './routes/(docs)/privacy'
 import { Route as docsTermsRouteImport } from './routes/(docs)/terms'
 import { Route as landingIndexRouteImport } from './routes/(landing)/index'
 import { Route as BoardIndexRouteImport } from './routes/board/index'
+import { Route as docsDocsGuideRouteImport } from './routes/(docs)/docs/guide'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -52,6 +53,11 @@ const BoardIndexRoute = BoardIndexRouteImport.update({
   path: '/board/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const docsDocsGuideRoute = docsDocsGuideRouteImport.update({
+  id: '/(docs)/docs/guide',
+  path: '/docs/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof docsTermsRoute
   '/': typeof landingIndexRoute
   '/board/': typeof BoardIndexRoute
+  '/docs/guide': typeof docsDocsGuideRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/terms': typeof docsTermsRoute
   '/': typeof landingIndexRoute
   '/board': typeof BoardIndexRoute
+  '/docs/guide': typeof docsDocsGuideRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,13 +88,29 @@ export interface FileRoutesById {
   '/(docs)/terms': typeof docsTermsRoute
   '/(landing)/': typeof landingIndexRoute
   '/board/': typeof BoardIndexRoute
+  '/(docs)/docs/guide': typeof docsDocsGuideRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/login' | '/faq' | '/guide' | '/privacy' | '/terms' | '/' | '/board/'
+    | '/login'
+    | '/faq'
+    | '/guide'
+    | '/privacy'
+    | '/terms'
+    | '/'
+    | '/board/'
+    | '/docs/guide'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/faq' | '/guide' | '/privacy' | '/terms' | '/' | '/board'
+  to:
+    | '/login'
+    | '/faq'
+    | '/guide'
+    | '/privacy'
+    | '/terms'
+    | '/'
+    | '/board'
+    | '/docs/guide'
   id:
     | '__root__'
     | '/login'
@@ -96,6 +120,7 @@ export interface FileRouteTypes {
     | '/(docs)/terms'
     | '/(landing)/'
     | '/board/'
+    | '/(docs)/docs/guide'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +131,7 @@ export interface RootRouteChildren {
   docsTermsRoute: typeof docsTermsRoute
   landingIndexRoute: typeof landingIndexRoute
   BoardIndexRoute: typeof BoardIndexRoute
+  docsDocsGuideRoute: typeof docsDocsGuideRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -159,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BoardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(docs)/docs/guide': {
+      id: '/(docs)/docs/guide'
+      path: '/docs/guide'
+      fullPath: '/docs/guide'
+      preLoaderRoute: typeof docsDocsGuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -170,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   docsTermsRoute: docsTermsRoute,
   landingIndexRoute: landingIndexRoute,
   BoardIndexRoute: BoardIndexRoute,
+  docsDocsGuideRoute: docsDocsGuideRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
