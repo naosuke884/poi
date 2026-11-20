@@ -7,7 +7,7 @@ const hasMatchMedia = () =>
 /**
  * メディアクエリが一致しているか。変わると再描画する。
  * useEffect で読み直す形にしないのは、初回の描画から実際の値を使いたいため
- * (デモ動画の明暗やスマホ版の選択で、先に違う版を読み込みかけない)。
+ * (描いた後に直すと、違う値の表示が一度出てしまう)。
  * ハイドレーション中だけは serverValue を使い、プリレンダーの HTML と食い違わないようにする
  */
 export function useMediaQuery(query: string, serverValue = false): boolean {
@@ -22,9 +22,3 @@ export function useMediaQuery(query: string, serverValue = false): boolean {
     () => serverValue,
   );
 }
-
-/** OS で「動きを減らす」を選んでいるか */
-export const useReducedMotion = () => useMediaQuery("(prefers-reduced-motion: reduce)");
-
-/** OS の配色がダークか (配色の切り替えの UI は無く、いつも OS に従う) */
-export const usePrefersDark = () => useMediaQuery("(prefers-color-scheme: dark)");

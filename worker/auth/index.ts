@@ -16,7 +16,7 @@ export function createAuth(env: Env, requestOrigin: string) {
     database: drizzleAdapter(createDb(env.DB), { provider: "sqlite", schema }),
     // OAuth の state cookie 照合は省かない。省くと、攻撃者が用意したコールバック URL を踏ませて
     // 攻撃者のアカウントでログインさせる login CSRF が通る。照合が通らない X などのアプリ内ブラウザでは、
-    // ランディングがログインボタンの代わりにブラウザで開き直す案内を出す (LoginCta、HAY-42)
+    // ヘッダーのログインボタンを出さず、ランディングでブラウザで開き直す案内を出す (useInAppBrowser、HAY-42)
     // 新しい account 行にも、ログインのたびの更新 (updateAccountOnSignIn) にもトークンを書かせない
     databaseHooks: {
       account: {

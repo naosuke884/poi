@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// ランディングと README のデモ動画 (public/demo*.mp4) とポスター (public/demo-poster*.webp) を撮り直す。
+// README のデモ動画 (public/demo.mp4) を撮り直す。
 //
-//   node scripts/record-demo-video.mjs [--variant desktop|phone] [--scheme light|dark] [--out <dir>]
+//   node scripts/record-demo-video.mjs [--out <dir>]
 //
 // 開発サーバー (:5173) とローカルの D1 で、デモ用のユーザーの板を毎回同じ内容に作り直してから、
-// Playwright のサイドカーで操作を録画し、ffmpeg で mp4 (H.264) と webp のポスターにする。
-// 押す場所が分かるよう、カーソル (PC) とタップの印 (スマホ) を描き足す。PC 版は、ランディングでは縮めて
-// 置くので字が小さく、操作している場所へ寄って (書いている間・コピーするとき) 撮る。
+// Playwright のサイドカーで操作を録画し、ffmpeg で mp4 (H.264) にする。
+// 押す場所が分かるよう、カーソルを描き足す。README では縮めて置かれて字が小さいので、
+// 操作している場所へ寄って (書いている間・コピーするとき) 撮る。
 // 出力は --out (既定はリポジトリの外の一時ディレクトリ) に書き、public/ は上書きしない
 // (撮れた動画を見てから入れ替える。README の埋め込みは scripts/sync-demo-video.sh)。
 //
@@ -24,41 +24,21 @@ import { parseArgs } from "node:util";
 
 import { openPage } from "../.claude/skills/verifying-in-app/scripts/pw.mjs";
 
-const { values } = parseArgs({
-  options: {
-    variant: { type: "string", default: "desktop" },
-    scheme: { type: "string", default: "light" },
-    out: { type: "string" },
-  },
-});
+const { values } = parseArgs({ options: { out: { type: "string" } } });
 
-// desktop: PC のページ全体 (ヘッダー込み)。issue #138 で決めた 1280×800 (2 倍の画素で 2560×1600)。
-// phone: スマホの縦長の画面。スマホではランディングの列が狭く、PC の録画は文字が読めないため (HAY-53)
-const VARIANTS = {
-  desktop: { viewport: { width: 1280, height: 800 } },
-  // isMobile / hasTouch: スマホと同じく、ツールチップを出さず (hover: none)、追加ボタンを右下の丸いボタンにする
-  phone: { viewport: { width: 390, height: 720 }, isMobile: true, hasTouch: true },
-};
-const variant = VARIANTS[values.variant];
-if (!variant || !["light", "dark"].includes(values.scheme)) {
-  console.error(
-    "usage: record-demo-video.mjs [--variant desktop|phone] [--scheme light|dark] [--out dir]",
-  );
-  process.exit(2);
-}
+// PC のページ全体 (ヘッダー込み)。issue #138 で決めた 1280×800 (2 倍の画素で 2560×1600)
+const VIEWPORT = { width: 1280, height: 800 };
 const SCALE = 2;
-// 書き出す大きさ。PC 版は 2 倍で撮ったまま (2560×1600) だと、ランディング (928px 幅) や README で
-// ブラウザが 1/1.4〜1/2.8 に縮めて描き、細い字の線がガタついて見えた。ランディングの Retina の画面の画素
-// (928 × 2 = 1856) に合わせて、ffmpeg で丁寧に (lanczos) 縮めておく。スマホ版は撮ったまま
-const OUTPUT = values.variant === "desktop" ? { width: 1856, height: 1160 } : null;
-// 寄るときの最大の倍率。ランディングの Retina の画面 (928px 幅 = 1856 画素) では 2560 / 1856 ≒ 1.4 倍までは
-// 撮った画素のままで、それ以上はわずかにぼやける。字を読める大きさにするのを優先して 1.7 倍まで寄る
+// 書き出す大きさ。2 倍で撮ったまま (2560×1600) だと、README でブラウザが大きく縮めて描き、細い字の線が
+// ガタついて見えた。ffmpeg で丁寧に (lanczos) 縮めておく
+const OUTPUT = { width: 1856, height: 1160 };
+// 寄るときの最大の倍率。2560 / 1856 ≒ 1.4 倍までは撮った画素のままで、それ以上はわずかにぼやける。
+// 字を読める大きさにするのを優先して 1.7 倍まで寄る
 const MAX_ZOOM = 1.7;
 // 録画で日本語に使うフォント (Google Fonts)
 const FONT = { family: "Noto Sans JP", query: "Noto+Sans+JP:wght@400;700" };
 const outDir = values.out ?? mkdtempSync(join(tmpdir(), "poi-demo-video-"));
 mkdirSync(outDir, { recursive: true });
-const suffix = `${values.scheme === "dark" ? "-dark" : ""}${values.variant === "phone" ? "-phone" : ""}`;
 
 // ---- ffmpeg ----
 
@@ -139,11 +119,11 @@ async function typeSlowly(page, text) {
   }
 }
 
-// ---- カーソルとタップの印 ----
+// ---- カーソル ----
 
 /**
  * 録画用のブラウザにはマウスカーソルが映らず、ボタンを押しても急に画面が変わったようにしか見えないので、
- * ページの一番上にカーソルの絵を置いて、押す場所まで動かす (スマホはタップした所に丸い印を出す)
+ * ページの一番上にカーソルの絵を置いて、押す場所まで動かす
  */
 async function installPointer(page) {
   await page.addStyleTag({
@@ -198,52 +178,34 @@ const hideCursor = (page) =>
     document.getElementById("demo-cursor").style.opacity = "0";
   });
 
-/** 押した所に印を出す。PC はカーソルの先に広がる輪、スマホは指の大きさの丸 */
+/** 押した所に、カーソルの先から広がる輪を出す */
 const showPress = (page, x, y) =>
   page.evaluate(
-    ({ x, y, touch }) => {
+    ({ x, y }) => {
       const mark = document.createElement("div");
       mark.className = "demo-press";
-      const size = touch ? 48 : 36;
       Object.assign(mark.style, {
         left: `${x}px`,
         top: `${y}px`,
-        width: `${size}px`,
-        height: `${size}px`,
-        ...(touch
-          ? { background: "rgb(128 128 128 / 0.35)", border: "2px solid rgb(255 255 255 / 0.6)" }
-          : { border: "2px solid var(--poi-color-primary)" }),
+        width: "36px",
+        height: "36px",
+        border: "2px solid var(--poi-color-primary)",
       });
       document.body.append(mark);
-      const frames = touch
-        ? [
-            { opacity: 1, scale: 0.6 },
-            { opacity: 1, scale: 1, offset: 0.4 },
-            { opacity: 0, scale: 1.1 },
-          ]
-        : [
-            { opacity: 0.9, scale: 0.3 },
-            { opacity: 0, scale: 1.3 },
-          ];
-      mark.animate(frames, { duration: touch ? 650 : 500, easing: "ease-out" }).onfinish = () =>
-        mark.remove();
+      const frames = [
+        { opacity: 0.9, scale: 0.3 },
+        { opacity: 0, scale: 1.3 },
+      ];
+      mark.animate(frames, { duration: 500, easing: "ease-out" }).onfinish = () => mark.remove();
     },
-    { x, y, touch: Boolean(variant.hasTouch) },
+    { x, y },
   );
 
-/**
- * カーソルを動かしてから押す (dwell: 押す前に止まる時間。ツールチップを見せる)。
- * スマホではタップで押す (クリックだとマウスが残り、ボタンのツールチップが出たままになる)
- */
+/** カーソルを動かしてから押す (dwell: 押す前に止まる時間。ツールチップを見せる) */
 async function press(page, locator, { dwell = 150 } = {}) {
   const box = await locator.boundingBox();
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
-  if (variant.hasTouch) {
-    await locator.tap();
-    await showPress(page, x, y);
-    return;
-  }
   await moveCursor(page, x, y);
   await locator.hover();
   await pause(page, dwell);
@@ -251,14 +213,14 @@ async function press(page, locator, { dwell = 150 } = {}) {
   await locator.click();
 }
 
-// ---- 寄る (PC 版だけ) ----
+// ---- 寄る ----
 
 // 撮りながら決める寄り先。at: 時刻 (秒)、dur: 動く長さ (秒)、rect: 映す範囲 (CSS ピクセル。null は画面全体)
 const shots = [];
 
-/** rect へ寄る (null で引いて全体)。スマホ版は字が大きいので寄らない */
+/** rect へ寄る (null で引いて全体) */
 function look(rect, dur = 0.9) {
-  if (!variant.hasTouch) shots.push({ at: Date.now() / 1000, dur, rect });
+  shots.push({ at: Date.now() / 1000, dur, rect });
 }
 
 // 寄るときに映す幅 (CSS ピクセル)。板の列は 1100px 前後と広く、列ごと映すとほとんど寄れないので、
@@ -298,21 +260,20 @@ const TAGLINE = "30 日で消えるメモ帳";
  * (板の内容は終わりと頭で違うが、ぼかして薄く敷くのでほとんど分からない)
  */
 async function installEndCard(page) {
-  const small = Boolean(variant.hasTouch);
   await page.addStyleTag({
     content: `
       #demo-card {
         position: fixed; inset: 0; z-index: 2147483646; pointer-events: none;
-        display: grid; place-content: center; justify-items: center; gap: ${small ? 14 : 24}px;
+        display: grid; place-content: center; justify-items: center; gap: 24px;
         background: color-mix(in srgb, var(--poi-color-bg) 82%, transparent);
         backdrop-filter: blur(14px);
         transition: opacity 600ms ease;
       }
       #demo-card[hidden] { display: grid; opacity: 0; }
-      #demo-card .name { display: flex; align-items: center; gap: ${small ? 14 : 20}px; }
-      #demo-card img { width: ${small ? 60 : 104}px; height: ${small ? 60 : 104}px; }
-      #demo-card .name span { font-size: ${small ? 48 : 84}px; font-weight: 700; color: var(--poi-color-text-strong); }
-      #demo-card p { margin: 0; font-size: ${small ? 22 : 36}px; color: var(--poi-color-text-muted); }
+      #demo-card .name { display: flex; align-items: center; gap: 20px; }
+      #demo-card img { width: 104px; height: 104px; }
+      #demo-card .name span { font-size: 84px; font-weight: 700; color: var(--poi-color-text-strong); }
+      #demo-card p { margin: 0; font-size: 36px; color: var(--poi-color-text-muted); }
     `,
   });
   await page.evaluate((tagline) => {
@@ -337,7 +298,7 @@ async function showEndCard(page, shown) {
 const viewToggle = (page, name) =>
   page.getByRole("radiogroup", { name: "板の表示方法" }).locator("label").filter({ hasText: name });
 
-/** 操作を撮る。返り値はポスターにするコマの時刻 (締めの画面を出す直前の、内容が入って引いた板) */
+/** 操作を撮る */
 async function scenario(page) {
   // 締めの画面から始める (ループのつなぎ目)
   await pause(page, 300);
@@ -371,12 +332,10 @@ async function scenario(page) {
   look(null);
   await press(page, viewToggle(page, "タイムライン"));
   await pause(page, 2000);
-  const posterAt = Date.now() / 1000 - 0.3;
   // 頭のコマにはカーソルが無いので、締めの画面でも消しておく
-  if (!variant.hasTouch) await hideCursor(page);
+  await hideCursor(page);
   await showEndCard(page, true);
   await pause(page, 1600);
-  return posterAt;
 }
 
 // ---- 録画 ----
@@ -384,7 +343,7 @@ async function scenario(page) {
 /**
  * 撮り終えるまでスクリーンショットを撮り続けてコマにする (2 倍の画素で 1 秒に 10 コマ前後)。
  * Playwright の recordVideo も CDP の screencast も CSS ピクセルの大きさ (1280×800) でしか撮れず、
- * ランディングで Retina の画面に置くと文字がぼやけるため
+ * Retina の画面で見ると文字がぼやけるため
  */
 function startCapture(page) {
   const frames = [];
@@ -405,11 +364,10 @@ function startCapture(page) {
 
 /**
  * 寄り先 (shots) を、ffmpeg の zoompan の式にする。倍率と映す中心を、前の寄り先から次の寄り先へ
- * ゆっくり動かす (時刻 it は動画の先頭からの秒)。寄り先が無ければ (スマホ版) 何もしない
+ * ゆっくり動かす (時刻 it は動画の先頭からの秒)
  */
 function cameraFilter(start) {
-  if (shots.length === 0) return [];
-  const { width: vw, height: vh } = variant.viewport;
+  const { width: vw, height: vh } = VIEWPORT;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const whole = { z: 1, cx: (vw * SCALE) / 2, cy: (vh * SCALE) / 2 };
   const target = (rect) => {
@@ -481,9 +439,7 @@ function encode(frames, endAt, mp4) {
     [
       "fps=30",
       ...cameraFilter(frames[0].at),
-      OUTPUT
-        ? `scale=${OUTPUT.width}:${OUTPUT.height}:flags=lanczos`
-        : "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      `scale=${OUTPUT.width}:${OUTPUT.height}:flags=lanczos`,
     ].join(","),
     "-an",
     "-c:v",
@@ -504,16 +460,15 @@ async function record() {
   const stateFile = join(outDir, "state.json");
   seedBoard(stateFile);
   const { browser, page } = await openPage({
-    ...variant,
+    viewport: VIEWPORT,
     storageState: stateFile,
     deviceScaleFactor: SCALE,
-    colorScheme: values.scheme,
+    colorScheme: "light",
     // 「コピー」を押したときに「失敗しました」にならないように
     permissions: ["clipboard-read", "clipboard-write"],
   });
   let frames;
   let endAt;
-  let posterAt;
   try {
     await page.goto("http://localhost:5173/board", { waitUntil: "networkidle" });
     // サイドカーには中国語のフォントしか無く、日本語の字形が違って見えるので、録画のときだけ日本語のフォントを足す。
@@ -542,34 +497,15 @@ async function record() {
     await installEndCard(page);
     await pause(page, 300);
     const stop = startCapture(page);
-    posterAt = await scenario(page);
+    await scenario(page);
     endAt = Date.now() / 1000;
     frames = await stop();
   } finally {
     await browser.close();
   }
-  const mp4 = join(outDir, `demo${suffix}.mp4`);
-  const poster = join(outDir, `demo-poster${suffix}.webp`);
+  const mp4 = join(outDir, "demo.mp4");
   encode(frames, endAt, mp4);
-  // ポスターは締めの画面を出す直前の、内容の入った板 (先頭のコマだと読み込み中に空に近い板が見える。issue #97。
-  // 締めの画面のコマは、読み込み中や「動きを減らす」で止まったときに、何のアプリか分かる板にならない)
-  execFileSync(ffmpegPath(), [
-    "-y",
-    "-loglevel",
-    "error",
-    "-ss",
-    (posterAt - frames[0].at).toFixed(3),
-    "-i",
-    mp4,
-    "-frames:v",
-    "1",
-    "-c:v",
-    "libwebp",
-    "-quality",
-    "80",
-    poster,
-  ]);
-  console.log(`wrote ${mp4}\nwrote ${poster}`);
+  console.log(`wrote ${mp4}`);
 }
 
 await record();

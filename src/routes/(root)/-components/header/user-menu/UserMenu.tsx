@@ -6,12 +6,14 @@ import { buttonClass } from "@/components/Button";
 import { CONTACT_URL } from "@/components/ContactLink";
 import { authClient } from "@/lib/auth-client";
 import { readCachedUser } from "@/lib/session-cache";
+import { useInAppBrowser } from "@/lib/use-in-app-browser";
 
 import { useAccountActions } from "../../../-lib/use-account-actions";
 import { useOnBackOnline, useOnline } from "../../../-lib/use-online";
 import { Avatar } from "./Avatar";
 import { DeleteAccountConfirmModal } from "./DeleteAccountConfirmModal";
 import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
+import { LoginButton } from "./LoginButton";
 import { Menu, MenuAnchor, MenuDivider, MenuItem, MenuLabel, MenuLink } from "./Menu";
 import { RunningStatus } from "./RunningStatus";
 import { TtlSettingModal } from "./TtlSettingModal";
@@ -25,6 +27,7 @@ export function UserMenu() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const online = useOnline();
   const install = useInstallApp();
+  const inAppBrowser = useInAppBrowser();
   // アカウント操作 (切り替え / 追加 / ログアウト / 削除) と実行中の状態・失敗の文言
   const {
     runningAction,
@@ -52,7 +55,8 @@ export function UserMenu() {
 
   const user = data?.user ?? cachedUser;
   if (!user) {
-    // ログイン専用ページは無いので、ログイン導線 (CTA) のあるランディングへ。
+    if (!inAppBrowser) return <LoginButton />;
+    // アプリ内ブラウザではログインが必ず失敗するので、ボタンの代わりに、開き直す案内のあるランディングへ。
     // ランディング表示中 (=/) は行き先が同じで押しても何も起きないため出さない
     if (pathname === "/") return null;
     return (

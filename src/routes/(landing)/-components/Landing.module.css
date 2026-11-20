@@ -1,6 +1,4 @@
-/* ランディング専用の見た目 (色は tokens.css の変数だけを使い、ダーク配色に追従させる)。
-   動き (ヒーローのメモが消える、寿命のバー) はどれも
-   prefers-reduced-motion: no-preference のときだけ付ける。「動きを減らす」の人には最後の状態だけを見せる */
+/* ランディング専用の見た目 (色は tokens.css の変数だけを使い、ダーク配色に追従させる) */
 
 /* ---- 並び ---- */
 
@@ -19,25 +17,9 @@
   max-width: 45rem;
 }
 
-/* 中央に寄せた縦の並び (ヒーローと末尾のログイン導線) */
-.centered {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--poi-space-lg);
-  text-align: center;
-}
-
 /* 文の段落。ブラウザ既定の上下の余白を消し、間隔は並べる側 (gap) で決める */
 .text {
   margin: 0;
-}
-
-/* 板の本文と同じ大きさと行送り */
-.boardText {
-  margin: 0;
-  font-size: var(--poi-font-size-md);
-  line-height: 1.7;
 }
 
 /* 節の見出し。ヒーローの見出しと同じく文節の切れ目で折り返す */
@@ -47,6 +29,15 @@
 }
 
 /* ---- ヒーロー ---- */
+
+/* 本文の列に左寄せで積む */
+.hero {
+  composes: column;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--poi-space-lg);
+}
 
 /* 画面幅に応じて伸びる見出し (Title の固定サイズより狭い画面で収まり、広い画面で映える)。
    折り返すときは語の途中で切らず文節の切れ目で (auto-phrase。FeatureList と同じ。未対応のブラウザは通常の折り返し) */
@@ -63,28 +54,14 @@
   outline: none;
 }
 
-/* 見出しの下の一言や説明の文。行末に一文字だけ残らないよう pretty、文節で折り返す */
-.lead {
-  text-wrap: pretty;
-  word-break: auto-phrase;
-}
+/* ---- アプリ内ブラウザでの案内 (OpenInBrowserNotice) ---- */
 
-.heroCta {
-  margin-top: var(--poi-space-lg);
-}
-
-/* ---- ログインの CTA (LoginCta) ---- */
-
-.cta {
+.notice {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--poi-space-sm);
-  text-align: center;
-}
-
-.loginButton {
-  margin-bottom: var(--poi-space-sm);
+  margin-top: var(--poi-space-lg);
 }
 
 .inAppNote {
@@ -95,76 +72,9 @@
   margin-top: var(--poi-space-xs);
 }
 
-.error {
-  color: var(--poi-color-danger);
-}
-
-/* ---- 末尾のログイン導線 (ClosingCta) ---- */
-
-/* 上に余白を足し、特徴の一覧から一段離して締めくくりに見せる */
-.closing {
-  composes: centered;
-  padding-top: var(--poi-space-xl);
-}
-
-/* ---- デモ動画 ---- */
-
-.demo {
-  width: 100%;
-  max-width: 60rem;
-}
-
-/* .demo を前に付けるのは、見出しの共通クラス (typography.module.css) の margin: 0 より確実に優先させるため
-   (読み込みの順は CSS Module ごとに変わりうる) */
-.demo .demoTitle {
-  max-width: 45rem;
-  margin: 0 auto var(--poi-space-lg);
-}
-
-/* aspect-ratio: ポスターや動画が読み込まれる前から動画の高さ分の場所を取る (無いと既定の 300×150 の比率で
-   描かれ、読み込み後に動画の比率へ伸びて下の特徴リストとフッターが押し下げられる。issue #118)。
-   値は public/demo*.mp4 と demo-poster*.webp の縦横比 (PC 版は 1856×1160 = 16 / 10)。撮り直しで比率が変わったら合わせる。
-   auto を付けると比率が枠線を除いた中身に掛かり、読み込み後 (動画自身の比率) と高さが 1px 未満もずれない */
-.demoVideo {
-  width: 100%;
-  aspect-ratio: auto 16 / 10;
-  display: block;
-  border-radius: var(--poi-radius-md);
-  border: 1px solid var(--poi-color-border);
-}
-
-/* スマホの幅ではスマホ版 (780×1440 = 13 / 24) を出す (DemoVideo.tsx の PHONE_QUERY と揃える)。
-   縦長で列の幅いっぱいだと画面に収まらないので、幅を抑えて中央に置く */
-@media (max-width: 47.99em) {
-  .demoVideo {
-    aspect-ratio: auto 13 / 24;
-  }
-
-  .videoButton {
-    max-width: 320px;
-    margin-inline: auto;
-  }
-}
-
-/* デモ動画を包むボタン (押すと止まる・動く)。見た目は動画そのままにする */
-.videoButton {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  border-radius: var(--poi-radius-md);
-}
-
-.videoButton:focus-visible {
-  outline: 2px solid var(--poi-color-primary);
-  outline-offset: 2px;
-}
-
 /* ---- 特徴 (FeatureList) ---- */
 
-/* 特徴の一覧。記号なしで並べ、広い画面では 2 列にする (4 項目を縦に積むと使い道の見本と同じ長さの列が続き、単調になる)。
+/* 特徴の一覧。記号なしで並べる。
    auto-phrase: 日本語を文節の切れ目で折り返す (「コピ/ー」のような切れ方をしない。未対応のブラウザは通常の折り返し) */
 .features {
   list-style: none;
@@ -192,217 +102,4 @@
   border: solid var(--poi-color-primary-strong);
   border-width: 0 2px 2px 0;
   transform: translateY(-0.15em) rotate(45deg);
-}
-
-/* ---- 使い道 (UseCaseList) ---- */
-
-/* 使い道を板のセクションに見立てた並び (寿命のバー + 見出し + 本文)。板と同じく記号なしで縦に並べる */
-.mockBoard {
-  list-style: none;
-  margin: var(--poi-space-xl) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--poi-space-xl);
-  word-break: auto-phrase;
-}
-
-/* 板の見出し (MarkdownView の h1) と同じ印: 左の藍の縦棒 4px + 余白 8px を本文の左の余白へはみ出させ、
-   見出しの文字を本文と同じ位置から始める。大きさは板の h3 (1.125rem) にして、ページの節の見出しより控えめにする */
-.mockHeading {
-  margin: var(--poi-space-xs) 0 0 -12px;
-  padding-inline-start: 8px;
-  border-inline-start: 4px solid var(--poi-color-primary);
-  font-size: 1.125rem;
-  font-weight: 700;
-  line-height: 1.7;
-}
-
-/* ---- 寿命のバーの飾り (LifeLineDemo) ---- */
-
-/* 残り日数。整数として登録すると、アニメーションで 6, 5, … と一日ずつ減る */
-@property --life-demo-left {
-  syntax: "<integer>";
-  inherits: true;
-  /* 値は使われない (.lifeDemo で各セクションの --life-demo-to に置き換える)。登録に初期値が要るので置いているだけ */
-  initial-value: 30;
-}
-
-/* 板の LifeLine と同じ並び (「あと N 日」+ バー)。色は文字とバーで共有する (currentColor)。
-   --life-demo-from / --life-demo-to / --life-demo-total は LifeLineDemo.module.css が data 属性から決める。
-   動かないとき (「動きを減らす」や未対応のブラウザ) は減りきった後の to を見せる。動くときはアニメーションが from から上書きする */
-.lifeDemo {
-  --life-demo-left: var(--life-demo-to);
-  display: flex;
-  align-items: center;
-  gap: var(--poi-space-xs);
-  color: var(--poi-color-text-muted);
-  font-size: var(--poi-font-size-xs);
-}
-
-/* 「あと N 日」。数は CSS のカウンターで描く (アニメーション中の値をそのまま出せる)。
-   幅を揃えて、桁が減ってもバーの始まりが動かないようにする (板の LifeLine と同じ 5.5em)。
-   var() をそのまま渡さず calc() で包む: Safari (iOS を含む) は <integer> で登録したプロパティでも
-   アニメーション中は 25.77 のような小数にするので、そのままだと counter-reset が無効になり「あと 0 日」と出る (HAY-51)。
-   整数を求める場所の calc() は四捨五入される */
-.lifeDemoLabel {
-  white-space: nowrap;
-  min-width: 5.5em;
-  font-variant-numeric: tabular-nums;
-  counter-reset: life-demo calc(var(--life-demo-left));
-}
-
-.lifeDemoLabel::before {
-  content: "あと " counter(life-demo) " 日";
-}
-
-/* 全幅の薄い線 (LifeLine.module.css と同じく、forced colors で消えないよう枠線で描く) */
-.lifeDemoTrack {
-  position: relative;
-  flex: 1;
-  border-block-start: 1px solid var(--poi-color-border);
-}
-
-/* 残りの期間の濃い線。長さは保存期間 (--life-demo-total) に対する残り日数の割合 */
-.lifeDemoRemaining {
-  position: absolute;
-  inset-inline-start: 0;
-  top: -1.5px;
-  width: calc(var(--life-demo-left) / var(--life-demo-total) * 100%);
-  border-block-start: 2px solid currentColor;
-  border-radius: 1px;
-}
-
-/* バーの長さも日数と同じく整数に丸め、Safari でも「あと N 日」と同じ一日刻みで縮むようにする (HAY-51)。
-   round() は無条件には使わない: 未対応のブラウザでは宣言ごと無効になり、バーが消える */
-@supports (width: round(1%, 1%)) {
-  .lifeDemoRemaining {
-    width: calc(round(var(--life-demo-left)) / var(--life-demo-total) * 100%);
-  }
-}
-
-/* 残り 1 日まで減るセクションの色 (板と同じオレンジ)。動かないときは最初から、動くときは減りきったところで付ける */
-.lifeDemo[data-soon] {
-  --life-demo-soon-color: var(--poi-color-warning-text);
-  color: var(--life-demo-soon-color);
-}
-
-/* スクロールを時間に見立てて、日数とバーを from から to まで減らす。残り 1 日まで減るものは最後にオレンジにする */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .lifeDemo {
-      animation: age linear both;
-      animation-timeline: view();
-      /* 画面に入ってから、画面の中ほどに来るまでに減りきる範囲 */
-      animation-range: entry 100% cover 45%;
-    }
-
-    .lifeDemo[data-soon] {
-      animation-name: age-soon;
-    }
-  }
-}
-
-@keyframes age {
-  from {
-    --life-demo-left: var(--life-demo-from);
-  }
-  to {
-    --life-demo-left: var(--life-demo-to);
-  }
-}
-
-@keyframes age-soon {
-  0% {
-    --life-demo-left: var(--life-demo-from);
-    color: var(--poi-color-text-muted);
-  }
-  92% {
-    color: var(--poi-color-text-muted);
-  }
-  100% {
-    --life-demo-left: var(--life-demo-to);
-    color: var(--life-demo-soon-color);
-  }
-}
-
-/* ---- ヒーローのメモ (HeroMemo) ---- */
-
-/* 開いてすぐ、1 つのメモの日数が 30 日から減り、残り 1 日でオレンジになって消える (HAY-53)。
-   スクロールしなくても見えるよう、時間で一度だけ動かす。繰り返さない: 動き続けるものは止める手段が要る (WCAG 2.2.2)。
-   動かないとき (「動きを減らす」や未対応のブラウザ) は「あと 1 日」のメモのまま見せる。
-   消えた後も高さは変えない (最初の画面で下の内容が動かないように)。本文と「消えました」を同じ場所に重ねる */
-.heroMemo {
-  width: 100%;
-  max-width: 22.5rem;
-  display: grid;
-  text-align: start;
-}
-
-.heroMemo > * {
-  grid-area: 1 / 1;
-}
-
-/* 消えた後の一言。メモがあった場所の真ん中に置く (本文の左端に寄せると、空いた場所の隅に取り残されて見える) */
-.heroMemoGone {
-  place-self: center;
-  opacity: 0;
-  color: var(--poi-color-text-muted);
-  font-size: var(--poi-font-size-sm);
-}
-
-/* 使い道の末尾の、使い方・よくある質問への案内 */
-.more {
-  margin-top: var(--poi-space-xl);
-}
-
-/* 本文の箇条書き。板の本文と同じく行頭を見出しの文字にそろえる */
-.heroMemoList {
-  margin: 0;
-  padding-inline-start: 1.25em;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  /* 0.4 秒待ってから 2.6 秒で 30 → 1 日 (最後の 8% でオレンジ)。間を置いて消える (合わせて 4.6 秒で止まる) */
-  .heroMemo .lifeDemo {
-    animation: age-soon 2.6s 0.4s linear both;
-    animation-timeline: auto;
-  }
-
-  .heroMemoContent {
-    animation: vanish 0.8s 3.8s ease-out both;
-  }
-
-  .heroMemoGone {
-    animation: appear 0.6s 4s ease-out both;
-  }
-}
-
-@keyframes vanish {
-  to {
-    opacity: 0;
-    filter: blur(4px);
-  }
-}
-
-@keyframes appear {
-  to {
-    opacity: 1;
-  }
-}
-
-/* forced colors では区切り線と残りの線を濃淡で見分けられるようにする (LifeLine.module.css と同じ) */
-@media (forced-colors: active) {
-  .lifeDemoTrack,
-  .lifeDemoRemaining {
-    forced-color-adjust: none;
-  }
-
-  .lifeDemoTrack {
-    border-block-start-color: GrayText;
-  }
-
-  .lifeDemoRemaining {
-    border-block-start-color: CanvasText;
-  }
 }

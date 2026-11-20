@@ -1,6 +1,6 @@
 // X などアプリに埋め込まれたブラウザ (WebView) かを User-Agent から推定する。
 // これらのブラウザでは OAuth の state cookie がコールバックに乗らずログインが state_mismatch で失敗するので、
-// ランディングでログインボタンの代わりにブラウザで開き直す案内を出すのに使う (LoginCta)
+// ログインボタンの代わりに、ランディングでブラウザで開き直す案内を出すのに使う (useInAppBrowser)
 const APP_TOKENS = /\b(Twitter|TwitterAndroid|Instagram|FBAN|FBAV|Line)\//;
 
 export function isInAppBrowser(userAgent: string | null | undefined): boolean {

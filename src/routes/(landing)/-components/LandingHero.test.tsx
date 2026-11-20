@@ -3,9 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { createTestRouter, WithRouter } from "@/lib/router-test";
-
-import { LoginCta } from "./LoginCta";
+import { LandingHero } from "./LandingHero";
 
 const X_IOS_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Twitter/10.60.0";
@@ -43,30 +41,24 @@ afterEach(() => {
 
 function renderWithUserAgent(userAgent: string) {
   vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
-  act(() =>
-    root.render(
-      <WithRouter router={createTestRouter()}>
-        <LoginCta />
-      </WithRouter>,
-    ),
-  );
+  act(() => root.render(<LandingHero />));
 }
 
 const buttonLabels = () => [...container.querySelectorAll("button")].map((b) => b.textContent);
 
-describe("LoginCta", () => {
-  it("普通のブラウザでは Google のログインボタンを出す", () => {
+describe("LandingHero", () => {
+  it("普通のブラウザでは、アプリ内ブラウザの案内を出さない", () => {
     renderWithUserAgent(SAFARI_UA);
-    expect(buttonLabels()).toEqual(["Google でログインして始める"]);
+    expect(buttonLabels()).toEqual([]);
   });
 
-  it("iOS のホーム画面から開いたときは、アプリ内ブラウザの案内を出さずログインボタンを出す (HAY-125)", () => {
+  it("iOS のホーム画面から開いたときは、アプリ内ブラウザの案内を出さない (HAY-125)", () => {
     Object.defineProperty(navigator, "standalone", { value: true, configurable: true });
     renderWithUserAgent(IOS_HOME_SCREEN_UA);
-    expect(buttonLabels()).toEqual(["Google でログインして始める"]);
+    expect(buttonLabels()).toEqual([]);
   });
 
-  it("アプリ内ブラウザではログインボタンの代わりに、ブラウザで開き直す案内と URL のコピーを出す", () => {
+  it("アプリ内ブラウザでは、ブラウザで開き直す案内と URL のコピーを出す", () => {
     renderWithUserAgent(X_IOS_UA);
     expect(buttonLabels()).toEqual(["URL をコピー"]);
     expect(container.textContent).toContain("Safari や Chrome などのブラウザで開いてください");

@@ -21,9 +21,9 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 | `リロード` | `PwaUpdateBanner` |
 | `保存` / `キャンセル` | `TtlSettingModal` |
 | `削除する` / `キャンセル` | account-deletion confirm (`DeleteAccountConfirmModal`, dialog name `アカウント削除の確認`) |
-| `ログイン` | header, when signed out and not on `/` |
-| `Google でログインして始める` | landing CTA |
-| `URL をコピー` | landing CTA in an in-app browser (X etc.), in place of the login button, after `アプリ内のブラウザでは Google でログインできません。Safari や Chrome などのブラウザで開いてください。`; result `URL をコピーしました。Safari や Chrome に貼り付けて開いてください` / `コピーできませんでした。画面のメニューから「ブラウザで開く」を選んでください` |
+| `Google でログインして始める` | header, when signed out (`LoginButton`; starts Google OAuth directly) |
+| `ログイン` | header in an in-app browser (X etc.), when signed out and not on `/`; links to the landing |
+| `URL をコピー` | landing hero in an in-app browser (X etc.), where the header shows no login button, after `アプリ内のブラウザでは Google でログインできません。Safari や Chrome などのブラウザで開いてください。`; result `URL をコピーしました。Safari や Chrome に貼り付けて開いてください` / `コピーできませんでした。画面のメニューから「ブラウザで開く」を選んでください` |
 | `アカウントを追加` / `ホーム画面に追加` / `保存期間の設定` / `利用規約` / `プライバシーポリシー` / `問い合わせ` / `ログアウト` / `アカウント削除` | `UserMenu` items, in this order |
 | `タイムライン` / `見出しごとにまとめる` | `ViewToggle` tooltips |
 | `「<title>」を閉じる` / `エラーを閉じる` / `通知を閉じる` | close button label of `BottomLeftNotice` (from the title; `closeLabel` for the untitled error toast; fallback) |
@@ -67,7 +67,7 @@ Note: sentence-final `。` is inconsistent today — the modal / inline errors i
 ## Titles and fixed text
 
 - Modals: `保存期間` (radio group label `削除までの日数`, options `<n> 日`; note when some sections are past the new period (they are not deleted; their deadline becomes the earlier of the current one and today + <n> days) `保存すると、書いてから <n> 日を過ぎているセクション <m> 個は、遅くとも今日から <n> 日後に削除されます。`), `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
-- Landing: `<n> 日で消えるメモ帳`; lead `書いたメモは、日がたつと自動で消えます。`; under the CTA `無料で使えます。書いたメモは、他の利用者からは見えません。` (not `読めるのは本人だけ`: the operator can technically read the stored text; HAY-223) then the consent line `ログインすると、利用規約とプライバシーポリシーに同意したものとみなします。`; hero memo after it vanishes `このメモは消えました`; section headings `消えるメモの使い道`, `実際の画面`, `できること`, `片付けは、poi にまかせる`; video (the video itself is the button) `デモ動画を一時停止` / `デモ動画を再生`; features `書いてから <n> 日で、ひとつずつ消える`, `見出しごとに、まとめて読める`, `残したいものは、ワンクリックで持ち出せる`, `ホーム画面から、すぐ書ける`
+- Landing: `<n> 日で消えるメモ帳`; section heading `とくちょう`; features `書いてから <n> 日で、ひとつずつ消える`, `見出しごとに、まとめて読める`, `残したいものは、ワンクリックで持ち出せる`, `ホーム画面から、すぐ書ける`
 - Document titles (`useDocumentTitle`): `poi` (top), `使い方とよくある質問 | poi`, `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
 - Legal: `最終更新日: <yyyy> 年 <m> 月 <d> 日`
 - Footer (`SiteFooter`, landing and text pages), one row in this order: `ドキュメント` (`/docs/guide`) / `利用規約` / `プライバシーポリシー` / `問い合わせ` (mailto, `ContactLink`). No copyright line

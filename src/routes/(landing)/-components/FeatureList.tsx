@@ -21,7 +21,7 @@ export function FeatureList() {
   return (
     <section aria-labelledby="features" className={classes.column}>
       <h2 id="features" className={classes.sectionTitle}>
-        できること
+        とくちょう
       </h2>
       <ul className={classes.features}>
         {FEATURES.map((feature) => (
