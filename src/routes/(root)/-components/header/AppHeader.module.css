@@ -15,10 +15,14 @@
 .bar {
   height: 100%;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--poi-space-md);
+}
+
+/* 文章のページの本文の列 (45rem。Landing / DocPage / SiteFooter) に左右の端を揃える。余白の分を足す */
+.narrow {
+  max-width: calc(45rem + var(--poi-space-md) * 2);
 }
 
 .logo {
