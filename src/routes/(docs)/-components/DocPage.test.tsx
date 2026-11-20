@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("DocPage", () => {
-  it("フッターを出し、もう一方の規約や GitHub へ移れるようにする (issue #139)", () => {
+  it("フッターを出し、もう一方の規約へ移れるようにする (issue #139)", () => {
     act(() =>
       root.render(
         <WithRouter router={createTestRouter()}>
@@ -33,9 +33,7 @@ describe("DocPage", () => {
       ),
     );
     const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(
-      expect.arrayContaining(["/", "/terms", "/privacy", "https://github.com/naosuke884/poi"]),
-    );
+    expect(hrefs).toEqual(expect.arrayContaining(["/", "/terms", "/privacy"]));
     expect(document.title).toBe("利用規約 | poi");
   });
 });

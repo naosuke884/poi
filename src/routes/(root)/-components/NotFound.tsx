@@ -8,7 +8,7 @@ import classes from "./NotFound.module.css";
 
 /**
  * 知らないパスを開いたときのページ (ルートの notFoundComponent。Worker は index.html を 404 で返す)。
- * ランディングのヒーローと同じく中央に寄せ、トップへ戻るボタンと、使い方などへ移れるフッターを置く
+ * ランディングのヒーローと同じく中央に寄せ、トップへ戻るボタンと、ドキュメントなどへ移れるフッターを置く
  */
 export function NotFound() {
   useDocumentTitle("ページが見つかりません");
@@ -28,7 +28,7 @@ export function NotFound() {
           トップへ戻る
         </Link>
       </div>
-      {/* トップ以外 (使い方・よくある質問など) へも移れるように */}
+      {/* トップ以外 (ドキュメントなど) へも移れるように */}
       <SiteFooter />
     </div>
   );

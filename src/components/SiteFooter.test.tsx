@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plu
 
 import { createTestRouter, WithRouter } from "@/lib/router-test";
 
-import { CONTACT_EMAIL, CONTACT_URL, OPERATOR_NAME, OPERATOR_URL } from "./ContactLink";
+import { CONTACT_URL } from "./ContactLink";
 import { SiteFooter } from "./SiteFooter";
 
 let root: Root;
@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe("SiteFooter", () => {
-  it("運営者の名前と問い合わせ先を出し、どちらにもたどり着ける (HAY-222)", () => {
+  it("「問い合わせ」のリンクから、問い合わせ先へのメールを書き始められる", () => {
     act(() =>
       root.render(
         <WithRouter router={createTestRouter()}>
@@ -31,10 +31,9 @@ describe("SiteFooter", () => {
         </WithRouter>,
       ),
     );
-    const text = container.textContent?.replace(/\s+/g, " ") ?? "";
-    expect(text).toContain(`運営者 ${OPERATOR_NAME}`);
-    expect(text).toContain(`問い合わせ先 ${CONTACT_EMAIL}`);
-    const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(expect.arrayContaining([OPERATOR_URL, CONTACT_URL]));
+    const contact = [...container.querySelectorAll("a")].find(
+      (a) => a.textContent === "問い合わせ",
+    );
+    expect(contact?.getAttribute("href")).toBe(CONTACT_URL);
   });
 });

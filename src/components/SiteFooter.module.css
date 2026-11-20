@@ -1,22 +1,15 @@
 /* 上に区切り線を引いて本文と分ける。幅は規約のページの本文 (720px) に揃える */
 .footer {
+  /* 間隔 (lg = 20px) はタップの取り違えを防ぐため。折り返すときも項目の単位で折れる */
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 0 var(--poi-space-lg);
   width: 100%;
   max-width: 45rem;
   margin: var(--poi-space-xl) auto 0;
   padding-top: var(--poi-space-md);
   border-top: 1px solid var(--poi-color-border);
-}
-
-/* 間隔 (lg = 20px) はタップの取り違えを防ぐため。折り返すときもリンクの単位で折れる */
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0 var(--poi-space-lg);
 }
 
 /* 本文より目立たせないよう控えめな色 (AA に引き上げ済み) にし、
@@ -32,23 +25,4 @@
   .link:hover {
     text-decoration: underline;
   }
-}
-
-.copyright {
-  composes: muted xs from "./typography.module.css";
-  margin: 0;
-}
-
-/* 運営者と問い合わせ先の行。address のブラウザ既定は斜体なので、他の行と同じ立体にする */
-.contact {
-  composes: row;
-  font-style: normal;
-}
-
-/* ラベルと値 (運営者とその名前、問い合わせ先とメール) を一つの塊にする。
-   折り返すとメールアドレスだけが次の行に残り、何のアドレスか分からなくなる */
-.meta {
-  composes: muted xs from "./typography.module.css";
-  margin: 0;
-  white-space: nowrap;
 }

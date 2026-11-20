@@ -36,7 +36,7 @@ export function DocPage({
       <Link to="/" className={`${typography.link} ${typography.sm}`}>
         トップへ戻る
       </Link>
-      {/* 文章のページからも他のページ (規約、GitHub など) へ移れるように (#139) */}
+      {/* 文章のページからも他のページ (規約など) へ移れるように (#139) */}
       <SiteFooter />
     </div>
   );

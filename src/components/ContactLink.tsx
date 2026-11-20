@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 
-// 運営者と問い合わせ先。セルフホストする場合は自分の名前・公開ページ・リポジトリ・アドレスに差し替える
+// 運営者と問い合わせ先。セルフホストする場合は自分の名前とアドレスに差し替える
 export const OPERATOR_NAME = "naosuke884";
-export const OPERATOR_URL = "https://github.com/naosuke884";
-export const SOURCE_URL = "https://github.com/naosuke884/poi";
 
 export const CONTACT_EMAIL = "884naoki.dev@gmail.com";
 export const CONTACT_URL = `mailto:${CONTACT_EMAIL}`;

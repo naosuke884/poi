@@ -39,9 +39,9 @@ describe("NotFound", () => {
     expect(document.title).toBe("ページが見つかりません | poi");
   });
 
-  it("トップのほか、使い方や規約のページへも移れる (HAY-52)", () => {
+  it("トップのほか、ドキュメントや規約のページへも移れる (HAY-52)", () => {
     renderNotFound();
     const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(expect.arrayContaining(["/", "/guide", "/faq", "/terms", "/privacy"]));
+    expect(hrefs).toEqual(expect.arrayContaining(["/", "/docs/guide", "/terms", "/privacy"]));
   });
 });
