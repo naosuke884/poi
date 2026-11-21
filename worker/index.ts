@@ -5,7 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { authMiddleware } from "./auth/middleware";
 import { deleteExpiredAuthRecords } from "./auth/sweep";
-import { boardRoutes, settingsRoutes } from "./board/routes";
+import { boardRoutes } from "./board/routes";
 import { sweepExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
 import { rateLimit } from "./rate-limit";
@@ -53,14 +53,6 @@ app.on(
     (c) => c.get("user")?.id,
   ),
 );
-app.on(
-  "PUT",
-  "/api/settings",
-  rateLimit(
-    (env) => env.SETTINGS_RATE_LIMITER,
-    (c) => c.get("user")?.id,
-  ),
-);
 
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。
 // ログアウト / アカウント削除で cookie を消すのは Better Auth の Set-Cookie と、端末のキャッシュは clearOfflineCaches に任せる。
@@ -68,7 +60,7 @@ app.on(
 app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
 
 // RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
-const api = new Hono<AppEnv>().route("/board", boardRoutes).route("/settings", settingsRoutes);
+const api = new Hono<AppEnv>().route("/board", boardRoutes);
 
 app.route("/api", api);
 

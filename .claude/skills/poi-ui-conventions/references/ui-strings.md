@@ -19,12 +19,11 @@ Reuse these exact wordings for the same concepts. Collected from src/ (grep the 
 | `再試行` | `RouteErrorFallback`; `(クリックで再試行)` appended to save-status tooltips |
 | `トップへ戻る` | `RouteErrorFallback`, `NotFound`, `DocPage` |
 | `リロード` | `PwaUpdateBanner` |
-| `保存` / `キャンセル` | `TtlSettingModal` |
 | `削除する` / `キャンセル` | account-deletion confirm (`DeleteAccountConfirmModal`, dialog name `アカウント削除の確認`) |
 | `Google でログインして始める` | header, when signed out (`LoginButton`; starts Google OAuth directly) |
 | `ログイン` | header in an in-app browser (X etc.), when signed out and not on `/`; links to the landing |
 | `URL をコピー` | landing hero in an in-app browser (X etc.), where the header shows no login button, after `アプリ内のブラウザでは Google でログインできません。Safari や Chrome などのブラウザで開いてください。`; result `URL をコピーしました。Safari や Chrome に貼り付けて開いてください` / `コピーできませんでした。画面のメニューから「ブラウザで開く」を選んでください` |
-| `アカウントを追加` / `ホーム画面に追加` / `保存期間の設定` / `利用規約` / `プライバシーポリシー` / `問い合わせ` / `ログアウト` / `アカウント削除` | `UserMenu` items, in this order |
+| `アカウントを追加` / `ホーム画面に追加` / `利用規約` / `プライバシーポリシー` / `問い合わせ` / `ログアウト` / `アカウント削除` | `UserMenu` items, in this order |
 | `タイムライン` / `見出しごとにまとめる` | `ViewToggle` tooltips |
 | `「<title>」を閉じる` / `エラーを閉じる` / `通知を閉じる` | close button label of `BottomLeftNotice` (from the title; `closeLabel` for the untitled error toast; fallback) |
 
@@ -54,7 +53,7 @@ Pattern: what failed + what to do. Connection problems say `接続を確認し�
 - `切り替えられませんでした。もう一度そのアカウントでログインしてください`
 - 404 (`NotFound`): heading `ページが見つかりません`, lead `URL が間違っているか、ページが移動または削除された可能性があります。`, button `トップへ戻る`
 
-Note: sentence-final `。` is inconsistent today — the modal / inline errors in `TtlSettingModal` end with `。`, the `useAccountActions` and `LandingHero` ones don't. Match the file you're editing.
+Note: sentence-final `。` is inconsistent today — the errors from `useAccountActions` and `LoginButton` don't end with `。`, the save errors on the board do. Match the file you're editing.
 
 ## Accessibility labels
 
@@ -66,7 +65,7 @@ Note: sentence-final `。` is inconsistent today — the modal / inline errors i
 
 ## Titles and fixed text
 
-- Modals: `保存期間` (radio group label `削除までの日数`, options `<n> 日`; note when some sections are past the new period (they are not deleted; their deadline becomes the earlier of the current one and today + <n> days) `保存すると、書いてから <n> 日を過ぎているセクション <m> 個は、遅くとも今日から <n> 日後に削除されます。`), `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
+- Modals: `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
 - Landing: `<n> 日で消えるメモ帳`; section heading `とくちょう`; features `書いてから <n> 日で、ひとつずつ消える`, `見出しごとに、まとめて読める`, `残したいものは、ワンクリックで持ち出せる`, `ホーム画面から、すぐ書ける`
 - Document titles (`useDocumentTitle`): `poi` (top), `使い方とよくある質問 | poi`, `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
 - Legal: `最終更新日: <yyyy> 年 <m> 月 <d> 日`

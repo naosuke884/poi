@@ -14,13 +14,11 @@ export function useBoardSections({
   initialRevision,
   userId,
   readOnly,
-  ttlDays,
 }: {
   initial: BoardSection[];
   initialRevision: string | null;
   userId: string;
   readOnly: boolean;
-  ttlDays: number;
 }) {
   const [sections, setSections] = useState<EditableSection[]>(() => {
     const s = toEditable(initial);
@@ -39,7 +37,6 @@ export function useBoardSections({
     initialRevision,
     userId,
     readOnly,
-    ttlDays,
     latestRef,
     commit,
   });

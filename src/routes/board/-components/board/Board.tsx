@@ -56,22 +56,18 @@ import classes from "./Board.module.css";
  * - 区切り線のボタンでセクションをコピー (Markdown テキスト) / スクショ (Markdown 表示を PNG に) できる
  * revision は sections の時点の板の版 (保存時に送る。別の場所で保存されていたら取り込んでから保存し直す)。
  * userId は保存成功時にオフライン閲覧用キャッシュを更新するためのキー。
- * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)。
- * ttlDays はそのユーザーの保存期間 (プレースホルダの「N 日で消えます」用。
- * オフラインのキャッシュ表示では取れないので既定値のまま)
+ * readOnly はオフラインでキャッシュから表示しているとき (入力不可・保存しない)
  */
 export function Board({
   sections: initial,
   revision = null,
   userId,
   readOnly = false,
-  ttlDays = MEMO_TTL_DAYS,
 }: {
   sections: BoardSection[];
   revision?: string | null;
   userId: string;
   readOnly?: boolean;
-  ttlDays?: number;
 }) {
   // 画面上のセクションと編集の入口 (update = 状態の更新 + 自動保存の予約)。
   // state (sections) は描画用で、ハンドラは常に latestRef (同じ内容) を読む
@@ -80,7 +76,6 @@ export function Board({
     initialRevision: revision,
     userId,
     readOnly,
-    ttlDays,
   });
 
   // 編集中 (エディタで表示する) セクション。それ以外は Markdown 表示。null はどれも編集していない。
@@ -306,7 +301,7 @@ export function Board({
   // セクションが 1 つだけのときのエディタのプレースホルダ (書き方の案内)
   const placeholder = [
     "ここに書く…",
-    `セクションごとに ${ttlDays} 日で消えます`,
+    `セクションごとに ${MEMO_TTL_DAYS} 日で消えます`,
     "空行 2 つで次のセクションへ",
     "Markdown が使えます (# 見出し、- 箇条書き)",
     "Tab でインデント、Esc で編集をやめる",
@@ -353,7 +348,6 @@ export function Board({
               readOnly={readOnly}
               fillScreen={i === sections.length - 1 && sections.length > 1}
               placeholder={sections.length === 1 ? placeholder : undefined}
-              ttlDays={ttlDays}
               handlers={handlers}
               refs={refs}
             />

@@ -34,7 +34,6 @@ describe("LifeLine", () => {
     render({
       createdAt: new Date(now - 15 * DAY_MS).toISOString(),
       expiresAt: new Date(now + 15 * DAY_MS).toISOString(),
-      ttlDays: 30,
       now,
     });
     const parts = container.querySelectorAll<HTMLElement>("[aria-hidden]");
@@ -46,7 +45,6 @@ describe("LifeLine", () => {
     render({
       createdAt: new Date(now - 15 * DAY_MS).toISOString(),
       expiresAt: new Date(now + 15 * DAY_MS).toISOString(),
-      ttlDays: 30,
       now,
     });
     const bar = container.querySelectorAll<HTMLElement>("[aria-hidden]")[1];
@@ -55,30 +53,10 @@ describe("LifeLine", () => {
     expect(container.textContent).toContain("あと 15 日");
   });
 
-  it("作成日から期限までが保存期間より長いセクションは、保存期間に対する残りの割合を線の長さにする (HAY-59)", () => {
-    const ratio = (createdDaysAgo: number, daysLeft: number) => {
-      render({
-        createdAt: new Date(now - createdDaysAgo * DAY_MS).toISOString(),
-        expiresAt: new Date(now + daysLeft * DAY_MS).toISOString(),
-        ttlDays: 7,
-        now,
-      });
-      return container
-        .querySelectorAll<HTMLElement>("[aria-hidden]")[1]
-        .style.getPropertyValue("--life-line-ratio");
-    };
-    // 10 日前に書き、保存期間を 7 日に変えた時点から数えて残り 7 日 / 3.5 日
-    expect(ratio(10, 7)).toBe("100%");
-    expect(ratio(13.5, 3.5)).toBe("50%");
-    // 作成日から数えたセクション (期間がちょうど保存期間) はこれまでどおり
-    expect(ratio(3.5, 3.5)).toBe("50%");
-  });
-
   it("残り 1 日以下はオレンジ", () => {
     render({
       createdAt: new Date(now - 29 * DAY_MS).toISOString(),
       expiresAt: new Date(now + DAY_MS).toISOString(),
-      ttlDays: 30,
       now,
     });
     const bar = container.querySelectorAll<HTMLElement>("[aria-hidden]")[1];

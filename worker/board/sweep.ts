@@ -1,4 +1,4 @@
-import { DAY_MS, MEMO_TTL_CHOICES } from "@shared/constants";
+import { DAY_MS, MEMO_TTL_DAYS } from "@shared/constants";
 import { and, inArray, lte, ne } from "drizzle-orm";
 
 import type { Db } from "../db";
@@ -11,8 +11,9 @@ import { memo } from "./schema";
 // scheduled ハンドラから切り離しておくことで、単体テストや他の経路からも再利用できる。
 //
 // 期限切れの行はすぐには消さず、中身 (content) だけ消して行を残す。行ごと消すと、その id を古いタブが送り返したとき、
-// 保持日数を延ばした後なら PUT /api/board の createdAt の判定を通って作り直されてしまうため (HAY-60)。
-// 残した行は、createdAt がどの保持日数でも期限切れになるところまで古くなったら (createdAt の判定だけで弾ける) 消す
+// 期限が createdAt + 保持日数より早い行 (保持日数を短く設定できた頃に作られた行) は、PUT /api/board の createdAt の
+// 判定を通って作り直されてしまうため (HAY-60)。
+// 残した行は、createdAt が保持日数を過ぎるところまで古くなったら (createdAt の判定だけで弾ける) 消す
 
 /**
  * 1 文で書き換える・消す行数の上限。溜まった期限切れを 1 つの文で処理すると、D1 の 1 文あたりの実行時間の上限に当たって
@@ -22,11 +23,11 @@ import { memo } from "./schema";
  */
 const SWEEP_BATCH_SIZE = 1_000;
 
-/** 選べる中で最も長い保持日数。createdAt がこれより古い id は、どの設定でも PUT /api/board で作り直されない */
-const MAX_TTL_MS = Math.max(...MEMO_TTL_CHOICES) * DAY_MS;
+/** 保持日数。createdAt がこれより古い id は、PUT /api/board で作り直されない */
+const TTL_MS = MEMO_TTL_DAYS * DAY_MS;
 
 /**
- * `expiresAt <= now` のセクションの中身を消し、そのうち createdAt が選べる最長の保持日数より古い行は削除する。
+ * `expiresAt <= now` のセクションの中身を消し、そのうち createdAt が保持日数より古い行は削除する。
  * 中身を消した件数と、削除した件数を返す
  */
 export async function sweepExpiredMemos(
@@ -61,7 +62,7 @@ export async function sweepExpiredMemos(
           db
             .select({ id: memo.id })
             .from(memo)
-            .where(and(expired, lte(memo.createdAt, new Date(now.getTime() - MAX_TTL_MS))))
+            .where(and(expired, lte(memo.createdAt, new Date(now.getTime() - TTL_MS))))
             .limit(limit),
         ),
       )

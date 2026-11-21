@@ -7,7 +7,6 @@ import { readCachedUser } from "@/lib/session-cache";
 
 import {
   applySaved,
-  applyTtlDays,
   type BoardSection,
   type DraftSection,
   type EditableSection,
@@ -99,15 +98,13 @@ class StaleError extends Error {
  *   取り直して手元の変更を重ね (mergeBoard)、保存し直す。タブに戻ってきたときも取り直して重ねる
  *   (開いたままの古い板が残り続けないように)
  * latestRef / commit は useBoardSections が持つ画面上のセクション (state は描画用、処理は ref を読む)。
- * commit は状態の差し替えだけで、保存後にサーバの id / 期限を戻すのにも使う。
- * ttlDays はそのユーザーの保持日数 (変わったら画面上のセクションの期限を引き直す)
+ * commit は状態の差し替えだけで、保存後にサーバの id / 期限を戻すのにも使う
  */
 export function useBoardAutosave({
   initial,
   initialRevision,
   userId,
   readOnly,
-  ttlDays,
   latestRef,
   commit,
 }: {
@@ -115,7 +112,6 @@ export function useBoardAutosave({
   initialRevision: string | null;
   userId: string;
   readOnly: boolean;
-  ttlDays: number;
   latestRef: RefObject<EditableSection[]>;
   commit: (next: EditableSection[]) => void;
 }) {
@@ -342,18 +338,6 @@ export function useBoardAutosave({
     };
     // マウント時に一度だけ実行する (readOnly はマウント後に変わらない: 変わるときは key で作り直される)
   }, []);
-
-  // 保持日数が変わったら (設定の変更 → 板の読み込み直し)、画面上のセクションの期限もサーバと同じ規則で引き直し、
-  // (変更とは関係なく) もう過ぎていたものを外す。
-  // 読み込み直しても Board は作り直さない (未保存の入力を保つため) ので、ここでサーバに合わせる
-  const ttlDaysRef = useRef(ttlDays);
-  useEffect(() => {
-    const previousTtlDays = ttlDaysRef.current;
-    if (ttlDays === previousTtlDays) return;
-    ttlDaysRef.current = ttlDays;
-    commit(applyTtlDays(latestRef.current, previousTtlDays, ttlDays, Date.now()));
-    dropExpired();
-  }, [ttlDays, commit, dropExpired]);
 
   // オンラインに復帰したら、オフラインで保存できなかった分 (や失敗したまま残っている分) を再送する
   useEffect(() => {

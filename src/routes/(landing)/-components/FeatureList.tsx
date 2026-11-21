@@ -4,7 +4,7 @@ import classes from "./Landing.module.css";
 import typography from "@/components/typography.module.css";
 
 // 特徴。「何ができるか」の一行だけにし、実装の言葉 (PWA 等) は避ける。
-// 細かい決まり (保存期間の幅、Markdown、オフライン) は使い方とよくある質問のページに任せる (HAY-53)。
+// 細かい決まり (Markdown、オフライン) は使い方とよくある質問のページに任せる (HAY-53)。
 // ヒーローの言い換えにならないよう、消え方の中身・まとめ・持ち出し・どこからでも開けることの順に並べる
 const FEATURES = [
   `書いてから ${MEMO_TTL_DAYS} 日で、ひとつずつ消える`,

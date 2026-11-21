@@ -110,7 +110,7 @@ For worker changes, curl is faster and shows the exact status and body:
 ```sh
 C=$(node <skill>/scripts/seed-session.mjs 2>/dev/null)
 curl -s -H "Cookie: $C" http://localhost:5173/api/auth/get-session
-curl -s -H "Cookie: $C" http://localhost:5173/api/board        # {"userId","sections","revision","ttlDays"}
+curl -s -H "Cookie: $C" http://localhost:5173/api/board        # {"userId","sections","revision"}
 curl -s -i http://localhost:5173/api/board | head -1           # HTTP/1.1 401 Unauthorized without a cookie
 curl -s -X PUT -H "Cookie: $C" -H 'Content-Type: application/json' \
   -d '{"userId":"<userId>","revision":"<revision or null>","sections":[{"id":null,"content":"hello"}]}' \

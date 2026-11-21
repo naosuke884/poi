@@ -41,7 +41,7 @@ Prefer the cheapest test that observes the behaviour.
 |---|---|---|
 | Domain decisions: diffing, merging, splitting, limits, parsing, expiry | Pure test of the functions the module exports for real callers. Node env, no doubles | `worker/board/board-sync.test.ts`, `src/routes/board/-lib/sections/board-ops.test.ts`, `.../data/board.test.ts`, `.../editor/minimal-change.test.ts`, `shared/in-app-browser.test.ts` |
 | Something needing DOM / localStorage / a CodeMirror view | Same, with `// @vitest-environment jsdom` | `.../editor/list-editing.test.ts`, `.../data/board-cache.test.ts`, `.../markdown/markdown-source-offset.test.ts` |
-| A hook, component or loader that talks to the API, auth or router | jsdom, real router (`@/lib/router-test`), fake server for API / auth | `src/routes/(root)/-lib/use-account-actions.test.tsx`, `.../header/user-menu/TtlSettingModal.test.tsx`, `.../data/board-loader.test.ts`, `OfflineBanner.test.tsx` |
+| A hook, component or loader that talks to the API, auth or router | jsdom, real router (`@/lib/router-test`), fake server for API / auth | `src/routes/(root)/-lib/use-account-actions.test.tsx`, `.../data/board-loader.test.ts`, `OfflineBanner.test.tsx` |
 | Editing → sections on screen → autosave PUT, conflicts, expiry | jsdom integration test of the whole `Board` | `src/routes/board/-components/board/Board.test.tsx` ([harness](references/board-harness.md)) |
 | A worker route's SQL, D1 limits, status codes | Route test on a fresh local D1 per test | `worker/board/routes.test.ts` |
 | Worker wiring in `index.ts` (Better Auth handler, headers on every response) | `worker.fetch` on a fresh local D1, test secrets, signed session cookie | `worker/index.test.ts` |
@@ -59,18 +59,18 @@ When a fix touches a component or route, first ask whether the decision belongs 
 
 ## Fake servers for the API and auth
 
-Replace `@/lib/api` / `@/lib/auth-client` at the module the code imports, with an in-memory server that holds data and answers like the real one. The exemplar is `TtlSettingModal.test.tsx`:
+Replace `@/lib/api` / `@/lib/auth-client` at the module the code imports, with an in-memory server that holds data and answers like the real one. The exemplar is `board-loader.test.ts`:
 
 ```ts
-// API の向こうのサーバー (プロセスの外にあるので、ここだけ偽物にする)
+// ログイン中のセッションとその人の板を持つサーバー (プロセスの外にあるので、ここだけ偽物にする)
 const server = vi.hoisted(() => ({
-  memoTtlDays: 30,
-  sections: [] as { createdAt: string }[],
-  reply: {} as Partial<Record<"settingsGet" | "settingsPut" | "boardGet", "ok" | "error" | "offline">>,
+  session: null as { user: User } | null,
+  board: { sections: [] as Section[], revision: null as string | null },
+  reply: {} as Partial<Record<"getSession" | "boardGet", "ok" | "error" | "offline">>,
 }));
-vi.mock("@/lib/api", () => { /* $get / $put read and write `server`, honour `reply` */ });
+vi.mock("@/lib/api", () => { /* $get reads `server`, honours `reply` */ });
 // …
-expect(server.memoTtlDays).toBe(7); // not: expect(put).toHaveBeenCalledWith(...)
+expect(readCachedBoard("me")?.sections).toEqual(sections); // not: expect(get).toHaveBeenCalled()
 ```
 
 - Responses look like `fetch` Responses: `{ ok, status, json: async () => body }`. `"offline"` throws `TypeError("Failed to fetch")`, and `"error"` returns `ok: false, status: 500`.

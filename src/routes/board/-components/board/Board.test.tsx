@@ -87,7 +87,7 @@ vi.mock("@/lib/api", () => ({
       $get: async () => ({
         ok: true,
         status: 200,
-        json: async () => ({ userId: sessionUserId, ...server, ttlDays: 30 }),
+        json: async () => ({ userId: sessionUserId, ...server }),
       }),
     },
   },
@@ -135,7 +135,7 @@ let router: ReturnType<typeof createTestRouter>;
 // 表示中のページのデータを (読み込み直しで) 取得した回数
 let loads = 0;
 
-async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
+async function mount(sections: Partial<BoardSection>[]) {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -154,17 +154,16 @@ async function mount(sections: Partial<BoardSection>[], ttlDays = 30) {
   router = createTestRouter({ loader: () => void loads++ });
   await router.load();
   loads = 0;
-  await render(ttlDays);
+  await render();
 }
 
-/** 同じ初期値のまま描画し直す (保持日数の変更後の読み込み直しなど。Board は作り直さない) */
-async function render(ttlDays: number) {
+async function render() {
   await act(async () => {
     root.render(
       <WithRouter router={router}>
         <HeaderSlotProvider>
           <HeaderSlotTarget />
-          <Board sections={initialSections} revision="r0" userId="u" ttlDays={ttlDays} />
+          <Board sections={initialSections} revision="r0" userId="u" />
         </HeaderSlotProvider>
       </WithRouter>,
     );
@@ -197,11 +196,6 @@ function sectionTexts(): string[] {
         ?.textContent?.trim() ?? ""
     );
   });
-}
-
-/** 画面上の寿命のバー (LifeLine) の「あと N 日」を上から順に */
-function lifeLineLabels(): string[] {
-  return container.textContent?.match(/あと \d+ 日/g) ?? [];
 }
 
 function editor(): EditorView {
@@ -432,7 +426,6 @@ describe("Board", () => {
 });
 
 describe("Board: 期限切れのセクション (issue #74)", () => {
-  const DAY = 24 * 60 * 60 * 1000;
   const iso = (ms: number) => new Date(ms).toISOString();
 
   it("開いている間に期限を過ぎたセクションは、次の保存で送らず画面からも外す", async () => {
@@ -446,37 +439,12 @@ describe("Board: 期限切れのセクション (issue #74)", () => {
     ]);
     expect(sectionTexts()).toEqual(["b", "- c"]);
   });
-
-  it("保持日数を短くしても、新しい期限をもう過ぎているセクションは外さず、今の期限と今 + 新しい日数の早い方にする (HAY-59)", async () => {
-    const now = Date.now();
-    await mount([
-      { content: "- old", createdAt: iso(now - 10 * DAY), expiresAt: iso(now + 20 * DAY) },
-      { content: "- new", createdAt: iso(now - DAY), expiresAt: iso(now + 29 * DAY) },
-      { content: "- soon", createdAt: iso(now - 29 * DAY), expiresAt: iso(now + DAY) },
-    ]);
-    // 設定の変更後の読み込み直し: Board は作り直さず、保持日数だけが変わる
-    await render(7);
-    expect(sectionTexts()).toEqual(["old", "new", "soon"]);
-    expect(lifeLineLabels()).toEqual(["あと 7 日", "あと 6 日", "あと 1 日"]);
-    await waitForSave();
-    // 期限が変わっただけなので保存しない
-    expect(puts).toEqual([]);
-    await addSection();
-    await type("- c");
-    await waitForSave();
-    expect(puts.at(-1)).toEqual([
-      { id: "id-0", content: "- old" },
-      { id: "id-1", content: "- new" },
-      { id: "id-2", content: "- soon" },
-      { id: null, content: "- c" },
-    ]);
-  });
 });
 
 describe("Board: 画面の知らないうちにサーバで期限を過ぎたセクションの保存 (issue #94)", () => {
   it("サーバが期限切れとして作らなかったセクションは画面から外し、書き換えていたものは新しいセクションとして残す", async () => {
     await mount([{ content: "- a" }, { content: "- b" }, { content: "- c" }]);
-    // 画面上の期限はまだ先だが、別のタブで保持日数が短くなって期限が早まり、サーバでは a と b がもう期限切れ
+    // 画面上の期限はまだ先だが、サーバでは a と b がもう期限切れ
     expiredOnServer.add("id-0");
     expiredOnServer.add("id-1");
     await addSection();

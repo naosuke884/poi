@@ -16,7 +16,7 @@ export function BoardView({
   // まま一度描画される。context の userId で key を作るとその瞬間に前の内容のまま作り直してしまい、
   // 新しい板が来ても key が変わらず表示が 1 回前のままになる (issue #52)。
   // loader の userId なら sections と必ず同じアカウントで、板の到着と同時に key が変わる
-  data: { sections, revision, ttlDays, offline, cachedAt, userId },
+  data: { sections, revision, offline, cachedAt, userId },
 }: {
   data: BoardData;
 }) {
@@ -28,10 +28,6 @@ export function BoardView({
   const liveRef = useRef(false);
   if (!offline) liveRef.current = true;
   const readOnly = offline && !liveRef.current;
-  // 保持日数は最後にオンラインで取れた値を渡し続ける。オフラインの再取得 (キャッシュ) では不明 (undefined) に
-  // なるが、そこで既定値に戻すと Board が「保持日数が変わった」と見て期限を引き直してしまう
-  const ttlDaysRef = useRef(ttlDays);
-  if (ttlDays !== undefined) ttlDaysRef.current = ttlDays;
   return (
     // 並びの間隔 (gap) は付けず、注意書きとの間隔は Alert の下の余白で取る (常在の空のライブリージョンに間隔が付かないように)
     <div className={classes.root}>
@@ -59,7 +55,6 @@ export function BoardView({
         revision={revision}
         userId={userId}
         readOnly={readOnly}
-        ttlDays={ttlDaysRef.current}
       />
     </div>
   );

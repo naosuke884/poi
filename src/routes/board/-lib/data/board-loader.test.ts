@@ -12,7 +12,7 @@ type Section = { id: string; content: string; expiresAt: string };
 // onBoardGet は板の GET が届いてから答えるまでの間に起きたこと (別の保存・セッション切れ) を表す
 const server = vi.hoisted(() => ({
   session: null as { user: User } | null,
-  board: { sections: [] as Section[], revision: null as string | null, ttlDays: 30 },
+  board: { sections: [] as Section[], revision: null as string | null },
   reply: {} as Partial<Record<"getSession" | "boardGet", Reply>>,
   requests: [] as ("getSession" | "boardGet")[],
   onBoardGet: undefined as (() => void) | undefined,
@@ -62,7 +62,7 @@ const sections = [{ id: "1", content: "- a", expiresAt: "2099-01-01T00:00:00.000
 beforeEach(() => {
   localStorage.clear();
   server.session = session;
-  server.board = { sections, revision: "r1", ttlDays: 7 };
+  server.board = { sections, revision: "r1" };
   server.reply = {};
   server.requests = [];
   server.onBoardGet = undefined;
@@ -82,7 +82,6 @@ describe("loadBoard", () => {
     expect(await loadBoard(session)).toEqual({
       sections,
       revision: "r1",
-      ttlDays: 7,
       offline: false,
       cachedAt: null,
       userId: "me",
@@ -108,7 +107,6 @@ describe("loadBoard", () => {
     expect(await loadBoard(session)).toMatchObject({
       sections,
       revision: null,
-      ttlDays: undefined,
       offline: true,
       cachedAt: 123,
     });

@@ -13,8 +13,6 @@ export type BoardData = {
   sections: BoardSection[];
   /** sections の時点の板の版 (保存時に送る。一度も保存されていない / オフラインのキャッシュ表示では null) */
   revision: string | null;
-  /** 保存期間。オフラインのキャッシュ表示では不明 (Board は既定値の表示にする) */
-  ttlDays: number | undefined;
   /** キャッシュから表示している (オンラインで取得できなかった) */
   offline: boolean;
   /** キャッシュの取得日時 (offline のときだけ) */
@@ -55,11 +53,10 @@ export async function loadBoard(session: LoginContext["session"]): Promise<Board
         "オフラインのため、板を取得できません (まだ一度も取得していないためキャッシュもありません)。",
       );
     }
-    // 保存期間 (ttlDays) はキャッシュしていないので不明。版も持たない (キャッシュ表示は閲覧のみで保存しない)
+    // 版は持たない (キャッシュ表示は閲覧のみで保存しない)
     return {
       sections: cached.sections,
       revision: null,
-      ttlDays: undefined,
       offline: true,
       cachedAt: cached.cachedAt,
       userId,
@@ -70,7 +67,7 @@ export async function loadBoard(session: LoginContext["session"]): Promise<Board
     return null;
   }
   if (!res.ok) throw new Error("板の取得に失敗しました");
-  const { sections, revision, ttlDays } = await res.json();
+  const { sections, revision } = await res.json();
   writeCachedBoard(userId, sections, requestedAt);
-  return { sections, revision, ttlDays, offline: false, cachedAt: null, userId };
+  return { sections, revision, offline: false, cachedAt: null, userId };
 }

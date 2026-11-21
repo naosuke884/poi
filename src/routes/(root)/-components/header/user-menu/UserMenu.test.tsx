@@ -169,7 +169,7 @@ describe("ユーザーメニューのキーボード操作", () => {
     await openWithKeyboard();
     expect(focusedLabel()).toBe("アカウントを追加");
     await press("ArrowDown");
-    expect(focusedLabel()).toBe("保存期間の設定");
+    expect(focusedLabel()).toBe("利用規約");
     await press("ArrowUp");
     await press("ArrowUp");
     expect(focusedLabel()).toBe("アカウント削除");
@@ -213,15 +213,18 @@ describe("ユーザーメニューのキーボード操作", () => {
 
   it("項目を選ぶと閉じてボタンへフォーカスを戻し、閉じたモーダルからもボタンへ戻る", async () => {
     await openWithKeyboard();
-    await press("ArrowDown");
+    // モーダルを開く項目 (末尾の「アカウント削除」) へ、先頭から ↑ で回る
+    await press("ArrowUp");
     await run(async () => {
       (document.activeElement as HTMLElement).click();
     });
     expect(container.querySelector("[role=menu]")).toBeNull();
     const dialog = document.querySelector("dialog[open]");
-    expect(dialog?.getAttribute("aria-labelledby")).toBeTruthy();
+    expect(dialog?.getAttribute("aria-label")).toBe("アカウント削除の確認");
     await run(async () => {
-      dialog?.querySelector<HTMLButtonElement>('button[aria-label="閉じる"]')?.click();
+      [...(dialog?.querySelectorAll("button") ?? [])]
+        .find((button) => button.textContent === "キャンセル")
+        ?.click();
     });
     expect(document.querySelector("dialog[open]")).toBeNull();
     expect(document.activeElement).toBe(trigger());

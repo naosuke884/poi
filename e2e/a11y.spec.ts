@@ -111,13 +111,6 @@ test.describe("ログイン済み (板)", () => {
     await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
     await expectNoViolations(page, testInfo, "ユーザーメニュー");
 
-    await page.getByRole("menuitem", { name: "保存期間の設定" }).click();
-    await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
-    await expectNoViolations(page, testInfo, "保存期間の設定");
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog")).toBeHidden();
-
-    await page.getByRole("button", { name: "A11y Check" }).click();
     await page.getByRole("menuitem", { name: "アカウント削除" }).click();
     await expect(page.getByRole("dialog", { name: "アカウント削除の確認" })).toHaveCSS(
       "opacity",

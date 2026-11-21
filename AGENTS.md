@@ -6,7 +6,7 @@ One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. 
 ## Layout
 
 - `src/` — frontend (React 19, TanStack Router, CSS Modules, CodeMirror 6). Files are colocated along routes.
-- `worker/` — backend (Hono on a Cloudflare Worker): `auth/` (Better Auth) and `board/` (sections, settings, cron).
+- `worker/` — backend (Hono on a Cloudflare Worker): `auth/` (Better Auth) and `board/` (sections, cron).
 - `shared/` — constants and pure helpers used by both sides (import as `@shared/...`).
 - `drizzle/` — generated D1 migrations.
 - `e2e/` — Playwright (`npm run test:a11y`); `tests/` — e2e (`npm run test:e2e`).

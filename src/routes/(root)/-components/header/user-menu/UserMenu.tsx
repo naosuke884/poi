@@ -1,4 +1,4 @@
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { BottomLeftNotice } from "@/components/BottomLeftNotice";
@@ -16,14 +16,12 @@ import { InstallGuideModal, useInstallApp } from "./InstallGuideModal";
 import { LoginButton } from "./LoginButton";
 import { Menu, MenuAnchor, MenuDivider, MenuItem, MenuLabel, MenuLink } from "./Menu";
 import { RunningStatus } from "./RunningStatus";
-import { TtlSettingModal } from "./TtlSettingModal";
 
 import skeleton from "./skeleton.module.css";
 import classes from "./UserMenu.module.css";
 
 export function UserMenu() {
   const { data, isPending, error, refetch } = authClient.useSession();
-  const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const online = useOnline();
   const install = useInstallApp();
@@ -41,7 +39,6 @@ export function UserMenu() {
     deleteAccount,
   } = useAccountActions();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [settingTtl, setSettingTtl] = useState(false);
   // セッション取得が通信エラーで失敗したら (オフライン)、前回ログインしていたユーザーを表示する
   const cachedUser = useMemo(() => (error ? readCachedUser() : null), [error]);
 
@@ -115,11 +112,6 @@ export function UserMenu() {
             <MenuDivider />
           </>
         )}
-        {/* 保存期間 (セクションの削除までの日数)。サーバへの取得 / 保存があるのでオフラインでは開かせない */}
-        <MenuItem disabled={offline} onClick={() => setSettingTtl(true)}>
-          保存期間の設定
-        </MenuItem>
-        <MenuDivider />
         <MenuLink to="/terms">利用規約</MenuLink>
         <MenuLink to="/privacy">プライバシーポリシー</MenuLink>
         <MenuAnchor href={CONTACT_URL}>問い合わせ</MenuAnchor>
@@ -134,12 +126,6 @@ export function UserMenu() {
       </Menu>
       {/* メニューの中だと閉じたときに一緒に消えるので、Modal はメニューの外に置く */}
       <InstallGuideModal {...install.guide} />
-      {/* 保存で全セクションの期限が変わるので、板 (loader) を取り直す */}
-      <TtlSettingModal
-        opened={settingTtl}
-        onClose={() => setSettingTtl(false)}
-        onSaved={() => void router.invalidate()}
-      />
       <DeleteAccountConfirmModal
         opened={confirmingDelete}
         onClose={() => setConfirmingDelete(false)}
