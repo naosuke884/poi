@@ -9,8 +9,8 @@ import { sweepExpiredMemos } from "./sweep";
 // 期限 (expires_at) と作成日時は行ごとに直接入れ、境界を狙う
 
 const NOW = Date.UTC(2026, 9, 17, 0, 0, 0);
-/** 選べる中で最も長い保持日数 */
-const MAX_TTL_MS = 90 * DAY_MS;
+/** 保持日数 */
+const TTL_MS = 30 * DAY_MS;
 
 const it = test.extend("memos", async ({ db }) => {
   for (const id of ["u1", "u2"]) {
@@ -19,12 +19,15 @@ const it = test.extend("memos", async ({ db }) => {
       .bind(id, id, `${id}@example.com`)
       .run();
   }
-  /** expiresAt の行を、内容を id と同じにして入れる */
+  /**
+   * expiresAt の行を、内容を id と同じにして入れる。
+   * createdAt の既定は期限の 7 日前 (保持日数を短く設定できた頃の行)。今の 30 日で作った行は、期限切れと同時に削除の対象になる
+   */
   async function insert(
     id: string,
     userId: string,
     expiresAt: number,
-    createdAt = expiresAt - 30 * DAY_MS,
+    createdAt = expiresAt - 7 * DAY_MS,
   ) {
     await db
       .prepare(
@@ -82,14 +85,23 @@ describe.concurrent("sweepExpiredMemos", () => {
     expect(await sweep(db)).toEqual({ cleared: 0, deleted: 0 });
   });
 
-  it("期限切れの行のうち、作成日時が選べる最長の保持日数 (90 日) より前のものは削除し、削除した件数を返す", async ({
+  it("期限切れの行のうち、作成日時が保持日数 (30 日) より前のものは削除し、削除した件数を返す", async ({
     db,
     memos,
   }) => {
-    await memos.insert("old", "u1", NOW - DAY_MS, NOW - MAX_TTL_MS);
-    await memos.insert("recent", "u1", NOW - DAY_MS, NOW - MAX_TTL_MS + 1);
+    await memos.insert("old", "u1", NOW - DAY_MS, NOW - TTL_MS);
+    await memos.insert("recent", "u1", NOW - DAY_MS, NOW - TTL_MS + 1);
     expect(await sweep(db)).toEqual({ cleared: 2, deleted: 1 });
     expect(await memos.rows()).toEqual([{ id: "recent", content: "" }]);
+  });
+
+  it("作成から 30 日で期限切れになった行は、中身を消すのと同じ実行で削除する", async ({
+    db,
+    memos,
+  }) => {
+    await memos.insert("expired", "u1", NOW, NOW - TTL_MS);
+    expect(await sweep(db)).toEqual({ cleared: 1, deleted: 1 });
+    expect(await memos.rows()).toEqual([]);
   });
 
   it("期限切れが無ければ何もせず 0 件を返す", async ({ db, memos }) => {
@@ -103,7 +115,7 @@ describe.concurrent("sweepExpiredMemos", () => {
     memos,
   }) => {
     for (let i = 0; i < 5; i++) await memos.insert(`expired-${i}`, "u1", NOW - i);
-    for (let i = 0; i < 5; i++) await memos.insert(`old-${i}`, "u1", NOW - i, NOW - MAX_TTL_MS - i);
+    for (let i = 0; i < 5; i++) await memos.insert(`old-${i}`, "u1", NOW - i, NOW - TTL_MS - i);
     await memos.insert("alive", "u1", NOW + 1);
     expect(await sweep(db, 2)).toEqual({ cleared: 10, deleted: 5 });
     expect((await memos.rows()).map((row) => row.id)).toEqual([

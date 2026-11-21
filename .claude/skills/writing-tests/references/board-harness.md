@@ -22,8 +22,8 @@ Board runs inside a real router: `mount` creates `createTestRouter({ loader })` 
 
 | Helper | What it does |
 |---|---|
-| `mount(sections, ttlDays?)` | Creates the root and the router (resets `loads`), fills defaults (`id-<i>`, far-future `expiresAt`), sets `server` to revision `r0`, renders inside `WithRouter` + `HeaderSlotProvider` / `HeaderSlotTarget` |
-| `render(ttlDays)` | Re-renders with the same initial sections (e.g. retention days changed); Board is not recreated |
+| `mount(sections)` | Creates the root and the router (resets `loads`), fills defaults (`id-<i>`, far-future `expiresAt`), sets `server` to revision `r0`, renders inside `WithRouter` + `HeaderSlotProvider` / `HeaderSlotTarget` |
+| `render()` | Re-renders with the same initial sections; Board is not recreated |
 | `addSection()` | Clicks the header's `セクションを追加` button |
 | `editor()` / `type(text)` / `key(k)` | Gets the focused CodeMirror view, inserts at the cursor with `userEvent: "input.type"`, or dispatches a keydown on `contentDOM` |
 | `sectionTexts()` | Each section's text: the editor doc if editing, otherwise the rendered Markdown's text |

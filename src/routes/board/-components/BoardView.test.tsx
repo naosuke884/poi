@@ -28,7 +28,6 @@ vi.mock("@/lib/api", () => ({
           userId: "u1",
           revision: server.revision,
           sections: server.sections,
-          ttlDays: 30,
         }),
       }),
     },
@@ -92,7 +91,6 @@ const render = (offline: boolean) => {
   const data: BoardData = {
     sections: server.sections,
     revision: server.revision,
-    ttlDays: offline ? undefined : 30,
     offline,
     cachedAt: offline ? Date.UTC(2026, 8, 24, 3, 0) : null,
     userId: "u1",

@@ -4,8 +4,8 @@ import {
   BOARD_MAX_SECTIONS,
   boardLength,
   DAY_MS,
-  MEMO_TTL_CHOICES,
   MEMO_TTL_DAYS,
+  memoExpiresAt,
   SECTION_SEPARATOR,
 } from "@shared/constants";
 import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
@@ -17,16 +17,15 @@ import { requireAuth } from "../auth/middleware";
 import { createDb, type Db } from "../db";
 import type { AppEnv } from "../types";
 import { planBoardSync } from "./board-sync";
-import { board, memo, userSetting } from "./schema";
+import { board, memo } from "./schema";
 
 // 板 (ユーザーごとに 1 枚) をセクションの配列としてやり取りする。
 // - セクションは板のテキストを空行 2 つ (SECTION_SEPARATOR = 改行 3 つ) で区切ったもの。中身に改行や空行 1 つは含んでよい
 // - id はサーバが発行する。クライアントは「前回保存したセクションの id」を付けて送り返すことで
 //   そのセクションの作成日 (= 期限) を引き継ぐ。id が null / 知らない id のものは新しいセクションとして作る
-// - id を付けるときは、クライアントが知っているその行の createdAt も付ける。知らない id で、今の保持日数では
-//   もう期限を過ぎている (別のタブで保持日数を短くして早まった期限で消えた行など) ものは作り直さない (issue #94)。
-//   期限ではなく createdAt で判定するのは、古いタブが持つ期限は保持日数の変更を知らない (遅いまま) ことがあるため
-// - 期限は作成時に確定し、内容や並び順を変えても延びない (保持日数の設定を変えたときだけ引き直す)
+// - id を付けるときは、クライアントが知っているその行の createdAt も付ける。知らない id で、createdAt から
+//   保持日数 (MEMO_TTL_DAYS) を過ぎているものは作り直さない (issue #94)
+// - 期限は作成時に確定し、内容や並び順を変えても延びない
 // - 板には版 (board.revision) があり、保存のたびに変わる。PUT にはクライアントが知っている版を付けてもらい、
 //   今の版と違えば (別の端末 / タブが先に保存していれば) 保存せずに 409 Stale を返す。丸ごと置き換えなので、
 //   古い内容のまま保存させると、別の場所で足したセクションが消えたり編集が戻ったりする (issue #72)。
@@ -135,36 +134,18 @@ async function writeThenSelectBoard(
 const jsonRows = sql.identifier("j");
 const jsonRow = sql`${jsonRows}.value`;
 
-/** そのユーザーの設定の行 (設定していなければ無い)。selectBoard と同じ batch に入れられるよう、クエリのまま返す */
-function selectSetting(db: Db, userId: string) {
-  return db
-    .select({ memoTtlDays: userSetting.memoTtlDays })
-    .from(userSetting)
-    .where(eq(userSetting.userId, userId));
-}
-type SettingRows = Awaited<ReturnType<typeof selectSetting>>;
-
-/** 設定の行から、セクションの保持日数 (設定していなければ既定値) */
-const ttlDaysOf = (rows: SettingRows): number => rows[0]?.memoTtlDays ?? MEMO_TTL_DAYS;
-
 export const boardRoutes = new Hono<AppEnv>()
   .use(requireAuth)
-  // 板を取得。ttlDays は「セクションごとに N 日で消えます」の表示用。
+  // 板を取得。
   // userId は板の持ち主 (開いたままのタブが取り直したとき、別タブでアカウントが切り替わっていないか確かめる)
   .get("/", async (c) => {
     const db = createDb(c.env.DB);
     const userId = c.get("user").id;
-    const [sections, revision, setting] = await db.batch([
+    const [sections, revision] = await db.batch([
       selectBoard(db, userId, new Date()),
       selectRevision(db, userId),
-      selectSetting(db, userId),
     ]);
-    return c.json({
-      userId,
-      sections,
-      revision: revision[0]?.revision ?? null,
-      ttlDays: ttlDaysOf(setting),
-    });
+    return c.json({ userId, sections, revision: revision[0]?.revision ?? null });
   })
   // 板を丸ごと置き換える。既存の行との突き合わせ (更新 / 新規 / 削除) は planBoardSync (board-sync.ts)
   .put("/", validate("json", putBoardSchema), async (c) => {
@@ -178,19 +159,17 @@ export const boardRoutes = new Hono<AppEnv>()
       return c.json({ error: "UserMismatch" }, 409);
     }
 
-    const [existing, current, setting, expired] = await db.batch([
+    const [existing, current, expired] = await db.batch([
       selectBoard(db, userId, now),
       selectRevision(db, userId),
-      selectSetting(db, userId),
       selectExpiredIds(db, userId, now, sections),
     ]);
-    const ttlDays = ttlDaysOf(setting);
     // クライアントの知らない保存が間にあった。そのまま置き換えるとその内容を消したり戻したりするので断る
     if ((current[0]?.revision ?? null) !== baseRevision) {
       return c.json({ error: "Stale" }, 409);
     }
-    // createdAt がこれ以前のセクションは、今の保持日数ではもう期限切れ
-    const expiredCreatedAt = new Date(now.getTime() - ttlDays * DAY_MS);
+    // createdAt がこれ以前のセクションは、もう期限切れ
+    const expiredCreatedAt = new Date(now.getTime() - MEMO_TTL_DAYS * DAY_MS);
     const plan = planBoardSync(
       existing,
       sections,
@@ -239,12 +218,7 @@ export const boardRoutes = new Hono<AppEnv>()
               position: sql<number>`${jsonRow}->>'position'`.as("position"),
               createdAt: sql<number>`${now.getTime()}`.as("created_at"),
               updatedAt: sql<number>`${now.getTime()}`.as("updated_at"),
-              // 保持日数は上で読んだ値ではなく、この batch (トランザクション) の中で読み直す。間に PUT /api/settings が
-              // 割り込むと、その引き直しの後に古い日数の期限で作ってしまうため
-              expiresAt:
-                sql<number>`${now.getTime()} + coalesce((${selectSetting(db, userId)}), ${MEMO_TTL_DAYS}) * ${DAY_MS}`.as(
-                  "expires_at",
-                ),
+              expiresAt: sql<number>`${memoExpiresAt(now).getTime()}`.as("expires_at"),
             })
             .from(sql`json_each(${JSON.stringify(plan.inserts)}) as ${jsonRows}`)
             .where(committed),
@@ -286,64 +260,4 @@ export const boardRoutes = new Hono<AppEnv>()
       saved.push(row);
     }
     return c.json({ sections: saved, revision });
-  });
-
-// ユーザー設定 (今はセクションの保持日数のみ)。
-// 保持日数を変えたら、いま見えている (期限切れでない) 全セクションの期限も引き直す (規則は retimedExpiresAt)。
-// createdAt + 新しい日数だけにすると、短くしたときに新しい期限を過ぎたセクションがその場で見えなくなり、
-// 次の Cron で中身を消されて元に戻せない (HAY-59) ので、過ぎているものは今の期限と「変えた時点 + 新しい日数」の早い方にする
-const putSettingsSchema = z.object({
-  memoTtlDays: z
-    .number()
-    .int()
-    .refine((d) => (MEMO_TTL_CHOICES as readonly number[]).includes(d), {
-      message: `保持日数は ${MEMO_TTL_CHOICES.join(", ")} 日から選んでください`,
-    }),
-});
-
-/**
- * retimedExpiresAt (shared/constants.ts) と同じ規則の、memo の新しい expires_at。
- * 変える前の日数は、同じ batch (トランザクション) の中で、設定を書き換える前に読む。
- * 先に読んだ値を渡さないのは、間に別の PUT /api/settings が割り込むと、その引き直しを古い日数から変えたものとして
- * 扱ってしまうため
- */
-function retimedExpiresAtSql(db: Db, userId: string, ttlDays: number, changedAt: Date) {
-  const ttlMs = ttlDays * DAY_MS;
-  const changedAtMs = changedAt.getTime();
-  const previousTtlDays = sql`coalesce((${selectSetting(db, userId)}), ${MEMO_TTL_DAYS})`;
-  const candidate = sql`case when ${memo.createdAt} + ${ttlMs} > ${changedAtMs} then ${memo.createdAt} + ${ttlMs} else ${changedAtMs + ttlMs} end`;
-  return sql`case
-    when ${ttlDays} < ${previousTtlDays} then min(${memo.expiresAt}, ${candidate})
-    when ${ttlDays} > ${previousTtlDays} then max(${memo.expiresAt}, ${candidate})
-    else ${memo.expiresAt}
-  end`;
-}
-
-export const settingsRoutes = new Hono<AppEnv>()
-  .use(requireAuth)
-  .get("/", async (c) => {
-    const memoTtlDays = ttlDaysOf(await selectSetting(createDb(c.env.DB), c.get("user").id));
-    return c.json({ memoTtlDays });
-  })
-  .put("/", validate("json", putSettingsSchema), async (c) => {
-    const db = createDb(c.env.DB);
-    const userId = c.get("user").id;
-    const now = new Date();
-    const { memoTtlDays } = c.req.valid("json");
-    // 期限の引き直しと設定の upsert を 1 トランザクションで。引き直しは変える前の日数を読むので、upsert より先に置く
-    await db.batch([
-      db
-        .update(memo)
-        .set({ expiresAt: retimedExpiresAtSql(db, userId, memoTtlDays, now) })
-        // 期限切れの行 (Cron が中身を消して残している行を含む) は引き直さない (延ばすと復活してしまう)
-        .where(visibleSections(userId, now)),
-      db
-        .insert(userSetting)
-        .values({ userId, memoTtlDays, createdAt: now, updatedAt: now })
-        .onConflictDoUpdate({
-          target: userSetting.userId,
-          set: { memoTtlDays, updatedAt: now },
-        }),
-    ]);
-    return c.json({ memoTtlDays });
   });

@@ -29,9 +29,7 @@ export const memo = sqliteTable(
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .$onUpdate(() => new Date())
       .notNull(),
-    // 作成時に createdAt + 保持日数 (user_setting.memo_ttl_days。無ければ 30 日) で確定させ、
-    // 内容や並びの更新では延ばさない。保持日数の設定を変えたときだけ、見えている全セクションを
-    // 新しい日数で引き直す (PUT /api/settings。規則は shared/constants.ts の retimedExpiresAt)
+    // 作成時に createdAt + 保持日数 (MEMO_TTL_DAYS) で確定させ、内容や並びの更新では延ばさない
     expiresAt: integer("expires_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => memoExpiresAt()),
@@ -42,12 +40,14 @@ export const memo = sqliteTable(
   ],
 );
 
-// ユーザーごとの設定 (1 行 = 1 ユーザー)。行が無いユーザーは既定値で動く
+// 保持日数をユーザーごとに変えられた頃の設定 (1 行 = 1 ユーザー)。今はどこからも読み書きしない。
+// このコードと同じ push でテーブルを落とさないのは、本番はマイグレーションを先に流すので、まだ動いている
+// 前の Worker がこのテーブルを読んで落ちるため (d1-schema-changes スキル)。次の push で落とす
 export const userSetting = sqliteTable("user_setting", {
   userId: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
-  // セクションを作成から何日で削除するか (MEMO_TTL_CHOICES のいずれか)
+  // セクションを作成から何日で削除するか
   memoTtlDays: integer("memo_ttl_days").notNull().default(MEMO_TTL_DAYS),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

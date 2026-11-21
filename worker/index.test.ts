@@ -45,7 +45,6 @@ function testEnv(db: D1Database) {
     DB: db,
     // レート制限を確かめるテスト以外では断らない
     BOARD_RATE_LIMITER: fakeRateLimiter(),
-    SETTINGS_RATE_LIMITER: fakeRateLimiter(),
     AUTH_RATE_LIMITER: fakeRateLimiter(),
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
@@ -439,9 +438,9 @@ describe.concurrent("想定外のエラー", () => {
     signIn,
   }) => {
     const cookie = await signIn();
-    // 設定の表が無い D1 (読み込みが SQL エラーになる)
-    await env.DB.prepare("drop table user_setting").run();
-    const res = await request("/api/settings", { headers: { Cookie: cookie } });
+    // 板の版の表が無い D1 (読み込みが SQL エラーになる)
+    await env.DB.prepare("drop table board").run();
+    const res = await request("/api/board", { headers: { Cookie: cookie } });
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "Internal Server Error" });
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
@@ -517,23 +516,6 @@ describe.concurrent("レート制限", () => {
       body: JSON.stringify({ userId: USER_ID, revision: null, sections: [] }),
     });
     expect(res.status).toBe(401);
-  });
-
-  it("PUT /api/settings はユーザーごとの上限を超えたら 429 で断る", async ({
-    env,
-    request,
-    signIn,
-  }) => {
-    env.SETTINGS_RATE_LIMITER = fakeRateLimiter(1);
-    const cookie = await signIn();
-    const put = () =>
-      request("/api/settings", {
-        method: "PUT",
-        body: JSON.stringify({ memoTtlDays: 7 }),
-        headers: { Cookie: cookie },
-      });
-    expect((await put()).status).toBe(200);
-    expect((await put()).status).toBe(429);
   });
 
   it("/api/auth/* への書き込みは IP アドレスごとの上限を超えたら 429 で断り、別の IP アドレスは通す", async ({

@@ -28,7 +28,7 @@ export const pageTitle = (name?: string) => (name ? `${name} | ${SITE_NAME}` : T
 export const SUB_PAGES = {
   "/docs/guide": {
     name: "使い方とよくある質問",
-    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方とよくある質問です。メモの書き方、メモが消えるしくみと保存期間の変え方、見出しごとのまとめ表示を説明し、消えたメモは戻せるか、無料か、スマホで使えるかなどに答えます。`,
+    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方とよくある質問です。メモの書き方、メモが消えるしくみ、見出しごとのまとめ表示を説明し、消えたメモは戻せるか、無料か、スマホで使えるかなどに答えます。`,
   },
   "/terms": {
     name: "利用規約",

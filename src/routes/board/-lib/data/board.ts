@@ -2,7 +2,6 @@ import {
   BOARD_MAX_LENGTH,
   BOARD_MAX_SECTIONS,
   boardLength,
-  retimedExpiresAt,
   SECTION_SEPARATOR,
 } from "@shared/constants";
 import type { InferResponseType } from "hono/client";
@@ -13,7 +12,7 @@ import type { api } from "@/lib/api";
 export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sections"][number];
 
 // PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける。
-// createdAt はその行の作成日時 (保存済みのときだけ。サーバが今の保持日数で期限切れか判定する: issue #94)
+// createdAt はその行の作成日時 (保存済みのときだけ。サーバが期限切れか判定する: issue #94)
 export type DraftSection = { id: string | null; content: string; createdAt?: string | null };
 
 /**
@@ -21,7 +20,7 @@ export type DraftSection = { id: string | null; content: string; createdAt?: str
  * key は React の key とエディタの参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
  * 分割 / 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
  * (key はフォーカスのある部分に、id は先頭の部分に付く)。
- * id / createdAt / expiresAt はサーバに保存済みのときだけ入る (createdAt は保持日数の変更で期限を引き直すため)
+ * id / createdAt / expiresAt はサーバに保存済みのときだけ入る
  */
 export type EditableSection = {
   key: string;
@@ -47,34 +46,6 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
     createdAt: s.createdAt,
     expiresAt: s.expiresAt,
   }));
-}
-
-/**
- * 保持日数が変わったときの期限の引き直し (サーバの PUT /api/settings と同じ規則: retimedExpiresAt)。
- * まだ期限の来ていない保存済みのセクションだけを引き直す。期限を過ぎたものは延ばさない。
- * createdAt + ttlDays だけにすると、サーバでは期限を引き直されてまだ見えているセクションを、画面では期限切れとして
- * pruneExpired が外し、次の保存でサーバからも消してしまう (HAY-59)
- */
-export function applyTtlDays(
-  sections: EditableSection[],
-  previousTtlDays: number,
-  ttlDays: number,
-  now: number,
-): EditableSection[] {
-  return sections.map((s) => {
-    if (s.createdAt === null || s.expiresAt === null) return s;
-    if (new Date(s.expiresAt).getTime() <= now) return s;
-    return {
-      ...s,
-      expiresAt: retimedExpiresAt(
-        new Date(s.createdAt),
-        new Date(s.expiresAt),
-        previousTtlDays,
-        ttlDays,
-        new Date(now),
-      ).toISOString(),
-    };
-  });
 }
 
 /**
