@@ -8,7 +8,7 @@ export type IconButtonSize = "xs" | "sm" | "md" | "xl";
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /**
-   * filled: 藍で塗る (右下の追加ボタン)。subtle: 面なし、ホバーで薄い面 (ヘッダーや区切り線の小さなボタン)。
+   * filled: 藍で塗る (右下の追加ボタン)。subtle: 面なし、ホバーで薄い面 (ヘッダーやセクションのカードの上の行の小さなボタン)。
    * アイコンだけのボタンなので、必ず aria-label を付ける
    */
   variant?: "filled" | "subtle";
@@ -24,7 +24,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 /**
- * アイコンだけのボタン。アイコンの色だけを変えたいとき (区切り線のボタンの dimmed / 結果の色) は、
+ * アイコンだけのボタン。アイコンの色だけを変えたいとき (カードの上の行のボタンの dimmed / 結果の色) は、
  * className で --icon-button-icon-color を指定する (color の色を残すのは、ホバーの面まで色付きにしないため)
  */
 export function IconButton({
@@ -67,8 +67,8 @@ export function IconButton({
 }
 
 /**
- * × の閉じるボタン (通知を閉じる・区切り線の削除)。IconButton と違って枠線を持たない
- * (区切り線の削除ボタンの当たり判定 SectionActions.module.css はこの大きさから測っている)。
+ * × の閉じるボタン (通知を閉じる・セクションの削除)。IconButton と違って枠線を持たない
+ * (セクションの削除ボタンの当たり判定 SectionActions.module.css はこの大きさから測っている)。
  * 色・ホバーの面・× の大きさは className で --close-button-color / --close-button-hover / --close-icon-size
  * を指定する (× の既定は一辺の 70%)
  */

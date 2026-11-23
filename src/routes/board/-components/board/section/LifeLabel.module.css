@@ -1,0 +1,15 @@
+.label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* 数字の幅を揃えて、日数が変わっても文字の幅が揺れないようにする */
+.days {
+  min-width: 5.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 残り 1 日以下 */
+.soon {
+  color: var(--poi-color-warning-text);
+}

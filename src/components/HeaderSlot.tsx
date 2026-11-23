@@ -5,7 +5,7 @@ import classes from "./HeaderSlot.module.css";
 
 /**
  * ヘッダーの差し込み口。ページ (ルート) が自分用の操作をヘッダーに出すために使う
- * (板の表示切替・追加ボタン・保存状態など)。
+ * (板の追加ボタン・保存状態など)。
  * __root が HeaderSlotProvider で全体を包み、ヘッダーの中の HeaderSlotTarget の位置に、
  * ページが描画した HeaderSlot の中身を portal で出す。
  * ヘッダーはページのことを知らずに済み、ページの状態はページの中 (props) だけで受け渡せる

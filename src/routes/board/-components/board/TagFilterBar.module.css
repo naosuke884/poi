@@ -1,0 +1,135 @@
+/* 絞り込みの行。ヘッダーのすぐ下に貼り付けて、板をどこまでスクロールしても切り替えられるようにする
+   (流れていく場所に置くと、長い板の下のほうを読んでいるときに、先頭まで戻らないと切り替えられない)。
+   root は机の色の台で、その上にセクションのカードと同じ白い帯 (bar) を 1 本置く (机の上に細いカードとして並び、まとまって見える)。
+   高さは決まった 1 行にする (48px = 上の余白 6px + 帯 38px (枠 1px + 内側 4px + ボタン 28px + 4px + 1px) + 下の余白 4px。
+   Board.module.css の --board-bar-height と同じ値): タグが多いと折り返して何行にもなり、貼り付いたまま画面を占めてしまうので、
+   横にスクロールさせる */
+.root {
+  position: sticky;
+  /* ヘッダーより下、下部固定のボタンや通知より下の層 */
+  z-index: 50;
+  top: var(--poi-header-height);
+  /* 本文の上の余白 (ヘッダーとの間) を詰めて、貼り付く前からヘッダーのすぐ下に置く (貼り付いた拍子に動かない) */
+  margin-top: calc(-1 * var(--poi-page-padding));
+  /* 帯の上下に机の色を少し見せる (ヘッダーの線や下のカードに帯の枠がくっつかないように) */
+  padding: 6px 0 4px;
+  /* 帯のまわりでも下をくぐる本文が透けないようにする。左右にページの余白ぶん背景を延ばして、カードの枠の端も隠す
+     (上下には延ばさない: 下の本文の頭を隠してしまう)。色はページの地 (板では机の色) に揃える */
+  background: var(--poi-color-page);
+  box-shadow:
+    calc(-1 * var(--poi-page-padding)) 0 0 var(--poi-color-page),
+    var(--poi-page-padding) 0 0 var(--poi-color-page);
+}
+/* 白い帯。セクションのカードと同じ面・枠・角 (影は付けない)。幅はカードと揃う */
+.bar {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-md);
+  background: var(--poi-color-bg);
+}
+/* 左に留める「すべて」「タグなし」。内側の 4px は、ボタンのフォーカスの枠 (2px + 離れ 2px) が帯の枠に重ならないぶん */
+.fixed {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  padding: 4px 0 4px 4px;
+}
+/* 留めたボタンと、送るタグの境目。飾りなので読み上げには出さない (中身の無い div は読まれない) */
+/* 線は枠で引く (面で塗ると、強制カラー (Windows のハイコントラスト) で消える) */
+.divider {
+  flex: none;
+  width: 0;
+  height: 18px;
+  margin-inline: 4px 0;
+  border-inline-start: 1px solid var(--poi-color-border);
+}
+/* 送るタグの場所。端のぼかしはここに重ねる (留めたボタンの上にはかけない) */
+.tags {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+/* タグの並び。入りきらなければ横にスクロールする。
+   内側の 4px は、端のボタンのフォーカスの枠 (2px + 離れ 2px) がスクロールの端で切れないぶん。
+   スクロールバーは出さない: 細い帯の中に出ると帯の高さが変わって (--board-bar-height とずれる) 札も押しにくくなる。
+   続きがあることは端のぼかしで示し、マウスでは Shift + ホイール、キーボードでは Tab で送れる */
+.scroller {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+/* まだボタンが隠れている側の端を、帯の白へぼかす (続きがあると分かるように)。
+   スクロールする要素の中に置くと一緒に流れるので、外側 (tags) に重ねる。押せるのは下のボタン */
+.tags::before,
+.tags::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.tags::before {
+  left: 0;
+  background: linear-gradient(to right, var(--poi-color-bg), transparent);
+}
+/* 右端は帯の角に接するので、角の丸み (枠の内側ぶん) に合わせて削る (四角いままだと角の枠に白が被る) */
+.tags::after {
+  right: 0;
+  border-radius: 0 calc(var(--poi-radius-md) - 1px) calc(var(--poi-radius-md) - 1px) 0;
+  background: linear-gradient(to left, var(--poi-color-bg), transparent);
+}
+.tags[data-more-start]::before,
+.tags[data-more-end]::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tags::before,
+  .tags::after {
+    transition: none;
+  }
+}
+
+/* タグごとのボタンを包むだけ (key を付けるための要素)。並びには現れない */
+.slot {
+  display: contents;
+}
+
+/* ボタン 1 つ。板のタグの札 (SectionTagButton の札、ポップオーバーの札) と同じ形: 枠なしの角の丸い札。
+   選んでいないものは色を付けず、控えめな文字だけにする */
+.item {
+  composes: sm muted from "../../../../components/typography.module.css";
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--poi-radius-sm);
+  background: none;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+/* 選んでいる絞り込み: 札の灰色で塗り、太字にする */
+.item[aria-pressed="true"] {
+  background: var(--poi-tag-bg);
+  color: var(--poi-tag-text);
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .item:not([aria-pressed="true"]):hover {
+    background: var(--poi-color-surface-hover);
+    color: var(--poi-color-text);
+  }
+}

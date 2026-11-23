@@ -48,7 +48,7 @@ Prefer the cheapest test that observes the behaviour.
 
 ### Domain logic as pure functions
 
-The repo keeps decisions in pure functions and leaves components and routes as thin shells that apply the result. Examples: `planBoardSync` in `worker/board/board-sync.ts` ("DB に触らない純粋関数にして、ルートはこの結果を batch にするだけ"), the section-array edits in `board-ops.ts`, `minimalChange`, `splitAtSeparator`, `pruneExpired`.
+The repo keeps decisions in pure functions and leaves components and routes as thin shells that apply the result. Examples: `planBoardSync` in `worker/board/board-sync.ts` ("DB に触らない純粋関数にして、ルートはこの結果を batch にするだけ"), the section-array edits in `board-ops.ts`, `minimalChange`, `pruneExpired`.
 These exported functions are the domain's public API, so testing them directly is testing behaviour. Such tests run in milliseconds and can pin edge cases a route or Board test reaches only slowly.
 
 - Test a module through the functions its real callers use. If a helper is exported only so a test can reach it, test it through its caller instead and keep it private.

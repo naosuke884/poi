@@ -1,12 +1,12 @@
 # poi
 
-A memo pad whose sections delete themselves 30 days (configurable per user) after they were written.
+A memo pad whose sections delete themselves 30 days after they were written (a fixed period; there is no setting).
 One Cloudflare Worker serves both the React SPA and the Hono API, backed by D1. See README.md for the stack.
 
 ## Layout
 
 - `src/` — frontend (React 19, TanStack Router, CSS Modules, CodeMirror 6). Files are colocated along routes.
-- `worker/` — backend (Hono on a Cloudflare Worker): `auth/` (Better Auth) and `board/` (sections, cron).
+- `worker/` — backend (Hono on a Cloudflare Worker): `auth/` (Better Auth), `board/` (sections, tags, cron), `link-preview/` (link titles fetched server-side) and `site/` (page responses). See the `worker-structure` skill.
 - `shared/` — constants and pure helpers used by both sides (import as `@shared/...`).
 - `drizzle/` — generated D1 migrations.
 - `e2e/` — Playwright (`npm run test:a11y`); `tests/` — e2e (`npm run test:e2e`).

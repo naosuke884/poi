@@ -28,7 +28,7 @@ export const remarkDisable: Plugin<[readonly string[]]> = function (names) {
 export const BOARD_MARKDOWN_DISABLED: readonly string[] = [
   // 見出しの別記法・区切り
   "setextUnderline", // 次の行の === / --- で見出し
-  "thematicBreak", // --- の水平線 (セクションの区切り線と紛らわしい)
+  "thematicBreak", // --- の水平線 (セクションを区切り線で分けていた頃、その線と紛らわしいので無効にした。カードにした後も、有効に戻すかはまだ決めていない)
   // インライン装飾
   "attention", // **太字** / *斜体* (2*3 や snake_case で誤発動する)
   "codeText", // `インラインコード`

@@ -1,21 +1,61 @@
+/* 板を開いているときだけ、ページの地 (body・ヘッダー・絞り込みの行) を一段暗い机の色にして、白いカードを浮かせる。
+   影は付けない (静かな見た目を保つ)。:root で変えるのは、ヘッダーや body が板の外の要素だから。
+   カードは --poi-color-bg を明示して塗るので、机の色を受け継がない (SectionRow.module.css) */
+:global(:root):has(.board) {
+  --poi-color-page: var(--poi-color-desk);
+}
+
 .board {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: var(--poi-space-xs);
 }
+/* 絞り込みの行 (TagFilterBar) がヘッダーの下に貼り付いているぶん。セクションへスクロールするときの
+   上の余白に足す (SectionRow.module.css)。TagFilterBar.module.css の行の高さと同じ値にする */
+.board[data-filter-bar] {
+  --board-bar-height: 48px;
+}
 
 /* タイムライン (セクションの並び)。最後のセクションより下の空きもクリックで書ける場所に見せる */
 .timeline {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* カードの間隔。カードの中の上下の余白 (12px) より広くして、どこまでが 1 枚かを見分けやすくする */
+  gap: var(--poi-space-lg);
 }
 .timeline[data-writable] {
   cursor: text;
 }
 
+/* 絞り込みに当てはまるセクションが無いときの一言。本文と同じ位置に、控えめな色で出す */
+.empty {
+  composes: md muted from "../../../../components/typography.module.css";
+  margin: var(--poi-space-md) 0 0;
+}
+
 .endSpacer {
   height: 4rem;
   flex: none;
+}
+
+/* 狭い画面 (スマホ) では、画面の端との余白とカードの間を詰めて、本文に幅と高さを回す。
+   ページの余白 (--poi-page-padding) はヘッダーや絞り込みの行も使うので、板を開いているときだけ :root で変える
+   (説明ページなど文章の多いページは、今までの余白のまま) */
+@media (max-width: 47.99em) {
+  :global(:root):has(.board) {
+    --poi-page-padding: var(--poi-space-xs);
+  }
+  .timeline {
+    gap: var(--poi-space-sm);
+  }
+  /* 右下固定の追加ボタン (.fab) が画面の下端から占める高さ (下の余白 16px + ボタン 2.75rem + 端末の下の安全域。
+     Board.tsx の Affix の bottom と IconButton の xl に合わせる)。セクションをスクロールして見せるとき、
+     この上に収める (SectionRow.module.css の scroll-margin-bottom)。キーボードのぶんは JS 側で足す */
+  .board {
+    --board-fab-clearance: calc(16px + 2.75rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* 右下固定の追加ボタンは狭い画面だけ (sm = 48em 以上ではヘッダーの AddSectionButton) */

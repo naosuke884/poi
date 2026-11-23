@@ -5,7 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { authMiddleware } from "./auth/middleware";
 import { deleteExpiredAuthRecords } from "./auth/sweep";
-import { boardRoutes } from "./board/routes";
+import { boardRoutes, tagRoutes } from "./board/routes";
 import { sweepExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
 import { linkPreviewRoutes } from "./link-preview/routes";
@@ -54,6 +54,15 @@ app.on(
     (c) => c.get("user")?.id,
   ),
 );
+// タグの登録・名前の変更・削除もユーザーごとに数える
+app.on(
+  ["POST", "PATCH", "DELETE"],
+  "/api/tags",
+  rateLimit(
+    (env) => env.TAGS_RATE_LIMITER,
+    (c) => c.get("user")?.id,
+  ),
+);
 // リンクのプレビューは、サーバから他のサイトを取りに行くので、ユーザーごとに数える
 app.on(
   "POST",
@@ -72,6 +81,7 @@ app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
 // RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
 const api = new Hono<AppEnv>()
   .route("/board", boardRoutes)
+  .route("/tags", tagRoutes)
   .route("/link-preview", linkPreviewRoutes);
 
 app.route("/api", api);

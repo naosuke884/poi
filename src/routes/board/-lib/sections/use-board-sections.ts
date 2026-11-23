@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { type BoardSection, type EditableSection, newSection, toEditable } from "../data/board";
+import type { Tag } from "../data/tags";
 import { useBoardAutosave } from "./use-board-autosave";
 
 /**
@@ -14,11 +15,17 @@ export function useBoardSections({
   initialRevision,
   userId,
   readOnly,
+  onTags,
+  registeredAsOf,
 }: {
   initial: BoardSection[];
   initialRevision: string | null;
   userId: string;
   readOnly: boolean;
+  /** 取り直した板と一緒に届いた登録済みのタグを渡す先 */
+  onTags: (tags: Tag[], requestedAt: number) => void;
+  /** 取り直した板に手元の変更を重ねるときに、登録済みとして扱うタグの id */
+  registeredAsOf: (tags: Tag[], requestedAt: number) => ReadonlySet<string>;
 }) {
   const [sections, setSections] = useState<EditableSection[]>(() => {
     const s = toEditable(initial);
@@ -39,6 +46,8 @@ export function useBoardSections({
     readOnly,
     latestRef,
     commit,
+    onTags,
+    registeredAsOf,
   });
 
   return { sections, latestRef, update, saveState };

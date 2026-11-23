@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { describe, expect, it } from "vite-plus/test";
 
 import { BOARD_MARKDOWN_DISABLED, remarkDisable } from "./markdown-disable";
-import { LIST_ITEM_RE, parseHeading } from "./markdown-syntax";
+import { HEADING_RE, LIST_ITEM_RE } from "./markdown-syntax";
 
 /** MarkdownView と同じ設定で 1 行を描画した HTML */
 const render = (line: string) =>
@@ -39,10 +39,8 @@ describe("見出しの判定は表示 (micromark) と一致する", () => {
   for (const line of lines) {
     it(JSON.stringify(line), () => {
       const h = /^<h([1-6])>(.*?)<\/h\1>$/.exec(render(line));
-      const parsed = parseHeading(line);
-      expect(parsed === null ? null : { level: parsed.level, text: parsed.text }).toEqual(
-        h ? { level: Number(h[1]), text: h[2] } : null,
-      );
+      const m = HEADING_RE.exec(line);
+      expect(m ? m[1]!.length : null).toBe(h ? Number(h[1]) : null);
     });
   }
 });

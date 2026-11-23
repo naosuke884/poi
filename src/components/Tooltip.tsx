@@ -37,19 +37,45 @@ type Placement = { top: number; left: number; side: "top" | "bottom"; arrowLeft:
 /**
  * ボタンなどにマウスを載せたとき (とキーボードでフォーカスしたとき) に出す短い説明。
  * 子は 1 つの要素で、ref とポインタ / フォーカスのイベントを受け取れること (DOM 要素か、それらを渡す部品)。
- * 包む要素を足さないのは、区切り線やヘッダーの並び (flex の gap) に余計な要素が入って位置がずれるため。
+ * 包む要素を足さないのは、カードの上の行やヘッダーの並び (flex の gap) に余計な要素が入って位置がずれるため。
  *
  * - 上に出し、上に入らなければ下へ (ヘッダーの中など)。左右は画面からはみ出さないようずらす
- * - body へのポータルに出す: 対象の親の overflow: hidden (表示切替の枠) で切れないように、
+ * - body へのポータルに出す: 対象の親の overflow (横にスクロールする書式のツールバーなど) で切れないように、
  *   また固定のヘッダー (z-index 100) や右下のボタン (200) より上に重なるように
  * - 読み上げの名前にはしない (読み上げ側は aria-label を使い、ツールチップは読まない)。
  *   aria-describedby も付けない: 中身は aria-label の短縮形なので、付けると同じことを 2 回読む
  * - マウス (pointerType が mouse) でだけ出す。タッチではタップで出たものが残って邪魔になる。
- *   フォーカスはキーボード操作 (:focus-visible) のときだけ (クリックしたボタンに出しっぱなしにならないように)
+ *   フォーカスはキーボード操作 (:focus-visible で、最後の操作がキーボード) のときだけ (クリックしたボタンや、タップの後に
+ *   スクリプトがフォーカスを戻したボタンに出しっぱなしにならないように)
  * - Esc で閉じる (次に載せる / フォーカスするまで出さない)
  * opened を渡すとその間は常に出す (押した結果を見せるとき)。disabled は出さない。
  * offset は対象との間 (既定は矢印ありで 7px、なしで 5px)
  */
+// 最後の操作がポインタ (マウス・タッチ・ペン) か、キーボードでの移動か。ページ全体で 1 つ (捕捉で、どの要素の操作も拾う)。
+// 入力欄への打ち込み (Enter を含む) はキーボードでの移動に数えない: スマホのソフトキーボードもキーを送るので、
+// タップで開いた入力欄で Enter を押して閉じたときに、戻ったボタンにツールチップが残る。
+// ウィンドウからフォーカスが外れたときには戻さない: 戻すと、別のアプリから戻ってきたときにブラウザがボタンへフォーカスを
+// 戻し直し、タッチの画面にツールチップが出る (アドレスバーから Tab で入ったときは、次のキー操作から出る)
+let lastInputWasPointer = false;
+const isEditable = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target.isContentEditable);
+if (typeof document !== "undefined") {
+  document.addEventListener("pointerdown", () => (lastInputWasPointer = true), true);
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      // key の無い keydown (自動入力の候補を選んだときなど) もある
+      if (typeof e.key !== "string") return;
+      const navigation = e.key === "Tab" || e.key === "Escape" || e.key.startsWith("Arrow");
+      if (navigation || !isEditable(e.target)) lastInputWasPointer = false;
+    },
+    true,
+  );
+}
+
 export function Tooltip({
   label,
   withArrow = false,
@@ -130,8 +156,10 @@ export function Tooltip({
     },
     onFocus: (e: FocusEvent<HTMLElement>) => {
       childProps.onFocus?.(e);
-      // 子の中の要素 (表示切替の見えないラジオ) にフォーカスが来たときも出すので、来た要素で見る
-      if (!(e.target as Element).matches(":focus-visible")) return;
+      // 子の中の要素にフォーカスが来たとき (子がボタンでなく、中にフォーカスできる要素を持つとき) も出すので、来た要素で見る。
+      // 最後の操作がタップやクリックなら出さない: 操作の結果としてスクリプトがフォーカスを戻したとき (ポップオーバーを
+      // 閉じてボタンへ戻すなど) も :focus-visible になり、タッチの画面にツールチップが出たまま残る
+      if (lastInputWasPointer || !(e.target as Element).matches(":focus-visible")) return;
       setDismissed(false);
       setFocused(true);
     },

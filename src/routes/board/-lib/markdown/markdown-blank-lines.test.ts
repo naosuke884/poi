@@ -24,25 +24,44 @@ const render = (source: string) =>
 describe("rehypeBlankLines (表示の余白をエディタの空行に合わせる。issue #117)", () => {
   it("見出しと段落の間の空行の有無を区別する (HTML だけでは同じになる)", () => {
     expect(render("# 見出し\n本文")).toBe("<h1>見出し</h1><p>本文</p>");
-    expect(render("# 見出し\n\n本文")).toBe('<h1>見出し</h1><p data-blank-lines="1">本文</p>');
+    expect(render("# 見出し\n\n本文")).toBe(
+      '<h1>見出し</h1><p data-blank-lines="1" style="--blank-lines:1">本文</p>',
+    );
     expect(render("本文\n## 見出し")).toBe("<p>本文</p><h2>見出し</h2>");
-    expect(render("本文\n\n## 見出し")).toBe('<p>本文</p><h2 data-blank-lines="1">見出し</h2>');
+    expect(render("本文\n\n## 見出し")).toBe(
+      '<p>本文</p><h2 data-blank-lines="1" style="--blank-lines:1">見出し</h2>',
+    );
+  });
+
+  it("末尾の空行は、その数の高さの空きを最後に置く (エディタは末尾の空行もそのまま見せる)", () => {
+    expect(render("上\n\n\n")).toBe(
+      '<p>上</p><div data-trailing-blank-lines="3" data-pos="2-4" style="--blank-lines:3" aria-hidden="true"></div>',
+    );
+    expect(render("上")).toBe("<p>上</p>");
+  });
+
+  it("続く空行はその数を渡す (余白を空行の数だけ空ける)", () => {
+    expect(render("上\n\n\n\n下")).toBe(
+      '<p>上</p><p data-blank-lines="3" style="--blank-lines:3">下</p>',
+    );
   });
 
   it("段落の中の改行は空行として数えない", () => {
     expect(render("1 行目\n2 行目\n\n次の段落")).toBe(
-      '<p>1 行目<br/>2 行目</p><p data-blank-lines="1">次の段落</p>',
+      '<p>1 行目<br/>2 行目</p><p data-blank-lines="1" style="--blank-lines:1">次の段落</p>',
     );
   });
 
   it("セクション先頭の空行も数える", () => {
-    expect(render("\n# 見出し")).toBe('<h1 data-blank-lines="1">見出し</h1>');
+    expect(render("\n# 見出し")).toBe(
+      '<h1 data-blank-lines="1" style="--blank-lines:1">見出し</h1>',
+    );
   });
 
   it("箇条書きの項目の間の空行は数え、入れ子の最初の要素には付けない", () => {
     expect(render("- 一\n  - 一の一\n- 二\n\n- 三")).toBe(
       "<ul><li><p>一</p><ul><li>一の一</li></ul></li><li><p>二</p></li>" +
-        '<li data-blank-lines="1"><p>三</p></li></ul>',
+        '<li data-blank-lines="1" style="--blank-lines:1"><p>三</p></li></ul>',
     );
   });
 });

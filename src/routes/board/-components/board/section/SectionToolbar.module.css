@@ -1,0 +1,63 @@
+/* 書式のツールバー。編集中のカードの本文の下に、細い線で区切って置く */
+.root {
+  margin-top: var(--poi-space-xs);
+  padding-top: 6px;
+  border-top: 1px solid var(--poi-color-divider);
+}
+
+/* 書式のボタンの並び。狭い画面で入りきらなければ、折り返さずに横にスクロールする
+   (折り返すと行が増えて本文が押し下がる) */
+.tools {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* ボタン 1 つ。指で押しやすい大きさ (36px) にして、見た目は控えめな色のアイコンだけにする */
+.tool {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--poi-radius-sm);
+  background: none;
+  color: var(--poi-color-text-muted);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .tool:hover {
+    background: var(--poi-color-surface-hover);
+    color: var(--poi-color-text);
+  }
+}
+@media (hover: none) {
+  .tool:active {
+    background: var(--poi-color-surface-hover);
+  }
+}
+
+/* H1 / H2 の文字 (アイコンの代わり) */
+.text {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+/* ボタンのまとまりの区切り。線は枠で引く (面で塗ると、強制カラー (Windows のハイコントラスト) で消える) */
+.separator {
+  flex: none;
+  width: 0;
+  height: 20px;
+  margin-inline: 4px;
+  border-inline-start: 1px solid var(--poi-color-divider);
+}

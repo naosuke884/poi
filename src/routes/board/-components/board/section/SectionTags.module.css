@@ -1,0 +1,234 @@
+/* タグを選ぶポップオーバー。上の行の右端 (タグの札のある側) の下に浮かせる (位置の基準は SectionRow の上の行 .topRow)。
+   本文の上に重ねるので、面と影で浮いて見せる。狭い画面では本文の列の幅いっぱいまで */
+.popover {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(20rem, 100%);
+  max-height: min(24rem, 60dvh);
+  overflow: hidden;
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-md);
+  background: var(--poi-color-surface);
+  box-shadow: var(--poi-shadow-lg);
+}
+
+/* 付いているタグと入力欄の枠。入力欄は残りの幅を使い、入りきらなければタグの下へ折り返す */
+.field {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--poi-color-divider);
+  background: var(--poi-color-surface-hover);
+}
+
+/* 探す / 作る入力欄。枠は .field が持つので、入力欄そのものは素の文字だけにする。
+   文字は 16px にする (それより小さいと iOS がフォーカス時に画面を拡大する) */
+.search {
+  flex: 1 1 8em;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--poi-color-text);
+  font: inherit;
+  font-size: 1rem;
+}
+/* 入力欄の枠を描かない代わりに、フォーカスは .field の枠で見せる */
+.field:focus-within {
+  box-shadow: inset 0 0 0 2px var(--poi-color-primary);
+}
+.search::placeholder {
+  color: var(--poi-color-placeholder);
+}
+
+/* 一覧。タグが多ければこの中だけをスクロールする */
+.list {
+  flex: 1;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+/* 一覧の 1 行: 選ぶボタン (行の幅いっぱい) と、右端の「…」 */
+.row {
+  display: flex;
+  align-items: center;
+  border-radius: var(--poi-radius-sm);
+}
+/* 入力欄の Enter で実行する行。マウスのホバーと同じ面で見せる */
+.row[data-active] {
+  background: var(--poi-color-surface-hover);
+}
+@media (hover: hover) {
+  .row:not(.editRow):hover {
+    background: var(--poi-color-surface-hover);
+  }
+}
+
+/* 選ぶボタン。指でも押しやすい高さ (36px) を取る */
+.option {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--poi-radius-sm);
+  background: none;
+  color: var(--poi-color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.option:disabled {
+  cursor: default;
+}
+/* 付いているタグの行の印 (チェック)。行の右に寄せる */
+.option > svg:last-child {
+  flex: none;
+  margin-inline-start: auto;
+  color: var(--poi-color-primary-strong);
+  /* 細い線だと目に入らないので太くする */
+  stroke-width: 3;
+}
+/* 付いているタグは、札をその文字の色で縁取って太字にし、チェックを添える */
+.option[aria-pressed="true"] .pill {
+  box-shadow: 0 0 0 2px var(--poi-tag-text);
+  font-weight: 700;
+}
+/* 新しく作る行の + */
+.option > svg:first-child {
+  flex: none;
+  color: var(--poi-color-text-muted);
+}
+
+/* タグの札 (Notion のセレクトの札の形)。どのタグも同じ灰色で、名前の前にそのタグのアイコン */
+.pill {
+  composes: sm from "../../../../../components/typography.module.css";
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: var(--poi-radius-sm);
+  background: var(--poi-tag-bg);
+  color: var(--poi-tag-text);
+  overflow-wrap: anywhere;
+}
+/* 上の欄の札は、外す × のぶん右の余白を詰める */
+.pill > svg {
+  flex: none;
+}
+.field .pill {
+  padding-inline-end: 0;
+}
+
+/* 付いているタグを外す × (上の欄の札の中) */
+.pillRemove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--poi-radius-sm);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* 行の右端の「…」(名前の変更と削除)。ホバーのある端末では、その行にポインタがあるときだけ見せる (Notion と同じ) */
+.more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--poi-radius-sm);
+  background: none;
+  color: var(--poi-color-text-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+@media (hover: hover) {
+  .row:not(:hover, :focus-within) .more {
+    opacity: 0;
+  }
+  .more:hover {
+    background: var(--poi-color-border);
+  }
+}
+
+/* 「…」で開いた行: 名前の入力欄と、削除 (や削除の確認) */
+.editRow {
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 4px;
+  background: var(--poi-color-surface-hover);
+}
+.rename {
+  flex: 1 1 8em;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-sm);
+  background: var(--poi-color-bg);
+  color: var(--poi-color-text);
+  font: inherit;
+  font-size: 1rem;
+}
+.delete {
+  composes: sm from "../../../../../components/typography.module.css";
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--poi-radius-sm);
+  background: none;
+  color: var(--poi-color-danger);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .delete:not(:disabled):hover {
+    background: var(--poi-color-danger-subtle);
+  }
+}
+.confirm {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.error {
+  composes: sm from "../../../../../components/typography.module.css";
+  flex: none;
+  margin: 0;
+  padding: 0 12px 8px;
+  color: var(--poi-color-danger);
+}

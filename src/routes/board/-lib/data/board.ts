@@ -1,9 +1,4 @@
-import {
-  BOARD_MAX_LENGTH,
-  BOARD_MAX_SECTIONS,
-  boardLength,
-  SECTION_SEPARATOR,
-} from "@shared/constants";
+import { BOARD_MAX_LENGTH, BOARD_MAX_SECTIONS, boardLength } from "@shared/constants";
 import type { InferResponseType } from "hono/client";
 
 import type { api } from "@/lib/api";
@@ -13,29 +8,40 @@ export type BoardSection = InferResponseType<typeof api.board.$get, 200>["sectio
 
 // PUT /api/board に送る 1 セクション。id は「前回保存したセクション」を引き継ぐときだけ付ける。
 // createdAt はその行の作成日時 (保存済みのときだけ。サーバが期限切れか判定する: issue #94)
-export type DraftSection = { id: string | null; content: string; createdAt?: string | null };
+export type DraftSection = {
+  id: string | null;
+  content: string;
+  /** 付けたタグ (登録済みのタグの id。付けていなければ null) */
+  tagId: string | null;
+  createdAt?: string | null;
+};
 
 /**
  * 画面上の 1 セクション (編集中ならエディタ (SectionEditor)、それ以外は Markdown 表示)。
  * key は React の key とエディタの参照に使う画面内だけの識別子 (id は保存するまで無いので別に持つ)。
- * 分割 / 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
- * (key はフォーカスのある部分に、id は先頭の部分に付く)。
+ * 結合ではフォーカスのあるエディタの DOM を使い回すため、key と id は別々に引き継がれる
+ * (key はフォーカスのある方に、id は前のセクションに付く。前がまだ保存していなければ後ろのものを保つ)。
  * id / createdAt / expiresAt はサーバに保存済みのときだけ入る
  */
 export type EditableSection = {
   key: string;
   id: string | null;
   content: string;
+  /**
+   * 付けたタグ (登録済みのタグの id。付けていなければ null)。別の場所で登録を消されたタグの id が残っていることが
+   * あり、そのときはタグなしとして見せる (次の保存でサーバが外す)
+   */
+  tagId: string | null;
   createdAt: string | null;
   expiresAt: string | null;
 };
 
 let seq = 0;
-export function newKey(): string {
+function newKey(): string {
   return `s${++seq}`;
 }
 export function newSection(content = ""): EditableSection {
-  return { key: newKey(), id: null, content, createdAt: null, expiresAt: null };
+  return { key: newKey(), id: null, content, tagId: null, createdAt: null, expiresAt: null };
 }
 
 /** サーバから取得したセクションを画面用にする */
@@ -43,9 +49,21 @@ export function toEditable(sections: BoardSection[]): EditableSection[] {
   return sections.map((s) => ({
     ...newSection(s.content),
     id: s.id,
+    // タグの導入前に端末に残したキャッシュ (オフライン表示) の行には tagId が無い
+    tagId: s.tagId ?? null,
     createdAt: s.createdAt,
     expiresAt: s.expiresAt,
   }));
+}
+
+/**
+ * 最後の保存 (saved) の後に、手元で内容を書き換えたか (saved に無い id のものも書き換えた扱い)。
+ * 期限切れのセクションを外すか、id を外して新しいセクションとして残すかを決める。
+ * タグだけの変更は数えない: 残すと、中身に手を入れていないメモが新しい期限で作り直され、30 日で消えなくなる
+ */
+export function editedSince(saved: DraftSection[]) {
+  const content = new Map(saved.map((s) => [s.id, s.content]));
+  return (s: { id: string | null; content: string }) => content.get(s.id) !== s.content;
 }
 
 /**
@@ -63,7 +81,7 @@ export function pruneExpired(
   const isExpired = (s: EditableSection) =>
     s.id !== null && s.expiresAt !== null && new Date(s.expiresAt).getTime() <= now;
   if (!sections.some(isExpired)) return null;
-  const savedContent = new Map(saved.map((s) => [s.id, s.content]));
+  const edited = editedSince(saved);
   const expiredIds = new Set<string>();
   const next: EditableSection[] = [];
   for (const s of sections) {
@@ -72,7 +90,7 @@ export function pruneExpired(
       continue;
     }
     expiredIds.add(s.id);
-    if (savedContent.get(s.id) !== s.content) {
+    if (edited(s)) {
       next.push({ ...s, id: null, createdAt: null, expiresAt: null });
     }
   }
@@ -87,13 +105,14 @@ export function pruneExpired(
 export function toDraft(sections: EditableSection[]): (DraftSection & { key: string })[] {
   return sections
     .filter((s) => s.content !== "")
-    .map(({ key, id, content, createdAt }) => ({ key, id, content, createdAt }));
+    .map(({ key, id, content, tagId, createdAt }) => ({ key, id, content, tagId, createdAt }));
 }
 
-/** 保存対象が前回保存したものと同じか (id と内容と並び順) */
+/** 保存対象が前回保存したものと同じか (id と内容とタグと並び順) */
 export function sameDraft(a: DraftSection[], b: DraftSection[]): boolean {
   return (
-    a.length === b.length && a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content)
+    a.length === b.length &&
+    a.every((s, i) => s.id === b[i]!.id && s.content === b[i]!.content && s.tagId === b[i]!.tagId)
   );
 }
 
@@ -112,26 +131,36 @@ export function overLimitMessage(draft: DraftSection[]): string | null {
 /**
  * 保存のレスポンスを画面上のセクションに戻す。draft は送ったもの、updated はその順の保存後の行、
  * saved は送る前の保存済みの控え。
- * - 送ったセクションにはサーバの id と期限を付ける (保存中の入力 (content) はそのまま残す)
+ * - 送ったセクションにはサーバの id と期限を付ける (保存中の入力 (content) はそのまま残す)。
+ *   タグはサーバの保存したものにする (登録に無いタグはサーバが外す)。ただし保存中に付け替えていれば手元のまま。
+ *   サーバが外したタグを画面に残すと、保存済みの控え (サーバの行) といつまでも食い違い、保存を繰り返す
+ * - 保存中に結合されて、送ったときと違う id を持った (mergeSections が前のセクションか保存済みの方の id を残した)
+ *   ときは、その id のままにする (送ったときの id の行で上書きすると、次の保存で残すはずの行が消され、
+ *   その内容が後ろのセクションの (より遅い) 期限で残ったり、新しい期限で作り直されたりする)
  * - 送っていない (空だった) セクションはサーバから消えているので id を外す
- * - サーバが期限切れとして作らなかったセクション (null。別のタブで保持日数を短くしたときなど: issue #94) は
+ * - サーバが期限切れとして作らなかったセクション (null。画面の知らないうちに期限を過ぎたときなど: issue #94) は
  *   画面から外す。ただし前回の保存の後に書き換えていたものは、入力を失わないよう id を外して残す
  *   (新しいセクションとして保存される。pruneExpired と同じ扱い)
  */
 export function applySaved(
   sections: EditableSection[],
-  draft: { key: string }[],
+  draft: { key: string; id: string | null; tagId: string | null }[],
   updated: (BoardSection | null)[],
   saved: DraftSection[],
 ): EditableSection[] {
-  const byKey = new Map(draft.map((d, i) => [d.key, updated[i]]));
-  const savedContent = new Map(saved.map((s) => [s.id, s.content]));
+  const byKey = new Map(
+    draft.map((d, i) => [d.key, { sentId: d.id, sentTag: d.tagId, u: updated[i] }]),
+  );
+  const edited = editedSince(saved);
   const next: EditableSection[] = [];
   for (const s of sections) {
-    const u = byKey.get(s.key);
-    if (u) {
-      next.push({ ...s, id: u.id, createdAt: u.createdAt, expiresAt: u.expiresAt });
-    } else if (u === null && savedContent.get(s.id) === s.content) {
+    const { sentId, sentTag, u } = byKey.get(s.key) ?? {};
+    if (u && s.id !== sentId) {
+      next.push(s);
+    } else if (u) {
+      const tagId = s.tagId === sentTag ? (u.tagId ?? null) : s.tagId;
+      next.push({ ...s, id: u.id, tagId, createdAt: u.createdAt, expiresAt: u.expiresAt });
+    } else if (u === null && !edited(s)) {
       // 期限切れで作られず、書き換えてもいない: 外す
     } else {
       next.push(s.id === null ? s : { ...s, id: null, createdAt: null, expiresAt: null });
@@ -140,9 +169,11 @@ export function applySaved(
   return next.length > 0 ? next : [newSection()];
 }
 
-/** 保存済みの控え (差分の有無の判定用) にする形: id と内容だけに絞る */
-export function toSaved(sections: { id: string | null; content: string }[]): DraftSection[] {
-  return sections.map(({ id, content }) => ({ id, content }));
+/** 保存済みの控え (差分の有無の判定用) にする形: id と内容とタグだけに絞る */
+export function toSaved(
+  sections: { id: string | null; content: string; tagId?: string | null }[],
+): DraftSection[] {
+  return sections.map(({ id, content, tagId }) => ({ id, content, tagId: tagId ?? null }));
 }
 
 /**
@@ -157,39 +188,15 @@ export function toPutPayload(
 ): {
   userId: string;
   revision: string | null;
-  sections: { id: string | null; content: string; createdAt?: string }[];
+  sections: { id: string | null; content: string; tagId: string | null; createdAt?: string }[];
 } {
   return {
     userId,
     revision,
-    sections: draft.map(({ id, content, createdAt }) =>
-      id !== null && createdAt ? { id, content, createdAt } : { id, content },
+    sections: draft.map(({ id, content, tagId, createdAt }) =>
+      id !== null && createdAt ? { id, content, tagId, createdAt } : { id, content, tagId },
     ),
   };
-}
-
-/**
- * エディタの入力に区切り (空行 2 つ = SECTION_SEPARATOR) が含まれていたら、そこでセクションを分ける。
- * 区切りが無ければ null。
- * parts は分けた後の各セクションの内容 (区切りちょうどで分けるだけで、それ以外の改行は残す)。
- * focus はカーソル (cursor: 入力後のカーソル位置) を置く先の part とその中の位置。
- * カーソルが区切りの途中 (改行 3 つの間) にあるときは次の part の先頭に置く
- */
-export function splitAtSeparator(
-  text: string,
-  cursor: number,
-): { parts: string[]; focus: { index: number; offset: number } } | null {
-  if (!text.includes(SECTION_SEPARATOR)) return null;
-  const parts = text.split(SECTION_SEPARATOR);
-  let start = 0;
-  for (let i = 0; i < parts.length; i++) {
-    const end = start + parts[i]!.length;
-    if (cursor <= end) return { parts, focus: { index: i, offset: cursor - start } };
-    start = end + SECTION_SEPARATOR.length;
-    if (cursor < start) return { parts, focus: { index: i + 1, offset: 0 } };
-  }
-  const last = parts.length - 1;
-  return { parts, focus: { index: last, offset: parts[last]!.length } };
 }
 
 /** 取得日時などの表示用フォーマット (端末のタイムゾーン) */

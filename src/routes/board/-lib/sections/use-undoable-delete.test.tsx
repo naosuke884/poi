@@ -11,8 +11,8 @@ import { UNDO_DELETE_MS, useUndoableDelete } from "./use-undoable-delete";
 // 8 秒を実時間で待たないよう、この file だけ setTimeout を偽の時計にする
 
 const sections: EditableSection[] = [
-  { key: "a", id: "id-a", content: "- a", createdAt: null, expiresAt: null },
-  { key: "b", id: "id-b", content: "- b", createdAt: null, expiresAt: null },
+  { key: "a", id: "id-a", content: "- a", tagId: null, createdAt: null, expiresAt: null },
+  { key: "b", id: "id-b", content: "- b", tagId: null, createdAt: null, expiresAt: null },
 ];
 
 let hook: ReturnType<typeof useUndoableDelete>;
@@ -20,7 +20,6 @@ function Probe() {
   const latestRef = useRef(sections);
   hook = useUndoableDelete({
     latestRef,
-    organized: false,
     focusLater: () => {},
     update: (next) => {
       latestRef.current = next;
@@ -51,7 +50,7 @@ describe("useUndoableDelete (issue #112)", () => {
   it("何もしなければ UNDO_DELETE_MS で消える", async () => {
     await remove();
     await advance(UNDO_DELETE_MS - 1);
-    expect(hook.deleted?.title).toBe("セクションを削除しました");
+    expect(hook.deleted?.removed.section.key).toBe("b");
     await advance(1);
     expect(hook.deleted).toBeNull();
   });

@@ -1,6 +1,6 @@
 /**
  * current を next に変える最小の置換 (前後の共通部分を除いた範囲)。
- * SectionEditor が Board からの value (分割 / 結合 / 取り消し) を doc に反映するのに使う。
+ * SectionEditor が Board からの value (結合 / 取り消し) を doc に反映するのに使う。
  * 全置換だと履歴 (Ctrl+Z) の位置の対応が崩れるので、変わった範囲だけを置き換える。
  * 同じなら null
  */

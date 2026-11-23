@@ -145,6 +145,13 @@ const describe = (p, sub) =>
 
 const samePlace = (a, b) => a.kind === b.kind && (a.kind !== "route" || a.dir === b.dir);
 
+// 使う側が 1 つのルートだけになっても src/components / src/lib に置いたままにするもの (SKILL.md の "Kept shared by design")
+const SHARED_BY_DESIGN = new Set([
+  "src/lib/api.ts",
+  "src/components/Tooltip.tsx",
+  "src/lib/use-media-query.ts",
+]);
+
 function check(f) {
   const home = homeOf(f);
   const all = [...(importers.get(f) ?? [])];
@@ -168,7 +175,9 @@ function check(f) {
     };
   }
   const want = expectedPlace(users);
-  if (samePlace(home, want)) return { f, users };
+  if (samePlace(home, want) || (SHARED_BY_DESIGN.has(f) && home.kind === "shared")) {
+    return { f, users };
+  }
   return {
     f,
     users,

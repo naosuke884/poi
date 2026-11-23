@@ -7,12 +7,15 @@ import { clearOfflineCaches } from "@/lib/offline-caches";
 import type { BoardSection } from "./board";
 import { readCachedBoard, writeCachedBoard } from "./board-cache";
 import { getLoginState, type LoginContext } from "./login-state";
+import type { Tag } from "./tags";
 
 /** 板 (/board) の loader が返すもの */
 export type BoardData = {
   sections: BoardSection[];
   /** sections の時点の板の版 (保存時に送る。一度も保存されていない / オフラインのキャッシュ表示では null) */
   revision: string | null;
+  /** 登録済みのタグ (登録した順)。オフラインのキャッシュ表示では、キャッシュしたときの一覧 */
+  tags: Tag[];
   /** キャッシュから表示している (オンラインで取得できなかった) */
   offline: boolean;
   /** キャッシュの取得日時 (offline のときだけ) */
@@ -57,6 +60,7 @@ export async function loadBoard(session: LoginContext["session"]): Promise<Board
     return {
       sections: cached.sections,
       revision: null,
+      tags: cached.tags,
       offline: true,
       cachedAt: cached.cachedAt,
       userId,
@@ -67,7 +71,9 @@ export async function loadBoard(session: LoginContext["session"]): Promise<Board
     return null;
   }
   if (!res.ok) throw new Error("板の取得に失敗しました");
-  const { sections, revision } = await res.json();
-  writeCachedBoard(userId, sections, requestedAt);
-  return { sections, revision, offline: false, cachedAt: null, userId };
+  const { sections, revision, tags } = await res.json();
+  // 登録済みのタグはここでは書かない: 開いた板 (useBoardTags) が、開いたときと一覧を変えたときに書く。
+  // 板を開いたまま loader がもう一度動いたとき (オンライン復帰など)、その一覧は板の持つ一覧より古いことがある
+  writeCachedBoard(userId, { sections }, requestedAt);
+  return { sections, revision, tags, offline: false, cachedAt: null, userId };
 }

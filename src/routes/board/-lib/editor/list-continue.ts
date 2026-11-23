@@ -16,8 +16,7 @@ export function cursorOf(view: EditorView): number | null {
  * Enter で箇条書きを同じ階層で続ける。
  * - 項目の途中 (記号より後ろ) で Enter → 同じインデント + 同じ記号 (番号付きは +1) を次の行に足す
  * - 空の項目で Enter → インデントがあれば 1 段戻す。いちばん外なら記号を消し、空行を挟んでリストを抜ける
- *   (空行を挟まないと、次に書いた行が Markdown では前の項目の続きになる)。
- *   もう一度 Enter で空行 2 つ = セクション区切りになるので、Enter 連打で次のセクションへ進める
+ *   (空行を挟まないと、次に書いた行が Markdown では前の項目の続きになる)
  * - それ以外 (リスト外・記号より前・選択あり・IME 変換中) → 普通の改行 (insertNewline)
  * Shift+Enter は SectionEditor が insertNewline のままにしているので、項目の中で
  * 続きの行を書きたいときの逃げ道になる

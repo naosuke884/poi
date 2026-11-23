@@ -1,6 +1,7 @@
 import type { Element, Root } from "hast";
 import type { Plugin } from "unified";
 
+import { TRAILING_BLANK_LINES } from "./markdown-blank-lines";
 import { LIST_MARKER_SOURCE } from "./markdown-syntax";
 
 /**
@@ -109,6 +110,24 @@ function lastTextNode(node: Node): Text | null {
   return null;
 }
 
+/** 末尾の空行の空きの、行の数と 1 行の高さと上端 */
+function trailingLines(el: HTMLElement) {
+  const count = Math.max(1, Number(el.getAttribute("data-trailing-blank-lines")) || 1);
+  const rect = el.getBoundingClientRect();
+  return { count, height: rect.height / count, top: rect.top };
+}
+
+/** 末尾の空行の空き (範囲の先頭が start) の k 行目の先頭の、元テキストの位置 */
+function trailingLineStart(source: string, start: number, k: number): number {
+  let pos = start;
+  for (let i = 0; i < k; i++) {
+    const newline = source.indexOf("\n", pos);
+    if (newline < 0) break;
+    pos = newline + 1;
+  }
+  return pos;
+}
+
 /** 画面上の点 (clientX / clientY) に対応する元テキストの位置。root の外や対応が取れないときは null */
 export function sourceOffsetAtPoint(
   root: HTMLElement,
@@ -117,6 +136,14 @@ export function sourceOffsetAtPoint(
   source: string,
 ): number | null {
   const doc = root.ownerDocument;
+  // 末尾の空行の空きにはテキストが無い (キャレットは前の行の文字に寄る) ので、押した高さで何行目かを決める
+  const spacer = doc.elementFromPoint?.(x, y)?.closest<HTMLElement>(TRAILING_BLANK_LINES);
+  const spacerRange = spacer && root.contains(spacer) ? posRange(spacer) : null;
+  if (spacer && spacerRange) {
+    const { count, height, top } = trailingLines(spacer);
+    const k = Math.min(count - 1, Math.max(0, Math.floor((y - top) / (height || 1))));
+    return trailingLineStart(source, spacerRange[0], k);
+  }
   let node: Node | null = null;
   let offset = 0;
   if (typeof doc.caretPositionFromPoint === "function") {
@@ -179,6 +206,12 @@ export function clientTopAtSourceOffset(
 ): number | null {
   const owner = ownerAtSourceOffset(root, pos);
   if (!owner) return null;
+  if (owner.el.matches(TRAILING_BLANK_LINES)) {
+    // 末尾の空行の空き: 何行目かは、範囲の先頭から pos までの改行の数
+    const { count, height, top } = trailingLines(owner.el);
+    const k = Math.min(count - 1, source.slice(owner.start, pos).split("\n").length - 1);
+    return top + height * Math.max(0, k);
+  }
   const region = source.slice(owner.start, owner.end);
   let cursor = markerLength(owner.el, region);
   // pos に届かないまま終わったら、最後に見たテキストノードの末尾で代用する (範囲の末尾の位置など)

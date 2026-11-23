@@ -16,7 +16,7 @@ export const TOP_TITLE = `${SITE_NAME} - ${MEMO_TTL_DAYS} 日で消えるメモ�
 export const BOARD_TITLE = SITE_NAME;
 
 /** トップの説明文 (meta description / og:description) */
-export const TOP_DESCRIPTION = `書いたメモが ${MEMO_TTL_DAYS} 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown に対応し、スマホのホーム画面に追加しても使えます。`;
+export const TOP_DESCRIPTION = `書いたメモが ${MEMO_TTL_DAYS} 日で自動で消えるメモ帳です。片付けを気にせず、思いついたまま書けます。Markdown とタグに対応し、スマホのホーム画面に追加しても使えます。`;
 
 /** 「利用規約 | poi」の形の文書のタイトル。ページ名が無ければトップのタイトル */
 export const pageTitle = (name?: string) => (name ? `${name} | ${SITE_NAME}` : TOP_TITLE);
@@ -28,7 +28,7 @@ export const pageTitle = (name?: string) => (name ? `${name} | ${SITE_NAME}` : T
 export const SUB_PAGES = {
   "/docs/guide": {
     name: "使い方とよくある質問",
-    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方とよくある質問です。メモの書き方、メモが消えるしくみ、見出しごとのまとめ表示を説明し、消えたメモは戻せるか、無料か、スマホで使えるかなどに答えます。`,
+    description: `${SITE_NAME} (${MEMO_TTL_DAYS} 日で消えるメモ帳) の使い方とよくある質問です。メモの書き方、メモが消えるしくみ、タグでの絞り込みを説明し、消えたメモは戻せるか、無料か、スマホで使えるかなどに答えます。`,
   },
   "/terms": {
     name: "利用規約",

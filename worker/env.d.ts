@@ -6,4 +6,6 @@ interface Env {
   GOOGLE_CLIENT_SECRET: string;
   /** 省略時はリクエストの origin を使う */
   BETTER_AUTH_URL?: string;
+  /** タグのアイコンを選ぶ Jev (typesafe.ai) のキー。無ければ、どのタグも決まったアイコンになる */
+  TYPESAFE_API_KEY?: string;
 }

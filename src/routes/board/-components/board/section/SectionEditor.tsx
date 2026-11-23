@@ -14,6 +14,7 @@ import {
   Transaction,
 } from "@codemirror/state";
 import {
+  type Command,
   EditorView,
   type KeyBinding,
   keymap,
@@ -54,23 +55,27 @@ export type SectionEditorHandle = {
    * place でカーソルを画面のどこに置くか指定する
    */
   focus(pos: number, place?: CursorPlace): void;
+  /** エディタにコマンドを実行させる (書式のツールバーのボタン)。エディタがまだ無ければ何もしない */
+  run(command: Command): void;
 };
 
 /**
  * カーソルを画面のどこに置くか。
  * 数値 = 画面上のその高さ (client 座標。切り替える前の高さを渡すと、見ていた場所がその場に留まる)、
- * "top" = 画面の上のほう (まとめ表示から飛んでくるときなど、切り替え前の高さに意味が無いとき)、
- * null / 省略 = CodeMirror の最小スクロールに任せる
+ * "top" = 画面の上のほう (末尾へ飛ぶときなど、切り替え前の高さに意味が無いとき)、
+ * null / 省略 = CodeMirror の最小スクロールに任せる、
+ * "none" = スクロールしない (呼んだ側がカードごと見せる。追加ボタンでそこへ滑らかに動かすとき。
+ * CodeMirror のスクロールは一気に動くので、先に走るとそこで着いてしまう)
  */
-export type CursorPlace = number | "top" | null;
+export type CursorPlace = number | "top" | "none" | null;
 
 /** 編集をやめる直前のカーソル: 元テキストの位置と、それが描かれていた画面上の高さ (client 座標の上端) */
 export type EditAnchor = { pos: number; top: number };
 
 type Props = {
   value: string;
-  /** 入力。cursor は selection.main.head (Board が分割位置の判定に使う) */
-  onChange(value: string, cursor: number): void;
+  /** 入力 */
+  onChange(value: string): void;
   onFocus(): void;
   /** フォーカスが外れた。anchor はそのときのカーソルの位置と画面上の高さ (座標が取れなければ null)。
    * Board は Markdown 表示に戻したあと、同じ場所が同じ高さに来るようスクロールを合わせる */
@@ -101,7 +106,7 @@ type Props = {
   ref?: Ref<SectionEditorHandle>;
 };
 
-// Board からの value の同期 (分割 / 結合 / 取り消し) で入れた変更の印。onChange で Board に戻さない・履歴に積まない・
+// Board からの value の同期 (結合 / 取り消し) で入れた変更の印。onChange で Board に戻さない・履歴に積まない・
 // 文字数上限で弾かない (弾くと Board の state と doc が食い違う)
 const externalSync = Annotation.define<boolean>();
 
@@ -112,14 +117,15 @@ const SAME_ROW_TOLERANCE = 1;
 // 次に書く行が見えないので、そのぶん上に置く
 const CURSOR_ROOM_LINES = 3;
 
-/** フォーカスしてカーソルを pos (doc の長さで clamp) に置き、見えるようにスクロールする */
+/** フォーカスしてカーソルを pos (doc の長さで clamp) に置き、見えるようにスクロールする ("none" ならスクロールしない) */
 function applyFocus(view: EditorView, pos: number, place?: CursorPlace) {
   const at = Math.max(0, Math.min(pos, view.state.doc.length));
   view.focus();
-  view.dispatch({ selection: EditorSelection.cursor(at), scrollIntoView: true });
+  view.dispatch({ selection: EditorSelection.cursor(at), scrollIntoView: place !== "none" });
+  if (place === "none") return;
   // scrollIntoView は次のフレーム (requestAnimationFrame の計測) で行われるので、ここで同期的に済ませる:
-  // Board の「最後のセクションの冒頭を上端に出す」layout effect はこの直後に走り、カーソルへのスクロールを
-  // 上書きする前提 (Textarea の focus() は同期的にスクロールしていた)。coordsAtPos などレイアウトを読む API は
+  // 下の keepAt は、カーソルへのスクロールが済んだ位置から置き直す前提 (次のフレームで遅れてスクロールされると、
+  // 置き直した位置が崩れる)。coordsAtPos などレイアウトを読む API は
   // 保留中の計測 (スクロールを含む) をその場で実行する (view.measure() は公開 API ではない)
   view.coordsAtPos(at);
   if (place === undefined || place === null) return;
@@ -238,6 +244,9 @@ export function SectionEditor({
         wantFocusRef.current = { pos, place };
         if (viewRef.current) applyFocus(viewRef.current, pos, place);
       },
+      run(command) {
+        if (viewRef.current) command(viewRef.current);
+      },
     }),
     [],
   );
@@ -294,7 +303,7 @@ export function SectionEditor({
               update.docChanged &&
               !update.transactions.some((tr) => tr.annotation(externalSync))
             ) {
-              cb.onChange(update.state.doc.toString(), update.state.selection.main.head);
+              cb.onChange(update.state.doc.toString());
             }
             if (update.focusChanged) {
               if (update.view.hasFocus) cb.onFocus();
@@ -358,7 +367,7 @@ export function SectionEditor({
     };
   }, []);
 
-  // value の同期。Board からの分割 / 結合 / 取り消しでしか起きない (自分の入力は onChange で Board に渡した
+  // value の同期。Board からの結合 / 取り消しでしか起きない (自分の入力は onChange で Board に渡した
   // ものがそのまま返ってくるので一致する)。
   // 子 (ここ) の layout effect は親 (Board) の layout effect より先に走るので、Board の「描画後にカーソルを置く」
   // effect が動く時点で doc は新しい値になっている (この順序に依存している)。

@@ -26,6 +26,7 @@ const prerenderedMarker = (assetPath: string) => `<h1>${assetPath}</h1>`;
 const USER_ID = "u1";
 /** ログに出てはいけないメモの本文 */
 const SECRET = "人に見られたくないメモ";
+const SECRET_TAG = "見られたくないタグ";
 
 /** Workers Rate Limiting の binding の代わり。key ごとに数え、limit 回を超えたら断る */
 function fakeRateLimiter(limit = Number.POSITIVE_INFINITY) {
@@ -45,6 +46,8 @@ function testEnv(db: D1Database) {
     DB: db,
     // レート制限を確かめるテスト以外では断らない
     BOARD_RATE_LIMITER: fakeRateLimiter(),
+    TAGS_RATE_LIMITER: fakeRateLimiter(),
+    LINK_PREVIEW_RATE_LIMITER: fakeRateLimiter(),
     AUTH_RATE_LIMITER: fakeRateLimiter(),
     BETTER_AUTH_SECRET: "test-secret-0123456789abcdef0123456789",
     GOOGLE_CLIENT_ID: "test-client-id",
@@ -446,22 +449,36 @@ describe.concurrent("想定外のエラー", () => {
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
-  it("保存が DB のエラーで失敗しても、ログにメモの本文を出さない (HAY-223)", async ({
+  // 並列に流れる describe の中で console を差し替えるテストは、この 1 つだけにする (差し替えるテストが重なると、
+  // 先に終わった方が戻してしまう。リンクのプレビューのテストは並列でない describe にある)
+  it("保存やタグの操作が DB のエラーで失敗しても、ログにメモの本文とタグの名前を出さない (HAY-223)", async ({
     env,
     request,
     signIn,
   }) => {
     const cookie = await signIn();
-    const logged: string[] = [];
-    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
-      logged.push(inspect(args, { depth: null }));
+    const registered = await request("/api/tags", {
+      method: "POST",
+      body: JSON.stringify({ name: "家" }),
+      headers: { Cookie: cookie },
     });
+    const { tags } = (await registered.json()) as { tags: { id: string }[] };
+    const logged: string[] = [];
+    const spies = (["error", "warn", "log"] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation((...args: unknown[]) => {
+        logged.push(inspect(args, { depth: null }));
+      }),
+    );
     try {
-      // メモの行を作れない D1 (読み込みは通り、本文をバインドした書き込みだけが SQL エラーになる)
-      await env.DB.prepare(
+      // 行を作れない・書き換えられない D1 (読み込みは通り、本文や名前をバインドした書き込みだけが SQL エラーになる)
+      for (const trigger of [
         "create trigger refuse_memo before insert on memo begin select raise(abort, 'refused'); end",
-      ).run();
-      const res = await request("/api/board", {
+        "create trigger refuse_tag_insert before insert on tag begin select raise(abort, 'refused'); end",
+        "create trigger refuse_tag_update before update on tag begin select raise(abort, 'refused'); end",
+      ]) {
+        await env.DB.prepare(trigger).run();
+      }
+      const put = await request("/api/board", {
         method: "PUT",
         body: JSON.stringify({
           userId: USER_ID,
@@ -470,16 +487,85 @@ describe.concurrent("想定外のエラー", () => {
         }),
         headers: { Cookie: cookie },
       });
-      expect(res.status).toBe(500);
+      expect(put.status).toBe(500);
+      const add = await request("/api/tags", {
+        method: "POST",
+        body: JSON.stringify({ name: SECRET_TAG }),
+        headers: { Cookie: cookie },
+      });
+      expect(add.status).toBe(500);
+      const rename = await request("/api/tags", {
+        method: "PATCH",
+        body: JSON.stringify({ id: tags[0]!.id, name: SECRET_TAG }),
+        headers: { Cookie: cookie },
+      });
+      expect(rename.status).toBe(500);
     } finally {
-      spy.mockRestore();
+      for (const spy of spies) spy.mockRestore();
     }
-    const boardLogs = logged.filter((line) => line.includes("PUT /api/board"));
-    expect(boardLogs).toHaveLength(1);
-    // 本文は db.batch でしかバインドしない。drizzle は batch 以外の失敗を、バインドした値入りのメッセージ
-    // (DrizzleQueryError) にして投げるので、本文を batch の外でバインドするとここで落ちる
-    expect(boardLogs[0]).toContain("refused");
-    expect(boardLogs[0]).not.toContain(SECRET);
+    // 本文とタグの名前は、どのログにも出ない (同時に流れる別のテストのログも混ざるが、それらはこの文字列を持たない)
+    expect(logged.join("\n")).not.toContain(SECRET);
+    expect(logged.join("\n")).not.toContain(SECRET_TAG);
+    // このテストのトリガーが出したエラーだけを見る (同時に流れる別のテストのエラーも console に出る)
+    const errors = logged.filter((line) => line.includes("refused"));
+    expect(errors.map((line) => /\[error\] (\w+ \/api\/[\w-]+)/.exec(line)?.[1])).toEqual([
+      "PUT /api/board",
+      "POST /api/tags",
+      "PATCH /api/tags",
+    ]);
+    // 本文やタグの名前は db.batch でしかバインドしない。drizzle は batch 以外の失敗を、バインドした値入りのメッセージ
+    // (DrizzleQueryError) にして投げるので、batch の外でバインドするとここで落ちる
+  });
+});
+
+describe("リンクのプレビュー", () => {
+  it("ログインしていなければ 401 で断る", async ({ request }) => {
+    const res = await request("/api/link-preview", {
+      method: "POST",
+      body: JSON.stringify({ url: "https://example.com/" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("取りに行ってはいけない URL や取れなかったページは { preview: null } で返し、ログに URL を出さない (HAY-223)", async ({
+    request,
+    signIn,
+  }) => {
+    const cookie = await signIn();
+    const logged: string[] = [];
+    const spies = (["error", "warn", "log"] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation((...args: unknown[]) => {
+        logged.push(inspect(args, { depth: null }));
+      }),
+    );
+    // 外のサイトの代わり: secret-memo.invalid には届かない (本物の DNS や通信に左右されないように)。
+    // ほかの URL (ローカルの D1 とのやり取りなど) は本物の fetch に渡す
+    const realFetch = globalThis.fetch;
+    let attempted = 0;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (new Request(input, init).url.includes("secret-memo.invalid")) {
+        attempted++;
+        throw new TypeError("network error");
+      }
+      return realFetch(input, init);
+    });
+    try {
+      for (const url of ["http://127.0.0.1/secret-path", "https://secret-memo.invalid/xyz"]) {
+        const res = await request("/api/link-preview", {
+          method: "POST",
+          body: JSON.stringify({ url }),
+          headers: { Cookie: cookie },
+        });
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ preview: null });
+      }
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+    // 取りに行って失敗した経路も通った (取りに行く前に断られていない)
+    expect(attempted).toBeGreaterThan(0);
+    expect(logged.join("\n")).not.toContain("secret");
   });
 });
 
@@ -501,6 +587,41 @@ describe.concurrent("レート制限", () => {
     const res = await put();
     expect(res.status).toBe(429);
     expect(await res.json()).toEqual({ error: "TooManyRequests" });
+  });
+
+  it("タグの登録と削除はユーザーごとの上限を超えたら 429 で断り、一覧の取得は数えない", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    env.TAGS_RATE_LIMITER = fakeRateLimiter(1);
+    const cookie = await signIn();
+    const send = (method: "POST" | "DELETE") =>
+      request("/api/tags", {
+        method,
+        body: JSON.stringify({ name: "買い物" }),
+        headers: { Cookie: cookie },
+      });
+    expect((await send("POST")).status).toBe(200);
+    expect((await send("DELETE")).status).toBe(429);
+    expect((await request("/api/tags", { headers: { Cookie: cookie } })).status).toBe(200);
+  });
+
+  it("リンクのプレビューはユーザーごとの上限を超えたら 429 で断る", async ({
+    env,
+    request,
+    signIn,
+  }) => {
+    env.LINK_PREVIEW_RATE_LIMITER = fakeRateLimiter(1);
+    const cookie = await signIn();
+    const send = () =>
+      request("/api/link-preview", {
+        method: "POST",
+        body: JSON.stringify({ url: "http://localhost/" }),
+        headers: { Cookie: cookie },
+      });
+    expect((await send()).status).toBe(200);
+    expect((await send()).status).toBe(429);
   });
 
   it("GET /api/board は数えない", async ({ env, request, signIn }) => {

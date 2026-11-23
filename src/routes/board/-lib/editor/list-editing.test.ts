@@ -85,7 +85,7 @@ describe("Enter (insertNewlineContinueList)", () => {
     expect(run(insertNewlineContinueList, "- |")).toBe("|");
   });
 
-  it("リストを抜けた後の Enter は普通の改行 (もう 1 回で空行 2 つ = セクション区切り)", () => {
+  it("リストを抜けた後の Enter は普通の改行", () => {
     const view = editor("- a\n- |");
     for (let i = 0; i < 2; i++) insertNewlineContinueList(view);
     expect(text(view)).toBe("- a\n\n\n|");

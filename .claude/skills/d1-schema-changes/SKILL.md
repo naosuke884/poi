@@ -13,7 +13,7 @@ Getting this wrong breaks production for everyone, and a pushed migration cannot
 
 | File | What | Edit by hand? |
 |---|---|---|
-| `worker/board/schema.ts` | App tables: `memo` (one row per board section), `board`, and `user_setting` (unused since the retention period became a fixed 30 days; kept until a later push drops it, per the contract rule below) | Yes — put every app table here |
+| `worker/board/schema.ts` | App tables: `memo` (one row per board section), `board`, `tag` (a user's registered tags: a stable `id`, and a name unique per user via `tag_userId_name_idx`; sections point at it by `memo.tag_id`, deliberately without a foreign key or `ON DELETE SET NULL` — `DELETE /api/tags` untags the rows itself and `PUT /api/board` only writes registered ids, so the route, not a schema side effect, says what happens), and `user_setting` (unused since the retention period became a fixed 30 days; kept until a later push drops it, per the contract rule below; that migration must also re-run 0012's cap `UPDATE`, because the previous Worker keeps creating rows with the old long periods between migrate and deploy) | Yes — put every app table here |
 | `worker/auth/schema.ts` | Better Auth tables (`user`, `session`, `account`, `verification`) | **No.** `npm run auth:schema` overwrites it (it is also excluded from lint and format in `vite.config.ts`) |
 | `drizzle.config.ts` | Points drizzle-kit at both schema files, output `./drizzle` | Rarely |
 | `drizzle/NNNN_<name>.sql` + `drizzle/meta/` | Generated migrations, snapshots, `_journal.json` | Only the `.sql`, only before it is pushed (see below) |
@@ -58,12 +58,12 @@ So every migration must be **backward compatible with the currently deployed cod
   Drizzle selects list every column explicitly, so an old Worker whose schema still has the column fails with "no such column" the moment it is gone.
   0003 and 0006 dropped columns in the same commit as the code removal; that was an error window during deploy, not a pattern to copy.
 - **Rename / change type** — never a single `RENAME COLUMN` / `DROP`. Several pushes:
-  1. Push 1 (expand): add the new column with a default, and in the **same migration** copy existing values (`UPDATE user_setting SET ttl_days = memo_ttl_days;`, appended after a `--> statement-breakpoint`). Without the copy, every existing user silently gets the default once reads switch. Code reads the new column and **writes both**, so the old Worker still sees correct values during the deploy window.
+  1. Push 1 (expand): add the new column with a default, and in the **same migration** copy existing values (e.g. `UPDATE board SET version = revision;`, appended after a `--> statement-breakpoint`). Without the copy, every existing user silently gets the default once reads switch. Code reads the new column and **writes both**, so the old Worker still sees correct values during the deploy window.
   2. Push 2: re-copy (catches writes the old Worker made between migrate and deploy), stop writing the old column.
   3. Push 3 (contract): drop the old column.
-  Keep public API field names (`memoTtlDays` in `/api/settings`) and exported constants unchanged — renaming them breaks installed PWAs and open tabs; a DB column name is internal.
+  Keep public API field names (e.g. `tagId` / `createdAt` in `PUT /api/board`) and exported constants unchanged — renaming them breaks installed PWAs and open tabs; a DB column name is internal.
 - **API**: new request fields stay optional so old clients keep working, and a missing value means "behave as before". Make one required only as a deliberate decision once the old pages have had time to reload (e.g. `revision` in PUT /api/board was optional at first and became required in HAY-43; old pages then get 400 until reloaded).
-- A new row-per-user table must treat "no row" as the default (see `user_setting` and `board`), so existing users need no backfill.
+- A new row-per-user table must treat "no row" as the default (see `board`: no row = a board never saved, revision null), so existing users need no backfill.
 
 Deploys are serialized and never cancelled (`concurrency: deploy-production`) precisely because a cancel could leave migrations applied without the new Worker.
 
@@ -91,8 +91,8 @@ Deploys are serialized and never cancelled (`concurrency: deploy-production`) pr
 ## Code that must follow the schema
 
 - `worker/board/routes.ts`: the `insert(memo).select(...)` lists columns **in table-definition order** (a Drizzle constraint). Adding a `memo` column means adding it there in the same position.
-- `worker/board/sweep.ts` (hourly Cron, `triggers.crons` in `wrangler.jsonc`) clears the `content` of `memo` rows past `expires_at` (keeping the row so its id can't be recreated, HAY-60) and deletes them once `created_at` is older than the longest retention choice; both rely on `memo_expiresAt_idx`. Keep that column and index, and remember that rows cascade from `user`, not from the sweep.
-- `expires_at` is computed in code (`memoExpiresAt` in `shared/constants.ts`), and `memo_ttl_days` defaults to `MEMO_TTL_DAYS`. Values the API validates (`MEMO_TTL_CHOICES`, `BOARD_MAX_SECTIONS`, `BOARD_MAX_LENGTH`) live in `shared/constants.ts`, not in DB constraints; if a new column has limits, put them there so the API and UI share them.
+- `worker/board/sweep.ts` (hourly Cron, `triggers.crons` in `wrangler.jsonc`) clears the `content` of `memo` rows past `expires_at` (keeping the row so its id can't be recreated, HAY-60) and deletes them once `created_at` is older than the fixed retention (`MEMO_TTL_DAYS`, 30 days; `drizzle/0012` capped older rows' `expires_at` to `created_at` + 30 days); both rely on `memo_expiresAt_idx`. Keep that column and index, and remember that rows cascade from `user`, not from the sweep.
+- `expires_at` is computed in code (`memoExpiresAt` in `shared/constants.ts`: `created_at` + `MEMO_TTL_DAYS`). Values the API validates (`BOARD_MAX_SECTIONS`, `BOARD_MAX_LENGTH`, `TAG_MAX_REGISTERED`, `TAG_MAX_LENGTH`) live in `shared/constants.ts`, not in DB constraints; if a new column has limits, put them there so the API and UI share them.
 - `worker/board/routes.test.ts` seeds `user` rows with raw SQL (`insert into user (id, name, email)`); a new `NOT NULL` column without a default on a seeded table breaks it.
 
 ## Never edit a pushed migration

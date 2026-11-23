@@ -5,3 +5,5 @@ BETTER_AUTH_SECRET=change-me-to-a-random-32-byte-string
 # Authorized redirect URI: http://localhost:5173/api/auth/callback/google
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+# タグのアイコンを選ぶ Jev (https://typesafe.ai) のキー。空ならどのタグも同じアイコンになる
+TYPESAFE_API_KEY=

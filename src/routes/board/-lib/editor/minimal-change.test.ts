@@ -19,7 +19,7 @@ describe("minimalChange", () => {
     expect(minimalChange("- a", "- a- b")).toEqual({ from: 3, to: 3, insert: "- b" });
   });
 
-  it("末尾の削除 (分割) は削除だけ", () => {
+  it("末尾の削除は削除だけ", () => {
     expect(minimalChange("- a\n\n\n- b", "- a")).toEqual({ from: 3, to: 9, insert: "" });
   });
 

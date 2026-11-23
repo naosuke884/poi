@@ -20,16 +20,16 @@
     },
     {
       "id": 1,
-      "name": "rename-ttl-column",
-      "prompt": "user_setting の memo_ttl_days って名前、memo って言葉が古いから ttl_days にリネームしたい。やって。",
+      "name": "rename-revision-column",
+      "prompt": "board テーブルの revision って名前、version のほうが分かりやすいからリネームしたい。やって。",
       "expected_output": "Backward-compatible expand/contract plan rather than one-shot rename.",
       "files": [],
       "assertions": [
-        "Does not ship a migration that renames or drops memo_ttl_days in the same change that the currently deployed Worker still reads",
+        "Does not ship a migration that renames or drops board.revision in the same change that the currently deployed Worker still reads",
         "Explains that production applies migrations before deploying the Worker, so the old Worker runs against the new schema",
-        "Implements or clearly lays out an expand/contract sequence (add ttl_days, switch reads, drop later in a separate push)",
-        "The expand migration copies existing memo_ttl_days values into the new column (UPDATE backfill), so existing users keep their setting",
-        "The public API field memoTtlDays in /api/settings is not renamed",
+        "Implements or clearly lays out an expand/contract sequence (add version, switch reads, drop later in a separate push)",
+        "The expand migration copies existing revision values into the new column (UPDATE backfill), so open tabs' saves are not all rejected as stale",
+        "No public API field name (such as tagId in PUT /api/board) or exported constant is renamed",
         "Does not edit any existing migration file in drizzle/",
         "Did not run any remote wrangler command or deploy"
       ]

@@ -20,7 +20,7 @@ import { cursorOf } from "./list-continue";
 const TAB_WIDTH = 4;
 
 /** 行頭の空白 (インデント) の桁数。startCol から数え始める */
-function indentColumns(indent: string, startCol = 0): number {
+export function indentColumns(indent: string, startCol = 0): number {
   let col = startCol;
   for (const ch of indent) col += ch === "\t" ? TAB_WIDTH - (col % TAB_WIDTH) : 1;
   return col;
@@ -30,7 +30,7 @@ function indentColumns(indent: string, startCol = 0): number {
  * 選択 (複数可) が触れている行を重複なく上から順に。
  * 選択の終わりが行頭ちょうどなら、その行は含めない (行単位で選択したとき。CodeMirror の selectedLineBlocks と同じ)
  */
-function coveredLines(view: EditorView): Line[] {
+export function coveredLines(view: EditorView): Line[] {
   const { doc } = view.state;
   const lines = new Map<number, Line>();
   for (const range of view.state.selection.ranges) {

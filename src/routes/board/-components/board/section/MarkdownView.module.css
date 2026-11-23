@@ -38,7 +38,7 @@
 }
 
 /* 見出しの上の余白: prose は h1 で 48px (1.5 * xl) など文書向けに大きいので、メモ向けに詰める
-   (エディタの見出し行の padding-top と同じ)。セクション先頭の見出しは区切り線の直後なので余白なし。
+   (エディタの見出し行の padding-top と同じ)。セクション先頭の見出しはカードの上の行の直後なので余白なし。
    行の高さと下の余白はエディタに合わせる: prose は見出しごとの line-height (h1 1.3 〜 h6 1.5) と
    下マージン (xs) を付けるが、エディタの見出し行は本文の 1.7 を継承して下の余白も無い
    (違うと表示と編集を切り替えるたびに見出しより下の行が上下に動く。issue #117) */
@@ -84,22 +84,24 @@
   margin-bottom: 0;
 }
 
-/* 前に空行がある要素 (rehypeBlankLines が data-blank-lines を付ける) は、空行 1 行ぶん (本文の行の高さ) 上を空ける。
+/* 前に空行がある要素 (rehypeBlankLines が data-blank-lines と --blank-lines を付ける) は、空行の数だけ
+   本文の行の高さを上に空ける (エディタは空行を 1 行ずつそのまま見せる)。
    見出しは見出しの上の余白に足す (エディタでは空行の次の見出し行に padding-top が付くため)。
-   セクションの中の空行は続けて 1 つまで (2 つでセクションが分かれる) なので、数によらず 1 行ぶんにする。
    本文の行の高さは lh と同じ 1.7 (見出しの中では 1lh が見出しの大きさになるので lh 単位は使わない)。
    上の :first-child の margin-top: 0 やセクション先頭の 0 より後に書いて勝たせる (先頭の空行もエディタでは 1 行) */
 .root [data-blank-lines] {
-  margin-top: calc(1.7 * var(--poi-font-size-md));
+  margin-top: calc(var(--blank-lines, 1) * 1.7 * var(--poi-font-size-md));
+}
+/* 末尾の空行 (rehypeBlankLines が最後に足す空の要素) は、その数の行の高さを空ける。
+   その前の要素は、最後の要素と同じく下マージンを消す (最後の要素でなくなっても) */
+.root [data-trailing-blank-lines] {
+  height: calc(var(--blank-lines, 1) * 1.7 * var(--poi-font-size-md));
+}
+.root > :has(+ [data-trailing-blank-lines]) {
+  margin-bottom: 0;
 }
 .root :where(h1, h2, h3, h4, h5, h6)[data-blank-lines] {
-  margin-top: calc(var(--poi-space-md) + 1.7 * var(--poi-font-size-md));
-}
-
-/* sourceBlankLines={false} (まとめ表示) では空行を見ないので、並んだ段落・箇条書きの間に 1 行ぶん空けて区切る
-   (空けないと別々の段落がつながって見える)。見出しの前後は見出しの上の余白だけ */
-.fixedGaps > :where(p, ul, ol) + :where(p, ul, ol) {
-  margin-top: 1lh;
+  margin-top: calc(var(--poi-space-md) + var(--blank-lines, 1) * 1.7 * var(--poi-font-size-md));
 }
 
 /* 見出しの大きさ: 既定 (h1 34px / h2 26px / h3 22px / h4 18px) は文書向けに大きいので、本文 16px に対して控えめにする
@@ -119,7 +121,6 @@
 }
 
 /* 見出しレベルの印: 左の縦棒 (h1 太く primary / h2 細く灰色、h3 以下はなし)。
-   セクションの区切り線は横線なので、縦棒なら紛れない。
    縦棒 + 余白 (12px) は本文の左の余白へはみ出させ、見出しの文字を本文と同じ位置から始める
    (エディタには縦棒が無いので、はみ出させないと編集に切り替えるたびに見出しが横に動く。issue #100)。
    はみ出す分はページの余白 (AppShell の padding) とスクショの余白 (section-export.ts の PAD_X) に収まる */
@@ -154,13 +155,13 @@
   max-width: 100%;
   vertical-align: top;
 }
-.root :where([data-link-host], [data-link-rest]) {
+.root :where([data-link-host], [data-link-rest], [data-link-title]) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.root [data-link-host] {
+.root :where([data-link-host], [data-link-title]) {
   flex: none;
   max-width: 100%;
 }

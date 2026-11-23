@@ -1,3 +1,5 @@
+import { memoExpiresAt } from "@shared/constants";
+
 import {
   keysWithPrefix,
   readJson,
@@ -29,10 +31,21 @@ export function clearOfflineCaches(userIds?: string[]): void {
 }
 
 // 期限切れを判定するのに要る分だけの形 (板の型には依存しない。board-cache.ts の CachedBoard はこれを満たす)
-type ExpiringBoardCache = { sections: { expiresAt: string }[] };
+type ExpiringBoardCache = { sections: { expiresAt: string; createdAt?: string | null }[] };
 
 /**
- * key の板のキャッシュから期限を過ぎたセクションを除き、除いたものがあれば書き戻す (issue #115)。
+ * セクションの期限 (ISO 文字列): キャッシュした期限と、作成から保存期間 (memoExpiresAt) のうち早い方。
+ * 保存期間を 31 日以上に設定できた頃に書いたキャッシュは長い期限を持つが、サーバではもう頭打ちにしてある (drizzle/0012)
+ */
+function cappedExpiry(s: { expiresAt: string; createdAt?: string | null }): string {
+  if (s.createdAt == null) return s.expiresAt;
+  const cap = memoExpiresAt(new Date(s.createdAt));
+  if (Number.isNaN(cap.getTime())) return s.expiresAt;
+  return new Date(s.expiresAt).getTime() > cap.getTime() ? cap.toISOString() : s.expiresAt;
+}
+
+/**
+ * key の板のキャッシュから期限を過ぎたセクションを除き (期限は cappedExpiry で縮めたもの)、変えたものがあれば書き戻す (issue #115)。
  * 表示から外すだけだと本文が端末に残り、「N 日で消える」と食い違うため。
  * 条件はサーバ側の「未期限切れのみ」と同じ (expiresAt > now)。形式が壊れていれば消して null
  */
@@ -42,8 +55,24 @@ export function pruneBoardCache<T extends ExpiringBoardCache>(key: string, now: 
     if (cached !== null) removeItem(key);
     return null;
   }
-  const sections = cached.sections.filter((s) => new Date(s.expiresAt).getTime() > now);
-  if (sections.length === cached.sections.length) return cached;
+  let changed = false;
+  const sections = cached.sections.flatMap((s) => {
+    // 壊れた欄 (オブジェクトでない) は消す。起動時 (main.tsx) に読むので、ここで投げると画面が出なくなる
+    if (typeof s !== "object" || s === null) {
+      changed = true;
+      return [];
+    }
+    const expiresAt = cappedExpiry(s);
+    // 期限の読めないもの (NaN) も消す: 残すと、いつまでも端末に本文が残る
+    if (!(new Date(expiresAt).getTime() > now)) {
+      changed = true;
+      return [];
+    }
+    if (expiresAt === s.expiresAt) return [s];
+    changed = true;
+    return [{ ...s, expiresAt }];
+  });
+  if (!changed) return cached;
   const pruned = { ...cached, sections };
   writeJson(key, pruned);
   return pruned;

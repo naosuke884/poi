@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useLayoutEffect, useReducer, useRef } from "react";
 
 import type {
   CursorPlace,
@@ -7,31 +7,30 @@ import type {
 } from "../../-components/board/section/SectionEditor";
 import type { EditableSection } from "../data/board";
 import { clientTopAtSourceOffset } from "../markdown/markdown-source-offset";
+import { viewportInsets } from "../use-keyboard-inset";
 
 /**
  * Board のフォーカスとスクロールの調整。
  * 各セクションのエディタ / Markdown 表示 / 外枠の DOM を key で控え、
  * state を変える操作の後のフォーカス移動 (描画を待たないと移る先の要素が無い) は
  * pending の ref に予約して layout effect で実行する。
- * layout effect の並びに意味がある (reveal はフォーカスの後) ので、ここでまとめて順に登録する
+ * layout effect の並びに意味がある (カード全体を見せるのはカーソルを置いた後) ので、ここでまとめて順に登録する
  */
 export function useSectionFocus({
   latestRef,
   sections,
-  organized,
   setEditingKey,
 }: {
   latestRef: RefObject<EditableSection[]>;
   /** 描画中のセクション (state)。スクロールの合わせ直しは描画済みの内容に対して行う */
   sections: EditableSection[];
-  organized: boolean;
   setEditingKey: (key: string | null) => void;
 }) {
-  // key → エディタのハンドル。分割 / 結合 / ↑↓ の後にカーソルを移すのに使う
+  // key → エディタのハンドル。結合 / ↑↓ の後にカーソルを移すのに使う
   const elementsRef = useRef(new Map<string, SectionEditorHandle>());
   // key → Markdown 表示の要素 (スクショの対象)
   const viewsRef = useRef(new Map<string, HTMLDivElement>());
-  // key → セクションの外枠 (区切り線を含む。スクロール位置を合わせる対象)
+  // key → セクションの外枠 (カードの上の行を含む。スクロール位置を合わせる対象)
   const boxesRef = useRef(new Map<string, HTMLDivElement>());
   // 次の描画後にカーソルを置く先 (state を変える操作で使う。描画を待たないと新しいエディタが無い)
   const pendingFocusRef = useRef<{
@@ -43,22 +42,11 @@ export function useSectionFocus({
   // Esc で編集をやめたセクション。描画後にその Markdown 表示へフォーカスを移す (Tab はそこから先へ進み、
   // ↑↓ で隣のセクションの表示へ、Enter で編集に戻れる)。空のセクションは Markdown 表示が無いので何もしない
   const pendingViewFocusRef = useRef<string | null>(null);
+  // 作ったばかりのセクション。描画後 (カーソルを置いた後) に、カード全体 (上の行から書式のツールバーまで) を見せる
+  const pendingRevealRef = useRef<string | null>(null);
   // 編集をやめたセクションと、そのときのカーソル (位置と画面上の高さ)。描画後に同じ高さへ合わせ直す
   const pendingAnchorRef = useRef<{ key: string; anchor: EditAnchor } | null>(null);
 
-  // まとめ表示に切り替えたら編集をやめる (タイムラインに戻ったとき編集中のエディタが残らないように)。
-  // タイムラインのスクロール位置 (最後のセクションが上端など) を引き継ぐと先頭のグループが
-  // 見えないので、まとめの先頭へスクロールする
-  useEffect(() => {
-    if (!organized) return;
-    setEditingKey(null);
-    // 予約済みのフォーカス移動も破棄する (タイムラインに戻ったとき、いつかの操作の
-    // フォーカスが不意に発火しないように)
-    pendingFocusRef.current = null;
-    pendingViewFocusRef.current = null;
-    pendingAnchorRef.current = null;
-    window.scrollTo({ top: 0 });
-  }, [organized]);
   // 編集に入る前に、そのカーソル位置が Markdown 表示のどの高さに描かれているか (client 座標の上端)。
   // 表示とエディタでは同じ内容でも高さが変わるので、切り替えた後にこの高さへ戻す (#45)。
   // 表示が無い (空 / これから作るセクション) なら合わせる先が無いので null
@@ -94,8 +82,40 @@ export function useSectionFocus({
     pendingFocusRef.current = null;
     editor.focus(pending.pos, pending.place);
   });
+  // 追加ボタンで作ったセクションのカード全体が、貼り付いたヘッダー・絞り込みの行の下から、右下の追加ボタン
+  // (狭い画面) とソフトキーボードの上までに収まるよう、最小限だけ滑らかにスクロールする (一気に飛ぶと、どこに
+  // 足されたのか分からない)。収まっていれば動かさない。
+  // カーソルへのスクロール (CodeMirror) には任せない: カーソルの行と下 3 行ぶんしか見ないので書式のツールバーが
+  // 画面の下端や追加ボタンの裏に掛かるうえ、一気に動く。カーソルは "none" で置いてスクロールさせない
+  // (CodeMirror が動いた後で元の位置へ戻してから滑らかに動かす形にすると、開発時の StrictMode が
+  // エディタを作り直してカーソルを置き直すときのスクロールで、動いている途中のスクロールが止まった)。
+  // scrollIntoView も使わない: キーボードで隠れた下端 (visual viewport の外) を知らないため
+  const reveal = (key: string) => {
+    const box = boxesRef.current.get(key);
+    if (!box) return;
+    const behavior = scrollBehavior();
+    refitWhileSettling(box, behavior);
+    // 画面に収まらないほど低い画面なら、カーソルのある冒頭を上端に出す
+    const delta = overflowOf(box) ?? box.getBoundingClientRect().top - bandOf(box).top;
+    if (delta !== 0) window.scrollTo({ top: window.scrollY + delta, behavior });
+  };
+  // 描画後に key のカード全体を見せる (reveal)。もう編集中のセクションなど、ほかに描画が起きないときも
+  // 描き直して行う (呼ぶ側が描画が起きるかを見分けなくて済むように)
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const revealLater = (key: string) => {
+    pendingRevealRef.current = key;
+    rerender();
+  };
+  useLayoutEffect(() => {
+    const key = pendingRevealRef.current;
+    // カーソルを置くのが次の描画に持ち越されたら、それを待つ (カード全体はエディタに切り替わってから測る)
+    if (key === null || pendingFocusRef.current !== null) return;
+    pendingRevealRef.current = null;
+    reveal(key);
+  });
+
   // セクションの Markdown 表示にフォーカスを移す。カーソルへの自動スクロールの代わりに、
-  // 区切り線ごと見えるよう外枠を最小限だけスクロールする
+  // カードの上の行ごと見えるよう外枠を最小限だけスクロールする
   const focusView = (key: string) => {
     viewsRef.current.get(key)?.focus({ preventScroll: true });
     boxesRef.current.get(key)?.scrollIntoView({ block: "nearest" });
@@ -109,7 +129,7 @@ export function useSectionFocus({
   // 編集をやめて Markdown 表示に戻ったら、カーソルのあった場所が画面上の同じ高さに残るようにスクロールする。
   // 同じ内容でもソースのまま (エディタ) とレンダリング後 (表示) では高さが違うので、何もしないと
   // 見ていた場所が上下にずれる (文字の大きいスマホでは特に大きくずれる。#45)。
-  // Esc で抜けるときは使わない (focusView が区切り線ごと見えるように合わせる。onBlur 側で予約しない)
+  // Esc で抜けるときは使わない (focusView がカードの上の行ごと見えるように合わせる。onBlur 側で予約しない)
   useLayoutEffect(() => {
     const pending = pendingAnchorRef.current;
     if (!pending) return;
@@ -121,47 +141,99 @@ export function useSectionFocus({
     if (top !== null) window.scrollBy(0, top - pending.anchor.top);
   });
 
-  // 最後のセクションの冒頭 (区切り線) が画面の上端 (ヘッダーの下) に来るようにスクロールする。
-  // 開いたときと、末尾に新しいセクションができたときに使う (下端に張り付いたまま書き続けなくて済むように)。
-  // 描画後に行う (末尾のセクションがまだ無いことがある)。同じ key でも毎回動かすので値はオブジェクトで持つ。
-  // 上の effect (フォーカス) より後に置く: フォーカスでカーソル位置へスクロールした後に、こちらで上書きする
-  // (SectionEditor の focus はそのためにカーソルへのスクロールを同期的に済ませる)
-  const [reveal, setReveal] = useState<{ key: string } | null>(null);
-  const revealLast = () => {
-    const last = latestRef.current.at(-1);
-    if (last) setReveal({ key: last.key });
+  /** 次の描画の後に、key の Markdown 表示へフォーカスを移す (編集をやめる・消すなど、描画を起こす操作と一緒に呼ぶ) */
+  const focusViewLater = (key: string) => {
+    pendingViewFocusRef.current = key;
   };
-  // 開いたときは最後のセクションの冒頭を上端に出す。カーソルは置かない (全部 Markdown 表示のまま。
-  // まず読み返すことが多く、タッチ端末では開くたびにキーボードが出てしまう)
-  useEffect(() => {
-    revealLast();
-    // マウント時に一度だけ
-  }, []);
-  useLayoutEffect(() => {
-    if (!reveal) return;
-    const box = boxesRef.current.get(reveal.key);
-    if (!box) return;
-    box.scrollIntoView({ block: "start" });
-    // 末尾に足したセクションのエディタ (CodeMirror) がマウントされていると、ここで合わせたスクロールが
-    // 次のフレームの終わりにページ先頭まで巻き戻されてしまう (#47。スクロール API を介さないので上書きではなく
-    // 巻き戻し。マウント直後の CodeMirror がある状態での最初のプログラムスクロールだけ起きる)。
-    // その後のフレームでもう一度合わせる (1 回の rAF では巻き戻しより先に走ってしまい効かない)
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        if (box.isConnected) box.scrollIntoView({ block: "start" });
-      }),
-    );
-  }, [reveal]);
+  /** 次の描画の後に、編集をやめた key のカーソルのあった場所を、画面上の同じ高さへ戻す */
+  const keepAnchorLater = (key: string, anchor: EditAnchor) => {
+    pendingAnchorRef.current = { key, anchor };
+  };
+  /** 予約したフォーカス移動とスクロールを捨てる (絞り込みを変えて、行き先が画面から消えたかもしれないとき) */
+  const cancelPending = () => {
+    pendingFocusRef.current = null;
+    pendingViewFocusRef.current = null;
+    pendingRevealRef.current = null;
+    pendingAnchorRef.current = null;
+  };
 
   return {
     elementsRef,
     viewsRef,
     boxesRef,
-    pendingViewFocusRef,
-    pendingAnchorRef,
     focus,
     focusLater,
     focusView,
-    revealLast,
+    focusViewLater,
+    keepAnchorLater,
+    revealLater,
+    cancelPending,
   };
+}
+
+/**
+ * カードを収めたい範囲 (client 座標の上端と下端)。上下の余白は外枠の scroll-margin (SectionRow.module.css) を
+ * そのまま読む (CSS 変数の calc をここで解かない)
+ */
+function bandOf(box: HTMLElement): { top: number; bottom: number } {
+  const style = getComputedStyle(box);
+  const insets = viewportInsets();
+  return {
+    top: Math.max(Number.parseFloat(style.scrollMarginTop) || 0, insets.top),
+    bottom: window.innerHeight - insets.bottom - (Number.parseFloat(style.scrollMarginBottom) || 0),
+  };
+}
+
+/** カードを画面に収めるのに要るスクロール量 (下へ正)。収まっていれば 0、画面に収まらないほど長ければ null */
+function overflowOf(box: HTMLElement): number | null {
+  const { top, bottom } = bandOf(box);
+  const rect = box.getBoundingClientRect();
+  if (rect.height > bottom - top) return null;
+  if (rect.bottom > bottom) return rect.bottom - bottom;
+  if (rect.top < top) return rect.top - top;
+  return 0;
+}
+
+/**
+ * 滑らかに動かすか。動きを減らす設定 (prefers-reduced-motion: reduce) なら一気に動かす
+ * (window.scrollTo の smooth はこの設定を見ないブラウザがある)。
+ * "auto" ではなく "instant": html に scroll-behavior: smooth が付いても一気に動くように
+ */
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth";
+}
+
+// 追加したカードを収め直す間 (ms)。ソフトキーボードが開ききるまでの目安
+const SETTLE_MS = 1000;
+
+/**
+ * 滑らかなスクロールの途中で、カーソルへの一気のスクロールに止められたら、カードをもう一度収める。
+ * 止めるのは 2 つ: ソフトキーボードが開いて画面 (visual viewport) が縮んだとき (押してすぐはまだ開いていない。
+ * SectionEditor がカーソルの行を見えるところへ戻す) と、動いている途中で書き始めたとき (CodeMirror が
+ * カーソルへスクロールする)。どちらもカーソルの行しか見ないので、書式のツールバーがキーボードや追加ボタンの裏に残る。
+ * CodeMirror のスクロールは次のフレームの計測で行われるので、さらに次のフレームまで待つ
+ * (先に動かすと、その計測のスクロールに打ち消される)。
+ * 指やホイールでスクロールし始めたらやめる (読もうとしている場所を引き戻さないように。#137)
+ */
+function refitWhileSettling(box: HTMLElement, behavior: ScrollBehavior) {
+  const vv = window.visualViewport;
+  const refit = () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const overflow = box.isConnected ? overflowOf(box) : null;
+        if (overflow) window.scrollTo({ top: window.scrollY + overflow, behavior });
+      }),
+    );
+  const stop = () => {
+    clearTimeout(timer);
+    vv?.removeEventListener("resize", refit);
+    box.removeEventListener("input", refit);
+    window.removeEventListener("touchmove", stop);
+    window.removeEventListener("wheel", stop);
+  };
+  const timer = setTimeout(stop, SETTLE_MS);
+  vv?.addEventListener("resize", refit);
+  box.addEventListener("input", refit);
+  window.addEventListener("touchmove", stop, { passive: true });
+  window.addEventListener("wheel", stop, { passive: true });
 }

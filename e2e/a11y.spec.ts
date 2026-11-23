@@ -29,6 +29,24 @@ async function expectNoViolations(page: Page, testInfo: TestInfo, name: string) 
   expect(summary, `${name} にアクセシビリティ違反があります`).toEqual([]);
 }
 
+/**
+ * 出ているツールチップを消す。ツールチップは body 直下 (ランドマークの外) に描かれるので、出たまま調べると違反になる。
+ * 出るのは、ポインタがボタンの上に残っているとき (押した後。押した拍子に並びが動いて、別のボタンが下に来ることもある) と、
+ * キーボード操作の後にフォーカスがボタンへ戻ったとき (タグを選ぶ欄を閉じた後)。
+ * keepFocus は、フォーカスを動かしたくないとき (タグを選ぶ欄は、フォーカスが外へ出ると閉じる)
+ */
+async function hideTooltips(page: Page, { keepFocus = false } = {}) {
+  await page.mouse.move(0, 0);
+  // e2e の型にはブラウザの DOM が無いので、ページ内で動かす処理は文字列で渡す
+  if (!keepFocus) {
+    await page.evaluate("document.activeElement?.blur()");
+    // 押した拍子に並びが動いた (絞り込み・欄の開け閉め) 後は、ポインタが外れても出たままのことがあるので、
+    // Esc でも消す (ツールチップは Esc で隠れる。Tooltip.tsx)
+    await page.keyboard.press("Escape");
+  }
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+}
+
 // Safari は子要素のあるボタンをタップすると、開いたメニューの最初の項目に :focus-visible を付ける
 // (WebKit 241408)。Chromium では再現しないので、疑似クラスを強制して同じ状態を作る (HAY-15)
 async function forceFocusVisible(page: Page) {
@@ -66,9 +84,15 @@ test.describe("未ログイン", () => {
 test.describe("ログイン済み (板)", () => {
   test.use({ storageState: STORAGE_STATE });
 
-  /** 板をまるごと置き換える (前の実行の内容に左右されないように) */
+  /**
+   * 板をまるごと置き換え、登録済みのタグも消す (前の実行の内容に左右されないように。途中で失敗した実行は、
+   * 登録したタグを消さずに終わる)
+   */
   async function resetBoard(page: Page, contents: string[]) {
     const board = await (await page.request.get("/api/board")).json();
+    for (const { id } of board.tags as { id: string }[]) {
+      expect((await page.request.delete("/api/tags", { data: { id } })).ok()).toBe(true);
+    }
     const res = await page.request.put("/api/board", {
       data: {
         userId: board.userId,
@@ -92,15 +116,69 @@ test.describe("ログイン済み (板)", () => {
       "## メモ\n**太字** と `code` と [リンク](https://example.com)\n\n> 引用",
       "```\nconst x = 1;\n```",
     ]);
+    // リンクのプレビューは、テストの中から外のサイトを取りに行かないよう、決まった返事にする
+    await page.route("**/api/link-preview", (route) =>
+      route.fulfill({ json: { preview: { title: "Example Domain", siteName: null } } }),
+    );
     await page.goto("/board");
     await expect(page.getByText("買い物").first()).toBeVisible();
+    await expect(page.getByText("Example Domain")).toBeVisible();
     await expectNoViolations(page, testInfo, "セクションのある板");
 
-    // 見出しごとのまとめ表示
-    // SegmentedControl の radio は見えない input なので、クリックのイベントを直接送る
-    await page.getByRole("radio", { name: /まとめ/ }).dispatchEvent("click");
-    await expect(page.getByRole("radio", { name: /まとめ/ })).toBeChecked();
-    await expectNoViolations(page, testInfo, "まとめ表示");
+    // 編集中のセクションと、その下の書式のツールバー
+    await page.getByRole("group", { name: /^セクション 3/ }).click();
+    await expect(page.getByRole("toolbar", { name: "セクション 3 の書式" })).toBeVisible();
+    await hideTooltips(page, { keepFocus: true });
+    await expectNoViolations(page, testInfo, "書式のツールバー");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("toolbar")).toBeHidden();
+
+    // タグを選ぶポップオーバー (新しいタグを打ったところ) と、タグの付いた状態
+    const tagButton = page.getByRole("button", { name: /セクション 1 のタグを選ぶ/ });
+    await tagButton.click();
+    await hideTooltips(page, { keepFocus: true });
+    const picker = page.getByRole("group", { name: "セクション 1 のタグを選ぶ" });
+    const search = picker.getByLabel("タグを探すか、新しく作る");
+    await search.fill("買い物");
+    await expectNoViolations(page, testInfo, "タグを選ぶポップオーバー");
+    await search.press("Enter");
+    await expect(tagButton).toBeFocused();
+    await hideTooltips(page);
+    await expect(tagButton).toHaveAccessibleName(/^買い物 /);
+    await expectNoViolations(page, testInfo, "タグの付いたセクション");
+
+    // 登録済みのタグが並んだポップオーバーと、「…」で名前の変更・削除を開いたところ、削除の確認。
+    // 最後に登録を消す
+    await tagButton.click();
+    await hideTooltips(page, { keepFocus: true });
+    await expect(picker.getByRole("button", { name: "買い物", exact: true })).toBeVisible();
+    await expectNoViolations(page, testInfo, "登録済みのタグを選ぶポップオーバー");
+    await picker.getByRole("button", { name: "タグ「買い物」の名前を変える・削除する" }).click();
+    await expect(picker.getByLabel("タグ「買い物」の新しい名前")).toBeFocused();
+    await expectNoViolations(page, testInfo, "タグの名前を変えているところ");
+    await picker.getByRole("button", { name: "削除", exact: true }).click();
+    await expectNoViolations(page, testInfo, "タグの削除の確認");
+    await picker.getByRole("button", { name: "削除する" }).click();
+    // 削除はサーバへ送るので、済んで行ごと無くなるのを待つ
+    await expect(picker.getByLabel("タグ「買い物」の新しい名前")).toBeHidden();
+    await expect(picker.getByRole("button", { name: "買い物", exact: true })).toBeHidden();
+    await search.press("Escape");
+    await expect(tagButton).toBeFocused();
+    await hideTooltips(page);
+
+    // タグで絞り込んだ板 (上の確認で登録を消したので、ここで登録し直して選ぶ)
+    await tagButton.click();
+    await search.fill("買い物");
+    await search.press("Enter");
+    // 登録はサーバへ送るので、付くのを待ってから絞り込む
+    await expect(tagButton).toHaveAccessibleName(/^買い物 /);
+    await page
+      .getByRole("group", { name: "タグで絞り込む" })
+      .getByRole("button", { name: "買い物" })
+      .click();
+    await hideTooltips(page);
+    await expect(page.getByText("const x = 1;")).toBeHidden();
+    await expectNoViolations(page, testInfo, "タグで絞り込んだ板");
   });
 
   test("ユーザーメニューとダイアログ", async ({ page }, testInfo) => {

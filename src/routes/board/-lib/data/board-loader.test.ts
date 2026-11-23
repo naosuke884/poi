@@ -12,7 +12,11 @@ type Section = { id: string; content: string; expiresAt: string };
 // onBoardGet は板の GET が届いてから答えるまでの間に起きたこと (別の保存・セッション切れ) を表す
 const server = vi.hoisted(() => ({
   session: null as { user: User } | null,
-  board: { sections: [] as Section[], revision: null as string | null },
+  board: {
+    sections: [] as Section[],
+    revision: null as string | null,
+    tags: [] as { id: string; name: string; icon: string }[],
+  },
   reply: {} as Partial<Record<"getSession" | "boardGet", Reply>>,
   requests: [] as ("getSession" | "boardGet")[],
   onBoardGet: undefined as (() => void) | undefined,
@@ -57,12 +61,13 @@ const { OfflineError } = await import("@/lib/offline");
 const session = { user: { id: "me", name: "Me", email: "me@example.com", image: null } };
 const sections = [{ id: "1", content: "- a", expiresAt: "2099-01-01T00:00:00.000Z" }] as Parameters<
   typeof writeCachedBoard
->[1];
+>[1]["sections"];
+const tags = [{ id: "t1", name: "買い物", icon: "shopping" as const }];
 
 beforeEach(() => {
   localStorage.clear();
   server.session = session;
-  server.board = { sections, revision: "r1" };
+  server.board = { sections, revision: "r1", tags };
   server.reply = {};
   server.requests = [];
   server.onBoardGet = undefined;
@@ -78,15 +83,16 @@ describe("loadBoard", () => {
     expect(server.requests).toEqual([]);
   });
 
-  it("取得できたら板を返し、キャッシュを最新にする", async () => {
+  it("取得できたら板と登録済みのタグを返し、板のキャッシュを最新にする (タグの一覧は開いた板が書く)", async () => {
     expect(await loadBoard(session)).toEqual({
       sections,
       revision: "r1",
+      tags,
       offline: false,
       cachedAt: null,
       userId: "me",
     });
-    expect(readCachedBoard("me")?.sections).toEqual(sections);
+    expect(readCachedBoard("me")).toMatchObject({ sections, tags: [] });
   });
 
   it("取得中に保存されたキャッシュは、取得した (保存前の) 内容で上書きしない", async () => {
@@ -95,17 +101,18 @@ describe("loadBoard", () => {
     // GET を送った後、時間が経ってから PUT が完了してキャッシュを書いた
     server.onBoardGet = () => {
       vi.setSystemTime(Date.now() + 1000);
-      writeCachedBoard("me", saved);
+      writeCachedBoard("me", { sections: saved });
     };
     await loadBoard(session);
     expect(readCachedBoard("me")?.sections).toEqual(saved);
   });
 
-  it("オフラインならキャッシュを閲覧専用で返す", async () => {
-    writeCachedBoard("me", sections, 123);
+  it("オフラインならキャッシュ (登録済みのタグも) を閲覧専用で返す", async () => {
+    writeCachedBoard("me", { sections, tags }, 123);
     server.reply.boardGet = "offline";
     expect(await loadBoard(session)).toMatchObject({
       sections,
+      tags,
       revision: null,
       offline: true,
       cachedAt: 123,
@@ -118,7 +125,7 @@ describe("loadBoard", () => {
   });
 
   it("セッションが切れていたらキャッシュを消して null", async () => {
-    writeCachedBoard("me", sections);
+    writeCachedBoard("me", { sections });
     server.session = null;
     expect(await loadBoard(session)).toBeNull();
     expect(readCachedBoard("me")).toBeNull();
@@ -171,7 +178,7 @@ describe("loadBoardPage: 未ログインならランディングへ転送する 
 
   it("オフラインなら前回のユーザーのキャッシュの板を出す", async () => {
     writeCachedUser(session.user);
-    writeCachedBoard("me", sections, 123);
+    writeCachedBoard("me", { sections }, 123);
     server.reply = { getSession: "offline", boardGet: "offline" };
     expect(await loadBoardPage()).toMatchObject({ offline: true, sections });
   });

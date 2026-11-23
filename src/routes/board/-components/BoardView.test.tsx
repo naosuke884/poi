@@ -28,6 +28,7 @@ vi.mock("@/lib/api", () => ({
           userId: "u1",
           revision: server.revision,
           sections: server.sections,
+          tags: [],
         }),
       }),
     },
@@ -68,6 +69,7 @@ beforeEach(() => {
       userId: "u1",
       position: 0,
       content: "牛乳を買う",
+      tagId: null,
       createdAt: "2026-09-20T00:00:00.000Z",
       updatedAt: "2026-09-20T00:00:00.000Z",
       expiresAt: "2026-10-20T00:00:00.000Z",
@@ -91,6 +93,7 @@ const render = (offline: boolean) => {
   const data: BoardData = {
     sections: server.sections,
     revision: server.revision,
+    tags: [],
     offline,
     cachedAt: offline ? Date.UTC(2026, 8, 24, 3, 0) : null,
     userId: "u1",
@@ -139,6 +142,21 @@ describe("BoardView", () => {
     expect(headings[0]?.textContent).toBe("板");
     // jsdom はスタイルを計算しないので、画面から隠す VisuallyHidden で描いていることを見る
     expect(headings[0]?.classList).toContain(visuallyHidden.hidden);
+  });
+
+  it("開いたときは先頭から見せ、読み込み直し (オンライン復帰など) では今のスクロール位置を動かさない", async () => {
+    const scrolls: unknown[] = [];
+    window.scrollTo = ((options: unknown) => void scrolls.push(options)) as typeof window.scrollTo;
+    try {
+      await render(false);
+      expect(scrolls).toEqual([{ top: 0 }]);
+      // 同じ板の取り直し (loader の結果が変わっても BoardView はそのまま)
+      server.revision = "r1";
+      await render(false);
+      expect(scrolls).toEqual([{ top: 0 }]);
+    } finally {
+      window.scrollTo = () => {};
+    }
   });
 
   it("オンラインで開いた板にも空のライブリージョンを置いておく (issue #126)", async () => {

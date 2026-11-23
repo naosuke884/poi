@@ -1,10 +1,10 @@
-/* 区切り線のボタン (コピー / スクショ / 削除。size="xs" で 18px 四方) は、指で押す端末では小さすぎて
+/* カードの上の行のボタン (タグ / コピー / スクショ / 削除。18px 四方) は、指で押す端末では小さすぎて
    削除を押し間違えやすい。見た目はそのままで、当たり判定だけを透明な疑似要素で広げる (#128)。
-   広げる幅は区切り線の並び (Group gap="md" = 16px、mt="md" / mb="xs") に合わせて、隣のボタンや本文と
+   広げる幅は上の行の並び (gap 16px) とカードの余白 (SectionRow.module.css) に合わせて、隣のボタンや本文と
    重ならない範囲にとどめる:
    - 左右 8px ずつ (34px): 隣のボタンとの間 16px をちょうど半分ずつ分ける
-   - 上 16px: 区切り線の上の余白 (mt="md")。前のセクションの本文には掛からない
-   - 下 10px: 区切り線の下の余白 (mb="xs")。これより広げると本文の上端のタップを奪う
+   - 上 16px: カードの上の余白 (12px) とカードの間 (20px / スマホでは 12px) の途中まで。前のカードには掛からない
+   - 下 10px: 上の行と本文の間 (16px) の途中まで。本文の上端のタップは奪わない
    で約 34 x 44px (IconButton は枠線 1px の内側から測るので 32 x 42px)。マウントでは広げない (隣の本文を選択しようとしたときに邪魔になるので) */
 @media (pointer: coarse) {
   /* IconButton は overflow: hidden で、はみ出した疑似要素にはタップが当たらないので外す
@@ -21,10 +21,16 @@
   }
 }
 
-/* 区切り線のボタンの色。削除は赤の ×、コピー / スクショは普段は区切り線のラベルと同じ控えめな灰色で、
-   押した結果を緑 (成功) / 赤 (失敗) で見せる */
+/* 上の行のボタンの色。削除の × も、コピー / スクショと同じ控えめな灰色にそろえる (赤だと線の上で目立ちすぎる)。
+   ポインタを乗せたときだけ赤にして、消すボタンだと分かるようにする。
+   コピー / スクショは、押した結果を緑 (成功) / 赤 (失敗) で見せる */
 .delete {
-  --close-button-color: var(--poi-color-danger);
+  --close-button-color: var(--poi-color-text-muted);
+}
+@media (hover: hover) {
+  .delete:hover:not(:disabled) {
+    --close-button-color: var(--poi-color-danger);
+  }
 }
 .muted {
   --icon-button-icon-color: var(--poi-color-text-muted);
@@ -34,4 +40,58 @@
 }
 .failed {
   --icon-button-icon-color: var(--poi-color-danger);
+}
+
+/* タグのボタン (アイコンだけ)。上の行の他のボタン (IconButton の xs / subtle / 控えめな色) と同じ見た目にする。
+   タグの有無で中のアイコンを描き変える <button> なので、IconButton は使わない (SectionTagButton) */
+.tagIconButton {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--poi-radius-md);
+  background: none;
+  color: var(--poi-color-text-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* タグが付いているときのボタン: そのタグのアイコンを、他のボタン (控えめな灰色) より濃い文字の色で出す
+   (付いていないときの控えめなタグのアイコンと見分ける) */
+.tagIconButton[data-tagged] {
+  color: var(--poi-color-text);
+}
+
+/* 付いているタグの、押せない版 (閲覧のみ)。アイコンと名前を控えめな色で並べる */
+.tagLabel {
+  composes: xs muted from "../../../../../components/typography.module.css";
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 3px;
+  align-items: center;
+  min-width: 0;
+  max-width: 10em;
+  line-height: 1;
+}
+.tagLabel > svg {
+  flex: none;
+}
+/* タグの名前は 1 行に収め、入りきらなければ末尾を省略する (全体はツールチップで見られる) */
+.tagName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .tagIconButton:hover {
+    background: var(--poi-color-surface-hover);
+    color: var(--poi-color-text);
+  }
 }

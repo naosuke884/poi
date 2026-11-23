@@ -10,6 +10,8 @@
  *   ClipboardItem に渡してクリック時点で書き込みを始める
  */
 
+import { TRAILING_BLANK_LINES } from "./markdown/markdown-blank-lines";
+
 export async function copySectionText(content: string): Promise<void> {
   await navigator.clipboard.writeText(content);
 }
@@ -25,14 +27,17 @@ export async function renderSectionImage(el: HTMLElement): Promise<Blob> {
   // 大きさ 0 で描かれて空白の画像が「成功」として届いてしまうので、ここで失敗にする
   if (!el.isConnected) throw new Error("セクションが編集中になったので画像にできません");
   const background = getComputedStyle(document.body).backgroundColor;
+  // 末尾の空行の空き (表示の高さを編集中に合わせるためだけのもの) は画像に入れない (下に何も無い帯ができる)
+  const trailing = el.querySelector<HTMLElement>(TRAILING_BLANK_LINES);
   return domToBlob(el, {
     type: "image/png",
     scale: Math.max(2, window.devicePixelRatio || 1),
     backgroundColor: background,
     style: { padding: `${PAD_Y}px ${PAD_X}px`, boxSizing: "border-box" },
+    filter: (node) => node !== trailing,
     // 余白の分だけ広げる (指定しないと元の要素の大きさで切られて余白の分だけ右下が欠ける)
     width: el.offsetWidth + PAD_X * 2,
-    height: el.offsetHeight + PAD_Y * 2,
+    height: el.offsetHeight - (trailing?.offsetHeight ?? 0) + PAD_Y * 2,
   });
 }
 

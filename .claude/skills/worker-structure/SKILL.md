@@ -15,11 +15,15 @@ This way a context can be read, tested, and deleted as a unit, and the root stay
 worker/
   index.ts      app wiring: authMiddleware, /api/auth/*, route mounting, notFound, scheduled, ApiType
   rate-limit.ts rateLimit middleware over the Workers Rate Limiting bindings (wrangler.jsonc ratelimits), applied in index.ts
+  validate.ts   validate(target, schema): the zod validator that every context's routes use (400 { error, issues })
   db.ts         createDb / Db / merged schema (every context's schema.ts spread into one)
   types.ts      AppEnv (Bindings: Env, Variables: auth / user / session)
   env.d.ts      secret types merged into the generated Env
   auth/         Better Auth: createAuth, authMiddleware / requireAuth, sweep (cron: expired sessions / verifications), schema.ts (generated)
-  board/        the board: routes, board-sync (pure diffing), sweep (cron), schema.ts
+  board/        the board: routes (board + tags), board-sync (pure diffing), sweep (cron), schema.ts,
+                tag-icon (asks Jev at typesafe.ai to pick a tag's icon from its name; optional secret TYPESAFE_API_KEY,
+                falls back to "other" without it or on any failure; sends only the name, never logs it)
+  link-preview/ POST /api/link-preview: fetch a linked page's title server-side (url-guard, bounded fetch, parse); stores nothing
   site/         page requests that are not static assets (/terms, unknown paths): index.html with 200 / 404, redirects
 shared/         code used by both src and worker (constants, limits, pure helpers such as in-app-browser)
 ```
@@ -29,7 +33,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
 | It is about | Put it in |
 |---|---|
 | Sign-in, sessions, users, accounts, Better Auth config / plugins | `auth/` |
-| The board, its sections (`memo` rows), revision | `board/` |
+| The board, its sections (`memo` rows), revision, registered tags | `board/` |
 | A new domain with its own tables and endpoints | a new `worker/<context>/` with the same file shape (`routes.ts`, `schema.ts`, pure `*.ts` + tests) |
 | Wiring every context needs (`AppEnv`, `createDb`, mounting) | worker root |
 
@@ -51,7 +55,7 @@ shared/         code used by both src and worker (constants, limits, pure helper
    ```
 
    Chaining (not separate `app.get(...)` statements) is what lets Hono RPC infer the routes' types for the client.
-2. Mount it in `worker/index.ts` on the `api` chain: `new Hono<AppEnv>().route("/board", boardRoutes)` (chain another `.route(...)` for a new group).
+2. Mount it in `worker/index.ts` on the `api` chain: `new Hono<AppEnv>().route("/board", boardRoutes).route("/tags", tagRoutes)`.
    Mounting on `api` (not `app`) is what puts it into `ApiType`, which the frontend client is typed from.
 3. Call it from src via `api` in `src/lib/api.ts` (`hc<ApiType>("/api")`): `api.foo.$get()`, `api.foo.$put({ json })`.
    Derive response types with `InferResponseType<typeof api.foo.$get, 200>` instead of redeclaring them (see `BoardSection` in `src/routes/board/-lib/data/board.ts`).
@@ -66,11 +70,11 @@ shared/         code used by both src and worker (constants, limits, pure helper
 
 ### Validation and responses
 
-- Validate input with zod through the `validate(target, schema)` wrapper in `board/routes.ts` (wraps `@hono/zod-validator`) and read it with `c.req.valid("json")`.
+- Validate input with zod through the `validate(target, schema)` wrapper in `worker/validate.ts` (wraps `@hono/zod-validator`) and read it with `c.req.valid("json")`.
   It turns failures into `400 { error: "Bad Request", issues }`. Keep it a generic function: a pre-typed hook constant collapses the RPC type to `{}`.
-  It currently lives in `board/routes.ts`; when a second context needs it, move it to the worker root rather than importing it across contexts.
+  It lives at the worker root because several contexts (`board/`, `link-preview/`) use it; contexts never import it from each other.
 - Limits and choices the UI must also know (`BOARD_MAX_LENGTH`, `MEMO_TTL_DAYS`, ...) come from `@shared/constants`, so client-side checks and server validation cannot drift.
-- Return JSON via `c.json(...)`. Errors are always `{ error: "<Code>" }` with a status: `400 Bad Request`, `401 Unauthorized`, `404 Not Found` (unknown `/api/*`, from `app.notFound`), `413 PayloadTooLarge` (body over 1MiB, from `bodyLimit` in `worker/index.ts`), `429 TooManyRequests` (over a rate limit, from `rateLimit` in `worker/rate-limit.ts`), `500 Internal Server Error` (an unexpected exception, from `app.onError`, which also `console.error`s it; don't catch just to return 500 yourself), `409` with a machine-readable code (`Stale`, `UserMismatch`) that the client branches on (see `putBoard` in `src/routes/board/-lib/sections/use-board-autosave.ts`). Pick a new PascalCase code for a new conflict rather than reusing one with different meaning.
+- Return JSON via `c.json(...)`. Errors are always `{ error: "<Code>" }` with a status: `400 Bad Request`, `401 Unauthorized`, `404 Not Found` (unknown `/api/*`, from `app.notFound`), `413 PayloadTooLarge` (body over 1MiB, from `bodyLimit` in `worker/index.ts`), `429 TooManyRequests` (over a rate limit, from `rateLimit` in `worker/rate-limit.ts`), `500 Internal Server Error` (an unexpected exception, from `app.onError`, which also `console.error`s it; don't catch just to return 500 yourself), `409` / `404` with a machine-readable code (`Stale`, `UserMismatch`, `TooManyTags`, `TagExists`, `TagNotFound`) that the client branches on (see `putBoard` in `src/routes/board/-lib/sections/use-board-autosave.ts`, `send` in `src/routes/board/-lib/data/tags.ts`). Pick a new PascalCase code for a new conflict rather than reusing one with different meaning.
 - Group writes that must succeed together in one `db.batch([...])` (D1 runs a batch as one transaction). Mind D1's limit of 100 bound parameters per statement; `PUT /api/board` binds rows as one JSON array and expands it with `json_each` for that reason.
 
 ## Keep logic pure and testable
@@ -128,7 +132,7 @@ When adding a route under `src/routes`, add its path to `PAGE_PATHS` (the sitema
 
 - `Env` is generated into `worker-configuration.d.ts` by `wrangler types` (git-ignored; `npm run typecheck` and `npm run cf-typegen` regenerate it). After adding a binding to `wrangler.jsonc`, rerun it instead of typing the binding by hand.
 - Secrets are not in `wrangler.jsonc`: declare their types in `worker/env.d.ts` (merged into `Env`), add the name to `.dev.vars.example`, set them locally in `.dev.vars` and in production with `npx wrangler secret put <NAME>`. Also add a dummy value to the `Env` literal in `better-auth.config.ts` (a required secret missing there fails `npm run typecheck`).
-- Rate limits are `ratelimits` bindings in `wrangler.jsonc` (no dashboard setup; `namespace_id` is any account-unique integer, `period` is 10 or 60 s), applied with `rateLimit(...)` in `worker/index.ts`: `/api/auth/*` per IP (`cf-connecting-ip`, before `authMiddleware`; only writes and the OAuth callback, never `get-session` and other GETs, which every page load and tab focus sends), `PUT /api/board` per user (after it). A new write endpoint gets its own binding and `app.on(...)` line there. `index.test.ts` passes fake limiters in its `Env`; add one there for a new binding.
+- Rate limits are `ratelimits` bindings in `wrangler.jsonc` (no dashboard setup; `namespace_id` is any account-unique integer, `period` is 10 or 60 s), applied with `rateLimit(...)` in `worker/index.ts`: `/api/auth/*` per IP (`cf-connecting-ip`, before `authMiddleware`; only writes and the OAuth callback, never `get-session` and other GETs, which every page load and tab focus sends), `PUT /api/board`, `POST` / `PATCH` / `DELETE /api/tags` and `POST /api/link-preview` per user (after it). A new write endpoint gets its own binding and `app.on(...)` line there. `index.test.ts` passes fake limiters in its `Env`; add one there for a new binding.
 - Access bindings only through `c.env` (routes) or the handler's `env` (scheduled); there is no global env.
 
 ## Imports

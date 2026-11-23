@@ -1,13 +1,13 @@
-import { MEMO_TTL_DAYS, memoExpiresAt } from "@shared/constants";
+import { MEMO_TTL_DAYS, memoExpiresAt, type TagIcon } from "@shared/constants";
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { user } from "../auth/schema";
 
 // auth/schema.ts は Better Auth CLI (npm run auth:schema) が上書きするため、
 // アプリ独自のテーブルはこのファイルに定義する。
 //
-// 1 行 = 板 (ユーザーごとに 1 枚のテキスト) の 1 セクション (空行 2 つで区切られたまとまり)。
+// 1 行 = 板 (ユーザーごとに 1 枚) の 1 セクション。
 // 期限切れの削除はセクション単位で行う (書いたセクションから順に消えていく)。
 export const memo = sqliteTable(
   "memo",
@@ -18,7 +18,7 @@ export const memo = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    // 1 セクション分のテキスト (改行や空行 1 つは含んでよいが、区切りの "\n\n\n" (空行 2 つ) は含まない。空でも 1 セクション)
+    // 1 セクション分のテキスト (改行や空行を含んでよい。空でも 1 セクション)
     content: text("content").notNull(),
     // 板の中での並び順 (0 始まり)。PUT /api/board のたびに振り直す
     position: integer("position").notNull().default(0),
@@ -33,6 +33,13 @@ export const memo = sqliteTable(
     expiresAt: integer("expires_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => memoExpiresAt()),
+    // セクションに付けたタグ (tag.id。1 つまで。付けていなければ null)。
+    // 名前ではなく id で持つ: 名前を変えてもセクションの行は変わらないので、開いたままの別の画面の保存と食い違わない。
+    // 外部キー (ON DELETE SET NULL) にしないのは、タグの登録を消すときに付けていた行から外す (routes.ts の
+    // DELETE /api/tags) のと、保存では登録に無い id を書かない (PUT /api/board) のとで足り、外すことを
+    // スキーマの暗黙の動きにせずルートに書いておくため。
+    // 列は末尾に足す: PUT /api/board の insert ... select は列をこの定義の順に並べる (routes.ts)
+    tagId: text("tag_id"),
   },
   (table) => [
     index("memo_userId_expiresAt_idx").on(table.userId, table.expiresAt),
@@ -40,9 +47,35 @@ export const memo = sqliteTable(
   ],
 );
 
+// 登録済みのタグ (1 行 = 1 ユーザーの 1 タグ)。セクションに付けるタグはここから選ぶ。
+// セクション (memo) と別に持つのは、付けたセクションが期限で消えても、登録したタグは選べるまま残すため
+export const tag = sqliteTable(
+  "tag",
+  {
+    // セクション (memo.tag_id) から指す。名前を変えても変わらない
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // 名前はユーザーの中で重ならない (下の一意のインデックス)
+    name: text("name").notNull(),
+    // アイコン (shared/constants.ts の TAG_ICONS のどれか)。名前から選ぶので、名前を変えたら選び直す
+    icon: text("icon").$type<TagIcon>().notNull().default("other"),
+    // 一覧は登録した順に並べる
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [uniqueIndex("tag_userId_name_idx").on(table.userId, table.name)],
+);
+
 // 保持日数をユーザーごとに変えられた頃の設定 (1 行 = 1 ユーザー)。今はどこからも読み書きしない。
 // このコードと同じ push でテーブルを落とさないのは、本番はマイグレーションを先に流すので、まだ動いている
-// 前の Worker がこのテーブルを読んで落ちるため (d1-schema-changes スキル)。次の push で落とす
+// 前の Worker がこのテーブルを読んで落ちるため (d1-schema-changes スキル)。次の push で落とす。
+// その migration では drizzle/0012 の UPDATE (期限を作成 + 30 日で頭打ちにする) をもう一度流す: 0012 を流してから
+// 新しい Worker に替わるまでの間に、前の Worker がこの設定 (31 日以上) で作った行が残っているため
 export const userSetting = sqliteTable("user_setting", {
   userId: text("user_id")
     .primaryKey()

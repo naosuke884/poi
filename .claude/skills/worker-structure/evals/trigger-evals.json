@@ -4,7 +4,7 @@
     "should_trigger": true
   },
   {
-    "query": "ログインしてないときに /api/settings 叩いたら 401 じゃなくて 500 が返ってくる。直して",
+    "query": "ログインしてないときに /api/tags 叩いたら 401 じゃなくて 500 が返ってくる。直して",
     "should_trigger": true
   },
   {

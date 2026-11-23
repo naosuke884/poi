@@ -1,5 +1,5 @@
 import { DAY_MS, MEMO_TTL_DAYS } from "@shared/constants";
-import { and, inArray, lte, ne } from "drizzle-orm";
+import { and, inArray, isNotNull, lte, ne, or } from "drizzle-orm";
 
 import type { Db } from "../db";
 import { memo } from "./schema";
@@ -10,10 +10,11 @@ import { memo } from "./schema";
 // 定期的にこの関数を呼んで「1 ヶ月で必ず消える」を保証する。
 // scheduled ハンドラから切り離しておくことで、単体テストや他の経路からも再利用できる。
 //
-// 期限切れの行はすぐには消さず、中身 (content) だけ消して行を残す。行ごと消すと、その id を古いタブが送り返したとき、
-// 期限が createdAt + 保持日数より早い行 (保持日数を短く設定できた頃に作られた行) は、PUT /api/board の createdAt の
-// 判定を通って作り直されてしまうため (HAY-60)。
-// 残した行は、createdAt が保持日数を過ぎるところまで古くなったら (createdAt の判定だけで弾ける) 消す
+// 期限切れの行はすぐには消さず、中身 (content とタグ。どちらも利用者が書いたもの) だけ消して行を残す。行ごと消すと、その id を古いタブが送り返したとき、
+// 期限が createdAt + 保持日数 (30 日) より早い行 (保持日数を 1〜14 日にも設定できた頃に作られた行) は、PUT /api/board の
+// createdAt の判定を通って作り直されてしまうため (HAY-60)。
+// 残した行は、createdAt が保持日数を過ぎるところまで古くなったら (createdAt の判定だけで弾ける) 消す。
+// 今の 30 日で作った行は期限と createdAt + 30 日が同じなので、中身を消すのと同じ実行で消える
 
 /**
  * 1 文で書き換える・消す行数の上限。溜まった期限切れを 1 つの文で処理すると、D1 の 1 文あたりの実行時間の上限に当たって
@@ -27,7 +28,7 @@ const SWEEP_BATCH_SIZE = 1_000;
 const TTL_MS = MEMO_TTL_DAYS * DAY_MS;
 
 /**
- * `expiresAt <= now` のセクションの中身を消し、そのうち createdAt が保持日数より古い行は削除する。
+ * `expiresAt <= now` のセクションの中身 (content とタグ) を消し、そのうち createdAt が保持日数より古い行は削除する。
  * 中身を消した件数と、削除した件数を返す
  */
 export async function sweepExpiredMemos(
@@ -40,14 +41,14 @@ export async function sweepExpiredMemos(
   const cleared = await inBatches(batchSize, (limit) =>
     db
       .update(memo)
-      .set({ content: "" })
+      .set({ content: "", tagId: null })
       .where(
         inArray(
           memo.id,
           db
             .select({ id: memo.id })
             .from(memo)
-            .where(and(expired, ne(memo.content, "")))
+            .where(and(expired, or(ne(memo.content, ""), isNotNull(memo.tagId))))
             .limit(limit),
         ),
       )

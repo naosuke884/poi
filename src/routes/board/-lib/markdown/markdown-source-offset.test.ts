@@ -5,8 +5,14 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { describe, expect, it } from "vite-plus/test";
 
+import { rehypeBlankLines } from "./markdown-blank-lines";
 import { rehypeLinkLabels } from "./markdown-link-labels";
-import { rehypeSourcePositions, sourceOffsetAt } from "./markdown-source-offset";
+import {
+  clientTopAtSourceOffset,
+  rehypeSourcePositions,
+  sourceOffsetAt,
+  sourceOffsetAtPoint,
+} from "./markdown-source-offset";
 
 /** source を react-markdown で描画し (data-pos 付き)、DOM にして返す */
 function render(source: string): HTMLElement {
@@ -14,7 +20,10 @@ function render(source: string): HTMLElement {
   root.innerHTML = renderToStaticMarkup(
     createElement(
       Markdown,
-      { remarkPlugins: [remarkGfm], rehypePlugins: [rehypeSourcePositions, rehypeLinkLabels] },
+      {
+        remarkPlugins: [remarkGfm],
+        rehypePlugins: [rehypeSourcePositions, rehypeBlankLines, rehypeLinkLabels],
+      },
       source,
     ),
   );
@@ -90,5 +99,36 @@ describe("sourceOffsetAt", () => {
     const source = "前 https://example.com/a 後";
     const root = render(source);
     expect(offsetOf(root, "/a", 1, source)).toBe(source.indexOf("https"));
+  });
+});
+
+describe("末尾の空行 (rehypeBlankLines が最後に足す空き)", () => {
+  // jsdom にはレイアウトが無いので、空きの位置と高さ (1 行 20px が 3 行) を与える
+  const source = "上\n\n\n";
+  function setup() {
+    const root = render(source);
+    const spacer = root.querySelector<HTMLElement>("[data-trailing-blank-lines]")!;
+    spacer.getBoundingClientRect = () => ({ top: 100, height: 60 }) as DOMRect;
+    return { root, spacer };
+  }
+
+  it("空きの中の行の位置は、その行の高さに描かれているものとして返す", () => {
+    const { root } = setup();
+    expect(clientTopAtSourceOffset(root, source, 2)).toBe(100);
+    expect(clientTopAtSourceOffset(root, source, 3)).toBe(120);
+    expect(clientTopAtSourceOffset(root, source, 4)).toBe(140);
+  });
+
+  it("空きを押したら、押した高さの空行の先頭の位置", () => {
+    const { root, spacer } = setup();
+    const original = document.elementFromPoint;
+    document.elementFromPoint = () => spacer;
+    try {
+      expect(sourceOffsetAtPoint(root, 0, 105, source)).toBe(2);
+      expect(sourceOffsetAtPoint(root, 0, 125, source)).toBe(3);
+      expect(sourceOffsetAtPoint(root, 0, 159, source)).toBe(4);
+    } finally {
+      document.elementFromPoint = original;
+    }
   });
 });

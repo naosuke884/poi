@@ -18,6 +18,7 @@ import {
   toSaved,
 } from "../data/board";
 import { writeCachedBoard } from "../data/board-cache";
+import type { Tag } from "../data/tags";
 import { mergeBoard } from "./board-merge";
 import type { SaveState, SaveStatus } from "./save-status";
 
@@ -25,12 +26,16 @@ import type { SaveState, SaveStatus } from "./save-status";
 const AUTOSAVE_DELAY_MS = 1000;
 
 /** サーバにある板 (取得 / 保存の結果) とその版 */
-type RemoteBoard = { sections: BoardSection[]; revision: string | null };
+type RemoteBoard = { sections: BoardSection[]; revision: string | null; tags: Tag[] };
 
 // ログアウト / セッション切れ (キャッシュ済みユーザーが消える) や切り替えの後に完了した取得 / 保存では、
 // 消したキャッシュを作り直さない
-function cacheBoard(userId: string, sections: BoardSection[], asOf?: number) {
-  if (readCachedUser()?.id === userId) writeCachedBoard(userId, sections, asOf);
+function cacheBoard(
+  userId: string,
+  board: { sections: BoardSection[]; tags?: Tag[] },
+  asOf?: number,
+) {
+  if (readCachedUser()?.id === userId) writeCachedBoard(userId, board, asOf);
 }
 
 /**
@@ -54,10 +59,7 @@ async function putBoard(
   }
   if (!res.ok) throw new Error(`保存に失敗しました (${res.status})`);
   const saved = await res.json();
-  cacheBoard(
-    userId,
-    saved.sections.filter((s) => s !== null),
-  );
+  cacheBoard(userId, { sections: saved.sections.filter((s) => s !== null) });
   return saved;
 }
 
@@ -68,7 +70,8 @@ async function getBoard(userId: string): Promise<RemoteBoard> {
   if (!res.ok) throw new Error(`板の取得に失敗しました (${res.status})`);
   const board = await res.json();
   if (board.userId !== userId) throw new UserMismatchError();
-  cacheBoard(userId, board.sections, requestedAt);
+  // 登録済みのタグは書かない: 届いた一覧を使うかは useBoardTags が決め、使った一覧をキャッシュにも書く
+  cacheBoard(userId, { sections: board.sections }, requestedAt);
   return board;
 }
 
@@ -97,6 +100,9 @@ class StaleError extends Error {
  * - 別の端末 / タブで保存された板を上書きしない (issue #72): 保存には前提にした版を付け、断られたら
  *   取り直して手元の変更を重ね (mergeBoard)、保存し直す。タブに戻ってきたときも取り直して重ねる
  *   (開いたままの古い板が残り続けないように)
+ * onTags は、取り直した板と一緒に届いた登録済みのタグを渡す先 (別の端末での登録・名前の変更・削除を反映する)。
+ * registeredAsOf は、取り直した板に手元の変更を重ねるときに登録済みとして扱うタグの id (useBoardTags の registeredAsOf)。
+ * requestedAt は取りに行った時刻 (performance.now())。その後に手元でタグを変えていれば、届いた一覧は古い
  * latestRef / commit は useBoardSections が持つ画面上のセクション (state は描画用、処理は ref を読む)。
  * commit は状態の差し替えだけで、保存後にサーバの id / 期限を戻すのにも使う
  */
@@ -107,6 +113,8 @@ export function useBoardAutosave({
   readOnly,
   latestRef,
   commit,
+  onTags,
+  registeredAsOf,
 }: {
   initial: BoardSection[];
   initialRevision: string | null;
@@ -114,7 +122,13 @@ export function useBoardAutosave({
   readOnly: boolean;
   latestRef: RefObject<EditableSection[]>;
   commit: (next: EditableSection[]) => void;
+  onTags: (tags: Tag[], requestedAt: number) => void;
+  registeredAsOf: (tags: Tag[], requestedAt: number) => ReadonlySet<string>;
 }) {
+  const onTagsRef = useRef(onTags);
+  onTagsRef.current = onTags;
+  const registeredAsOfRef = useRef(registeredAsOf);
+  registeredAsOfRef.current = registeredAsOf;
   const router = useRouter();
   // サーバに保存済みのもの (差分の有無の判定と、取り直した板に手元の変更を重ねるときの基準) とその版
   const savedRef = useRef<DraftSection[]>(toSaved(initial));
@@ -154,9 +168,19 @@ export function useBoardAutosave({
   // 板を取り直し、版が変わっていれば画面に取り込む (手元の変更は残す。mergeBoard)。
   // 取り込んだ後に手元の変更が残っていれば、呼び出し側が続けて保存する
   const pull = useCallback(async () => {
+    const requestedAt = performance.now();
     const remote = await fetchOrOffline(() => getBoard(userId));
+    // タグの登録・名前の変更・削除は板の版を進めないので、版が同じでも反映する
+    onTagsRef.current(remote.tags, requestedAt);
     if (remote.revision === revisionRef.current) return;
-    commit(mergeBoard(latestRef.current, savedRef.current, remote.sections));
+    commit(
+      mergeBoard(
+        latestRef.current,
+        savedRef.current,
+        remote.sections,
+        registeredAsOfRef.current(remote.tags, requestedAt),
+      ),
+    );
     savedRef.current = toSaved(remote.sections);
     revisionRef.current = remote.revision;
   }, [userId]);
@@ -326,8 +350,16 @@ export function useBoardAutosave({
           .catch(async (e) => {
             if (!(e instanceof StaleError)) throw e;
             // 別の場所で保存されていた: 取り直して手元の変更を重ね、1 回だけ保存し直す
+            const requestedAt = performance.now();
             const remote = await getBoard(userId);
-            const merged = toDraft(mergeBoard(latestRef.current, base, remote.sections));
+            const merged = toDraft(
+              mergeBoard(
+                latestRef.current,
+                base,
+                remote.sections,
+                registeredAsOfRef.current(remote.tags, requestedAt),
+              ),
+            );
             if (overLimitMessage(merged) !== null) return;
             await putBoard(userId, remote.revision, merged);
           })

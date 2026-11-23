@@ -53,6 +53,16 @@ When adding or splitting routes or pages, also read [references/routes.md](refer
   Both are `npm run lint` errors (the former via the `poi/no-cross-route-import` rule in `lint-plugins/route-colocation.ts`, the latter via `no-restricted-imports` in the `lint` block of `vite.config.ts`).
   When lint fails, fix the placement instead of rewriting the import to slip past the rule
 
+### Kept shared by design
+
+A few app-wide building blocks stay in `src/components` / `src/lib` even while only one route uses them, because they are infrastructure or primitives rather than a page's pieces, and other skills and many tests refer to them by path. `check-placement.mjs` knows this list (`SHARED_BY_DESIGN`); keep the two in sync:
+
+- `src/lib/api.ts` — the typed Hono RPC client for the whole `/api` (its type comes from `worker/index.ts`). Tests replace it with `vi.mock("@/lib/api")` in many files (`writing-tests`), and `worker-structure` documents adding endpoints through it.
+- `src/components/Tooltip.tsx` — the UI primitive every icon button pairs with (`poi-ui-conventions`), next to `Button` / `IconButton`.
+- `src/lib/use-media-query.ts` — the generic prerender-safe media-query hook (`poi-ui-conventions`).
+
+Do not add to this list to get past the check; a page's own component or logic still moves when its users change.
+
 ### Before moving a whole file, see whether only part of it needs extracting
 
 When only part of one route's code is needed by another route, moving the whole thing to `src/lib` drags that route's types and concerns into shared code.
@@ -60,7 +70,7 @@ Extract just the part that really needs sharing into `src/lib` and leave the res
 
 Example: the header's logout needs to clear a route's cache. If clearing only needs the cache key,
 put the key and the clear function in `src/lib`, and keep the reads and writes that depend on the route's types in the route's `-lib/`.
-The same goes for `main.tsx`'s startup sweep of expired sections from that cache (#115): `pruneBoardCache` / `pruneBoardCaches` in `src/lib/offline-caches.ts` work on a minimal `{ sections: { expiresAt }[] }` shape, and the route's `readCachedBoard` calls them with its own type.
+The same goes for `main.tsx`'s startup sweep of expired sections from that cache (#115): `pruneBoardCache` / `pruneBoardCaches` in `src/lib/offline-caches.ts` work on a minimal `{ sections: { expiresAt, createdAt? }[] }` shape (expiry capped at `createdAt` + 30 days), and the route's `readCachedBoard` calls them with its own type.
 
 ### Things shown in the header
 

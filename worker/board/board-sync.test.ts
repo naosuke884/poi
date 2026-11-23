@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { type ExistingSection, type IncomingSection, planBoardSync } from "./board-sync";
+import {
+  dropUnregisteredTags,
+  type ExistingSection,
+  type IncomingSection,
+  planBoardSync,
+} from "./board-sync";
 
-const row = (id: string, content: string, position: number) => ({ id, content, position });
+const row = (id: string, content: string, position: number, tagId: string | null = null) => ({
+  id,
+  content,
+  position,
+  tagId,
+});
 
 // createdAt がこれ以前のものは今の保持日数では期限切れ
 const EXPIRED_CREATED_AT = new Date("2026-09-01T00:00:00.000Z");
@@ -47,12 +57,77 @@ describe("planBoardSync", () => {
       ),
     ).toEqual({
       updates: [
-        { id: "b", content: "y", position: 0 },
-        { id: "a", content: "x2", position: 1 },
+        { id: "b", content: "y", position: 0, tagId: null },
+        { id: "a", content: "x2", position: 1, tagId: null },
       ],
       inserts: [],
       deletes: [],
       ids: ["b", "a"],
+    });
+  });
+
+  it("タグだけが変わった既存の行も更新する (付け替え・外す・付ける)", () => {
+    expect(
+      plan(
+        [
+          row("a", "x", 0, "買い物"),
+          row("b", "y", 1, "家"),
+          row("c", "z", 2),
+          row("d", "w", 3, "家"),
+        ],
+        [
+          { id: "a", content: "x", tagId: "家" },
+          { id: "b", content: "y", tagId: null },
+          { id: "c", content: "z", tagId: "買い物" },
+          { id: "d", content: "w", tagId: "家" },
+        ],
+      ),
+    ).toEqual({
+      updates: [
+        { id: "a", content: "x", position: 0, tagId: "家" },
+        { id: "b", content: "y", position: 1, tagId: null },
+        { id: "c", content: "z", position: 2, tagId: "買い物" },
+      ],
+      inserts: [],
+      deletes: [],
+      ids: ["a", "b", "c", "d"],
+    });
+  });
+
+  it("タグの項目なしで送られた既存の行は、今のタグを変えない (タグを知らない古いページの保存)", () => {
+    expect(
+      plan(
+        [row("a", "x", 0, "買い物"), row("b", "y", 1, "家")],
+        [
+          { id: "a", content: "x" },
+          { id: "b", content: "y2" },
+        ],
+      ),
+    ).toEqual({
+      updates: [{ id: "b", content: "y2", position: 1, tagId: "家" }],
+      inserts: [],
+      deletes: [],
+      ids: ["a", "b"],
+    });
+  });
+
+  it("新しく作る行には送られたタグを付け、項目なしで送られたらタグなしにする", () => {
+    expect(
+      plan(
+        [],
+        [
+          { id: null, content: "x", tagId: "買い物" },
+          { id: null, content: "y" },
+        ],
+      ),
+    ).toEqual({
+      updates: [],
+      inserts: [
+        { id: "n1", content: "x", position: 0, tagId: "買い物" },
+        { id: "n2", content: "y", position: 1, tagId: null },
+      ],
+      deletes: [],
+      ids: ["n1", "n2"],
     });
   });
 
@@ -69,8 +144,8 @@ describe("planBoardSync", () => {
     ).toEqual({
       updates: [],
       inserts: [
-        { id: "n1", content: "new", position: 1 },
-        { id: "n2", content: "restored", position: 2 },
+        { id: "n1", content: "new", position: 1, tagId: null },
+        { id: "n2", content: "restored", position: 2, tagId: null },
       ],
       deletes: [],
       ids: ["a", "n1", "n2"],
@@ -90,10 +165,10 @@ describe("planBoardSync", () => {
         ],
       ),
     ).toEqual({
-      updates: [{ id: "b", content: "y", position: 1 }],
+      updates: [{ id: "b", content: "y", position: 1, tagId: null }],
       inserts: [
-        { id: "n1", content: "fresh", position: 2 },
-        { id: "n2", content: "no createdAt", position: 3 },
+        { id: "n1", content: "fresh", position: 2, tagId: null },
+        { id: "n2", content: "no createdAt", position: 3, tagId: null },
       ],
       deletes: [],
       ids: ["a", null, "b", "n1", "n2"],
@@ -112,7 +187,7 @@ describe("planBoardSync", () => {
         ["expired", "expired-legacy"],
       ),
     ).toEqual({
-      updates: [{ id: "a", content: "x", position: 0 }],
+      updates: [{ id: "a", content: "x", position: 0, tagId: null }],
       inserts: [],
       deletes: [],
       ids: [null, null, "a"],
@@ -126,7 +201,7 @@ describe("planBoardSync", () => {
         [{ id: "retimed", content: "x2", createdAt: "2026-08-01T00:00:00.000Z" }],
       ),
     ).toEqual({
-      updates: [{ id: "retimed", content: "x2", position: 0 }],
+      updates: [{ id: "retimed", content: "x2", position: 0, tagId: null }],
       inserts: [],
       deletes: [],
       ids: ["retimed"],
@@ -144,7 +219,7 @@ describe("planBoardSync", () => {
       ),
     ).toEqual({
       updates: [],
-      inserts: [{ id: "n1", content: "copy", position: 1 }],
+      inserts: [{ id: "n1", content: "copy", position: 1, tagId: null }],
       deletes: [],
       ids: ["retimed", "n1"],
     });
@@ -161,7 +236,7 @@ describe("planBoardSync", () => {
       ),
     ).toEqual({
       updates: [],
-      inserts: [{ id: "n1", content: "copy", position: 1 }],
+      inserts: [{ id: "n1", content: "copy", position: 1, tagId: null }],
       deletes: [],
       ids: ["a", "n1"],
     });
@@ -169,7 +244,7 @@ describe("planBoardSync", () => {
 
   it("送られてこなかった既存の行は削除", () => {
     expect(plan([row("a", "x", 0), row("b", "y", 1)], [{ id: "b", content: "y" }])).toEqual({
-      updates: [{ id: "b", content: "y", position: 0 }],
+      updates: [{ id: "b", content: "y", position: 0, tagId: null }],
       inserts: [],
       deletes: ["a"],
       ids: ["b"],
@@ -183,5 +258,26 @@ describe("planBoardSync", () => {
       deletes: ["a"],
       ids: [],
     });
+  });
+});
+
+describe("dropUnregisteredTags", () => {
+  it("登録に無いタグはタグなしにし、登録済みのタグ・タグなし・tagId の項目が無いものはそのまま", () => {
+    expect(
+      dropUnregisteredTags(
+        [
+          { id: "a", content: "a", tagId: "消えたタグ" },
+          { id: "b", content: "b", tagId: "家" },
+          { id: "c", content: "c", tagId: null },
+          { id: "d", content: "d" },
+        ],
+        new Set(["家"]),
+      ),
+    ).toEqual([
+      { id: "a", content: "a", tagId: null },
+      { id: "b", content: "b", tagId: "家" },
+      { id: "c", content: "c", tagId: null },
+      { id: "d", content: "d" },
+    ]);
   });
 });

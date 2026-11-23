@@ -1,25 +1,46 @@
 .section {
-  /* scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ) */
-  scroll-margin-top: calc(var(--poi-header-height) + var(--poi-page-padding));
+  /* scrollIntoView で冒頭を合わせるとき、固定ヘッダーと本文の余白のぶんだけ下げる (Main の padding-top と同じ)。
+     絞り込みの行がヘッダーの下に貼り付いているときは、その高さ (Board.module.css の --board-bar-height) も足す */
+  scroll-margin-top: calc(
+    var(--poi-header-height) + var(--poi-page-padding) + var(--board-bar-height, 0px)
+  );
   /* ↑ でのフォーカス移動 (focusView) は nearest で下端に合わせることがある。ぴったりに合うと
      フォーカスリング (outline 2px + offset 4px。MarkdownView) が画面の外に出るので、そのぶん余白を残す */
-  scroll-margin-bottom: 12px;
+  /* 狭い画面では、右下固定の追加ボタンの裏に掛からないよう、その高さぶんも空ける (Board.module.css の --board-fab-clearance)。
+     作ったばかりのセクションを見せるスクロール (use-section-focus の reveal) もこの値を読む */
+  scroll-margin-bottom: calc(12px + var(--board-fab-clearance, 0px));
 }
 
-/* 最後のセクションは短くても冒頭が画面の上端まで来られるよう、画面 1 つ分の高さを確保する
-   (1 つしか無いときは外枠が flex で画面いっぱいに広がるので不要。終端の余白のぶんは少し余る) */
-.fillScreen {
-  min-height: calc(100dvh - var(--poi-header-height) - var(--poi-page-padding));
-}
-
-/* 区切り: 線 (LifeLine) は残りの幅いっぱい、コピー / スクショ / 削除は線の外の右端。
-   上下の余白は SectionActions.module.css のタッチ用の当たり判定の広げ方 (上 16px / 下 10px) と揃えてある */
-.divider {
+/* カードの上の行: 左に残り日数 (LifeLabel)、右端にタグ / コピー / スクショ / 削除。
+   本文との間は、カードの上の余白より広く空けて、上の行 (操作) と本文 (読むもの) を分けて見せる */
+.topRow {
+  /* タグを選ぶポップオーバー (SectionTags) の位置の基準 */
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--poi-space-md);
-  margin-bottom: var(--poi-space-xs);
+  margin-bottom: var(--poi-space-md);
 }
-.spaced {
-  margin-top: var(--poi-space-md);
+
+/* セクションのカード。枠と面で 1 つのセクションを区切る。
+   左右の余白 (20px) は、見出しの縦棒 (MarkdownView。本文の左に 12px はみ出す) と枠の間を 8px 空ける幅
+   (16px では縦棒が枠に 4px まで寄り、見出しの頭が詰まって見えた)。フォーカスの枠 (outline 2px + offset 4px) も収まる。
+   上下の余白 (12px) は、上の行のボタンのタッチ用の当たり判定 (SectionActions.module.css。上に 16px 広げる) が
+   カードの外の隙間 (Board の 20px / スマホでは 12px) の途中で止まる値 */
+.card {
+  padding: var(--poi-space-sm) var(--poi-space-lg);
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-md);
+  /* 面は背景の色 (白 / #242424) にして、机の色 (--poi-color-page) は受け継がない。
+     本文の色 (リンクや控えめな文字) は、どれも背景の色に対して AA を満たすよう決めてあり、
+     surface などに変えるとダークでリンクが届かなくなる (surface では 4.24) */
+  background-color: var(--poi-color-bg);
+}
+/* 上の行で、残り日数とボタンの間を空けて、タグとボタンを右端へ寄せる */
+.spacer {
+  flex: 1;
+}
+/* 編集中のカード。どこを書いているかが分かるよう、枠を藍にする (エディタ自体には枠が無い) */
+.editingCard {
+  border-color: var(--poi-color-primary);
 }

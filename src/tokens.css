@@ -33,6 +33,14 @@
     0 0.625rem 0.625rem -0.3125rem rgb(0 0 0 / 0.04);
 
   --poi-color-bg: #fff;
+  /*
+   * ページの地 (body・ヘッダー・絞り込みの行が塗る色)。ふだんは背景と同じ白で、板を開いているときだけ
+   * 一段暗い「机」(--poi-color-desk) に差し替える (Board.module.css)。カードやモーダルは --poi-color-bg のままにして、
+   * 机の上に白い紙が載って見えるようにする。説明ページなどは白のまま (文章を読む面を暗くしない)
+   */
+  --poi-color-page: var(--poi-color-bg);
+  /* 板の地。控えめな文字 (--poi-color-text-muted) がこの上で 4.54 なので、これより暗くすると AA に届かない */
+  --poi-color-desk: #f1f2f4;
   --poi-color-text: #000;
   /* 見出しのカードなど、本文より一段強い文字 */
   --poi-color-text-strong: #000;
@@ -68,7 +76,7 @@
   --poi-color-code-bg: #f8f9fa;
   --poi-color-pre-bg: #f8f9fa;
   --poi-color-rule: #dee2e6;
-  /* ヘッダーの下やまとめの見出しの区切り線。ライトは <hr> と同じ、ダークは枠線と同じ色 */
+  /* ヘッダーの下や通知の枠の区切り線。ライトは <hr> と同じ、ダークは枠線と同じ色 */
   --poi-color-divider: #dee2e6;
 
   /* 赤の文字。赤の 6 番 (#fa5252) は白地で 3.3 しかないので 9 番 (5.5) にする */
@@ -82,7 +90,6 @@
   --poi-color-attention-strong: #e67700;
 
   /* 期限が近いことを示す橙 */
-  --poi-color-warning: #fd7e14;
   --poi-color-warning-text: #fd7e14;
 
   /*
@@ -115,28 +122,29 @@
   --poi-color-menu-hover: #f1f3f5;
   --poi-color-avatar-bg: #f1f3f5;
   --poi-color-skeleton: #dee2e6;
-  --poi-color-toggle-bg: #f1f3f5;
-  --poi-color-toggle-text: #495057;
-  --poi-color-toggle-indicator: #fff;
   --poi-color-notice-title: #212529;
   --poi-color-notice-text: #868e96;
   --poi-color-notice-close-hover: #f8f9fa;
 
-  /* 浮かせる要素の影。lg は左下の通知、xl はモーダル、toggle は表示切替の選択中の札 */
+  /* 浮かせる要素の影。lg は左下の通知、xl はモーダル */
   --poi-shadow-lg:
     0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 1.75rem 1.4375rem -0.4375rem rgb(0 0 0 / 0.05),
     0 0.75rem 0.75rem -0.4375rem rgb(0 0 0 / 0.04);
   --poi-shadow-xl:
     0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 2.25rem 1.75rem -0.4375rem rgb(0 0 0 / 0.05),
     0 1.0625rem 1.0625rem -0.4375rem rgb(0 0 0 / 0.04);
-  --poi-shadow-toggle:
-    0 0.0625rem 0.1875rem rgb(0 0 0 / 0.05), 0 0.0625rem 0.125rem rgb(0 0 0 / 0.1);
+
+  /* タグの札 (ポップオーバーの札、選んでいる絞り込み) の面と文字。タグごとに色は分けない (どのタグも同じ灰色) */
+  --poi-tag-bg: #e3e2e0;
+  --poi-tag-text: #32302c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     /* 背景は index.html の theme-color (#242424) に揃える */
     --poi-color-bg: #242424;
+    /* カードの面 (#242424) より一段暗い机。暗くするぶんには文字のコントラストは上がる */
+    --poi-color-desk: #1b1b1b;
     --poi-color-text: #c9c9c9;
     --poi-color-text-strong: #fff;
     --poi-color-border: #424242;
@@ -168,7 +176,6 @@
     --poi-color-attention-subtle: #733c00;
     --poi-color-attention-strong: #fff9db;
 
-    --poi-color-warning: #f76707;
     --poi-color-warning-text: #ffa94d;
 
     --poi-color-list-2: #0ca678;
@@ -193,13 +200,11 @@
     --poi-color-menu-hover: #424242;
     --poi-color-avatar-bg: #111315;
     --poi-color-skeleton: #424242;
-    --poi-color-toggle-bg: #1f1f1f;
-    --poi-color-toggle-text: #b8b8b8;
-    --poi-color-toggle-indicator: #3b3b3b;
     --poi-color-notice-title: #fff;
     --poi-color-notice-text: #828282;
     --poi-color-notice-close-hover: #1f1f1f;
-    /* 暗い背景では影が見えないので付けない */
-    --poi-shadow-toggle: none;
+
+    --poi-tag-bg: #474747;
+    --poi-tag-text: #e8e8e8;
   }
 }

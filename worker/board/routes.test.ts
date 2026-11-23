@@ -1,17 +1,31 @@
-import { BOARD_MAX_SECTIONS, DAY_MS } from "@shared/constants";
+import {
+  BOARD_MAX_SECTIONS,
+  DAY_MS,
+  TAG_ICON_FALLBACK,
+  TAG_MAX_REGISTERED,
+} from "@shared/constants";
 import { Hono } from "hono";
-import { describe, expect } from "vite-plus/test";
+import { describe, expect, vi } from "vite-plus/test";
 
 import { test } from "../d1-test";
 import { createDb } from "../db";
 import type { AppEnv } from "../types";
-import { boardRoutes } from "./routes";
+import { boardRoutes, tagRoutes } from "./routes";
 import { sweepExpiredMemos } from "./sweep";
 
 // PUT /api/board をテストごとに立てる空のローカル D1 に対して実行する。
 // ログインはセッションを引かずに固定のユーザーを入れて済ませる
 
-type Section = { id: string; content: string; position: number; createdAt: string };
+type Section = {
+  id: string;
+  content: string;
+  position: number;
+  createdAt: string;
+  tagId: string | null;
+};
+
+/** 登録済みのタグ (/api/tags と GET の tags の 1 つ) */
+type Tag = { id: string; name: string; icon: string };
 
 const USER_ID = "u1";
 /** 他人の行に触れないことを確かめるための、もう 1 人のユーザー */
@@ -25,12 +39,18 @@ function appAs(userId: string) {
       c.set("session", {} as NonNullable<AppEnv["Variables"]["session"]>);
       await next();
     })
-    .route("/", boardRoutes);
+    .route("/", boardRoutes)
+    .route("/tags", tagRoutes);
 }
 
 const app = appAs(USER_ID);
 
-type DraftSection = { id: string | null; content: string; createdAt?: string };
+type DraftSection = {
+  id: string | null;
+  content: string;
+  createdAt?: string;
+  tagId?: string | null;
+};
 type PutResponse = { sections: Section[]; revision: string; error?: string };
 
 /** userId の板を、userId でログインした状態で db に対して読み書きする */
@@ -65,6 +85,7 @@ function boardClient(db: D1Database, userId: string) {
       userId: string;
       sections: Section[];
       revision: string | null;
+      tags: Tag[];
     };
   }
 
@@ -76,7 +97,32 @@ function boardClient(db: D1Database, userId: string) {
     return results;
   }
 
-  return { putAt, put, get, rows };
+  // タグの操作に渡す Env。TYPESAFE_API_KEY を入れると、アイコンを Jev に問い合わせる (fetch を差し替えて使う)
+  const tagEnv: { DB: D1Database; TYPESAFE_API_KEY?: string } = { DB: db };
+  /** 登録済みのタグの操作 (/api/tags)。返事の本文は変えた後の一覧か、断った理由 */
+  async function tagRequest(method: "GET" | "POST" | "DELETE" | "PATCH", body?: object) {
+    const res = await app.request(
+      "/tags",
+      body === undefined
+        ? { method }
+        : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      tagEnv,
+    );
+    return { status: res.status, body: (await res.json()) as { tags?: Tag[]; error?: string } };
+  }
+  const tags = {
+    add: (name: string) => tagRequest("POST", { name }),
+    remove: (id: string) => tagRequest("DELETE", { id }),
+    rename: (id: string, name: string) => tagRequest("PATCH", { id, name }),
+    list: async () => (await tagRequest("GET")).body.tags!,
+    /** 登録済みのタグの名前 (登録した順) */
+    names: async () => (await tags.list()).map((t) => t.name),
+    /** 名前 name のタグを登録して、その id を返す */
+    addId: async (name: string) =>
+      (await tags.add(name)).body.tags!.find((t) => t.name === name)!.id,
+  };
+
+  return { putAt, put, get, rows, tags, tagEnv };
 }
 
 async function insertUser(db: D1Database, userId: string) {
@@ -176,6 +222,12 @@ describe.concurrent("PUT /api/board", () => {
     expect(created.body.sections[0].content).toBe(content);
     const updated = await board.put([{ id: created.body.sections[0].id, content: `${content}!` }]);
     expect(updated.body.sections[0].content).toBe(`${content}!`);
+  });
+
+  it("空行をいくつ続けた内容も、1 つのセクションとして保存する", async ({ board }) => {
+    const content = "a\n\n\n\nb\n\n\n";
+    const res = await board.put([{ id: null, content }]);
+    expect(res.body.sections.map((s: { content: string }) => s.content)).toEqual([content]);
   });
 
   it("取得した版が返り、保存のたびに変わる", async ({ board }) => {
@@ -350,6 +402,301 @@ describe.concurrent("他のユーザーの板", () => {
     expect((await board.get()).revision).toBe(mine.body.revision);
     expect((await otherBoard.rows()).map((row) => row.content)).toEqual(["theirs"]);
     expect((await otherBoard.get()).revision).toBe(theirs.body.revision);
+  });
+});
+
+describe.concurrent("タグ", () => {
+  it("登録したタグを、登録した順の一覧 (id・名前・アイコン) で返し、板の取得でも返す", async ({
+    board,
+  }) => {
+    const first = await board.tags.add("買い物");
+    expect(first.body.tags).toEqual([
+      { id: expect.any(String), name: "買い物", icon: TAG_ICON_FALLBACK },
+    ]);
+    await board.tags.add('it\'s "quoted"');
+    expect(await board.tags.names()).toEqual(["買い物", 'it\'s "quoted"']);
+    expect((await board.get()).tags).toEqual(await board.tags.list());
+  });
+
+  /**
+   * Jev の代わり (プロセスの外にあるので、ここだけ偽物にする)。タグの名前ごとの答え (無ければ other) を返し、
+   * 問い合わせのあったタグの名前を控える。ほかの URL (ローカルの D1 とのやり取り) は本物の fetch に渡す
+   */
+  function fakeJev(icons: Record<string, string> = {}) {
+    const realFetch = globalThis.fetch;
+    const asked: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (new Request(input, init).url !== "https://api.typesafe.ai/v1/systemone") {
+        return realFetch(input, init);
+      }
+      const tagName = JSON.parse(init!.body as string).questions.icon.instructions.tag as string;
+      asked.push(tagName);
+      return Response.json({
+        answers: { icon: { type: "choice", choice: icons[tagName] ?? "other", confidence: 1 } },
+      });
+    });
+    return asked;
+  }
+
+  it("名前を変えると、id はそのままで、新しい名前でアイコンを選び直す", async ({ board }) => {
+    fakeJev({ 買い物: "shopping", 献立: "food" });
+    try {
+      board.tagEnv.TYPESAFE_API_KEY = "key";
+      const id = await board.tags.addId("買い物");
+      expect((await board.tags.list())[0]!.icon).toBe("shopping");
+      expect((await board.tags.rename(id, "献立")).body.tags).toEqual([
+        { id, name: "献立", icon: "food" },
+      ]);
+      expect((await board.get()).tags).toEqual([{ id, name: "献立", icon: "food" }]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("登録も名前の変更もできないときは、アイコンを問い合わせずに返す", async ({ board }) => {
+    for (let i = 0; i < TAG_MAX_REGISTERED; i++) await board.tags.add(`t${i}`);
+    const [t0] = await board.tags.list();
+    const asked = fakeJev();
+    try {
+      board.tagEnv.TYPESAFE_API_KEY = "key";
+      expect((await board.tags.add("t0")).status).toBe(200);
+      expect((await board.tags.add("over")).status).toBe(409);
+      expect((await board.tags.rename(t0!.id, "t1")).status).toBe(409);
+      expect((await board.tags.rename(t0!.id, "t0")).status).toBe(200);
+      expect((await board.tags.rename("無い", "新しい")).status).toBe(404);
+      expect(asked).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("登録済みの名前をもう一度登録しても、一覧は変わらない (同じ id のまま)", async ({ board }) => {
+    const id = await board.tags.addId("買い物");
+    const again = await board.tags.add("買い物");
+    expect(again.status).toBe(200);
+    expect(again.body.tags).toEqual([{ id, name: "買い物", icon: TAG_ICON_FALLBACK }]);
+  });
+
+  it("形の正しくないタグは 400 で断り、登録しない", async ({ board }) => {
+    for (const name of ["", " 前後に空白 ", "#先頭に記号", "a".repeat(21)]) {
+      expect((await board.tags.add(name)).status).toBe(400);
+    }
+    expect(await board.tags.list()).toEqual([]);
+  });
+
+  it("上限を超える登録は 409 TooManyTags で断る", async ({ board }) => {
+    for (let i = 0; i < TAG_MAX_REGISTERED; i++) await board.tags.add(`t${i}`);
+    const over = await board.tags.add("over");
+    expect(over.status).toBe(409);
+    expect(over.body).toEqual({ error: "TooManyTags" });
+    expect(await board.tags.list()).toHaveLength(TAG_MAX_REGISTERED);
+  });
+
+  it("登録済みのタグをセクションに付けて保存し、付け替えや外すだけの保存も反映する", async ({
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    const home = await board.tags.addId("家");
+    const first = await board.put([
+      { id: null, content: "a", tagId: shopping },
+      { id: null, content: "b", tagId: null },
+    ]);
+    expect(first.body.sections.map((s) => s.tagId)).toEqual([shopping, null]);
+    const [a, b] = first.body.sections;
+    const saved = await board.put([
+      { id: a!.id, content: "a", createdAt: a!.createdAt, tagId: home },
+      { id: b!.id, content: "b", createdAt: b!.createdAt, tagId: null },
+    ]);
+    expect(saved.body.sections.map((s) => s.tagId)).toEqual([home, null]);
+    const cleared = await board.put([
+      { id: a!.id, content: "a", createdAt: a!.createdAt, tagId: null },
+      { id: b!.id, content: "b", createdAt: b!.createdAt, tagId: null },
+    ]);
+    expect(cleared.body.sections.map((s) => s.tagId)).toEqual([null, null]);
+    expect((await board.get()).sections.map((s) => s.tagId)).toEqual([null, null]);
+  });
+
+  it("登録されていないタグや、他のユーザーのタグを付けて保存しても、タグなしで保存する", async ({
+    board,
+    otherBoard,
+  }) => {
+    const theirs = await otherBoard.tags.addId("買い物");
+    const saved = await board.put([
+      { id: null, content: "a", tagId: "未登録" },
+      { id: null, content: "b", tagId: theirs },
+    ]);
+    expect(saved.status).toBe(200);
+    expect(saved.body.sections.map((s) => s.tagId)).toEqual([null, null]);
+  });
+
+  it("タグの項目なしで保存しても、今のタグは消えない (タグを知らない古いページの保存)", async ({
+    board,
+  }) => {
+    const x = await board.tags.addId("x");
+    const first = await board.put([{ id: null, content: "a", tagId: x }]);
+    const [a] = first.body.sections;
+    const saved = await board.put([{ id: a!.id, content: "a2", createdAt: a!.createdAt }]);
+    expect(saved.body.sections).toMatchObject([{ id: a!.id, content: "a2", tagId: x }]);
+  });
+
+  it("登録を消すと、そのタグを付けていたセクションからも外し、本文と他のタグは変えない", async ({
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    const home = await board.tags.addId("家");
+    await board.put([
+      { id: null, content: "a", tagId: shopping },
+      { id: null, content: "b", tagId: home },
+    ]);
+    expect((await board.tags.remove(shopping)).body.tags?.map((t) => t.name)).toEqual(["家"]);
+    expect((await board.get()).sections.map((s) => [s.content, s.tagId])).toEqual([
+      ["a", null],
+      ["b", home],
+    ]);
+  });
+
+  it("無いタグの登録を消しても、何も変えずに一覧を返す", async ({ board }) => {
+    await board.tags.add("家");
+    const res = await board.tags.remove("無い");
+    expect(res.status).toBe(200);
+    expect(res.body.tags?.map((t) => t.name)).toEqual(["家"]);
+  });
+
+  it("登録を消しても板の版は進まず、消す前の版をもとにした保存は通り、消したタグは外して保存する", async ({
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    const first = await board.put([
+      { id: null, content: "a", tagId: shopping },
+      { id: null, content: "b", tagId: shopping },
+    ]);
+    const [a] = first.body.sections;
+    await board.tags.remove(shopping);
+    expect((await board.get()).revision).toBe(first.body.revision);
+    // 別の画面: b を消し、a を書き換えた (消したタグを知らないまま)
+    const saved = await board.put([
+      { id: a!.id, content: "a2", createdAt: a!.createdAt, tagId: shopping },
+    ]);
+    expect(saved.status).toBe(200);
+    expect(saved.body.sections).toMatchObject([{ id: a!.id, content: "a2", tagId: null }]);
+    expect((await board.get()).sections.map((s) => s.content)).toEqual(["a2"]);
+  });
+
+  it("保存の確認から書き込みまでの間に登録が消されたタグは、付けずに保存する", async ({
+    db,
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    // 1 回目の batch (今の板と登録の読み込み) の後、書き込みの batch の前に、別の端末が登録を消す
+    let reads = 0;
+    const racing = new Proxy(db, {
+      get(target, prop) {
+        if (prop !== "batch") return Reflect.get(target, prop, target);
+        return async (statements: D1PreparedStatement[]) => {
+          if (reads++ === 1) await target.prepare("delete from tag").run();
+          return target.batch(statements);
+        };
+      },
+    });
+    const res = await appAs(USER_ID).request(
+      "/",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: USER_ID,
+          revision: null,
+          sections: [{ id: null, content: "a", tagId: shopping }],
+        }),
+      },
+      { DB: racing },
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as PutResponse).sections).toMatchObject([{ tagId: null }]);
+    expect((await board.get()).sections.map((s) => s.tagId)).toEqual([null]);
+  });
+
+  it("名前を変えても、一覧は登録した順のままで、セクションは同じタグ (id) を指したまま", async ({
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    const home = await board.tags.addId("家");
+    await board.put([
+      { id: null, content: "a", tagId: shopping },
+      { id: null, content: "b", tagId: home },
+    ]);
+    const renamed = await board.tags.rename(shopping, "買う物");
+    expect(renamed.body.tags?.map((t) => [t.id, t.name])).toEqual([
+      [shopping, "買う物"],
+      [home, "家"],
+    ]);
+    expect((await board.get()).sections.map((s) => s.tagId)).toEqual([shopping, home]);
+  });
+
+  it("名前を変えても板の版は進まず、変える前の版をもとにした保存もタグを付けたまま通る", async ({
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    const first = await board.put([{ id: null, content: "a", tagId: shopping }]);
+    const [a] = first.body.sections;
+    await board.tags.rename(shopping, "買う物");
+    expect((await board.get()).revision).toBe(first.body.revision);
+    const saved = await board.put([
+      { id: a!.id, content: "a2", createdAt: a!.createdAt, tagId: shopping },
+    ]);
+    expect(saved.status).toBe(200);
+    expect(saved.body.sections).toMatchObject([{ content: "a2", tagId: shopping }]);
+  });
+
+  it("新しい名前のタグがもうあれば 409 TagExists で断り、一覧を変えない", async ({ board }) => {
+    const shopping = await board.tags.addId("買い物");
+    await board.tags.add("家");
+    const res = await board.tags.rename(shopping, "家");
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({ error: "TagExists" });
+    expect(await board.tags.names()).toEqual(["買い物", "家"]);
+  });
+
+  it("無いタグ (別の場所で登録を消された) の名前を変えようとしたら 404 TagNotFound で断り、新しい名前で登録しない", async ({
+    board,
+  }) => {
+    const shopping = await board.tags.addId("買い物");
+    await board.tags.add("家");
+    await board.tags.remove(shopping);
+    const res = await board.tags.rename(shopping, "買う物");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "TagNotFound" });
+    expect(await board.tags.names()).toEqual(["家"]);
+  });
+
+  it("形の正しくない新しい名前は 400 で断る", async ({ board }) => {
+    const shopping = await board.tags.addId("買い物");
+    expect((await board.tags.rename(shopping, " ")).status).toBe(400);
+    expect(await board.tags.names()).toEqual(["買い物"]);
+  });
+
+  it("消して同じ名前でまた登録したタグは、別の id になる (消す前に付けていたセクションには付かない)", async ({
+    board,
+  }) => {
+    const before = await board.tags.addId("買い物");
+    await board.tags.remove(before);
+    const after = await board.tags.addId("買い物");
+    expect(after).not.toBe(before);
+  });
+
+  it("タグの登録・削除・名前の変更・付けたタグは、他のユーザーには影響しない", async ({
+    board,
+    otherBoard,
+  }) => {
+    await board.tags.add("買い物");
+    const theirs = await otherBoard.tags.addId("買い物");
+    await otherBoard.put([{ id: null, content: "theirs", tagId: theirs }]);
+    expect((await board.tags.rename(theirs, "x")).status).toBe(404);
+    await board.tags.remove(theirs);
+    const [mine] = await board.tags.list();
+    await board.tags.remove(mine!.id);
+    expect(await otherBoard.tags.names()).toEqual(["買い物"]);
+    expect((await otherBoard.get()).sections.map((s) => s.tagId)).toEqual([theirs]);
   });
 });
 

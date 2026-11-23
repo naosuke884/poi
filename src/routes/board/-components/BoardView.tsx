@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { Alert } from "@/components/Alert";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
@@ -16,7 +16,7 @@ export function BoardView({
   // まま一度描画される。context の userId で key を作るとその瞬間に前の内容のまま作り直してしまい、
   // 新しい板が来ても key が変わらず表示が 1 回前のままになる (issue #52)。
   // loader の userId なら sections と必ず同じアカウントで、板の到着と同時に key が変わる
-  data: { sections, revision, offline, cachedAt, userId },
+  data: { sections, revision, tags, offline, cachedAt, userId },
 }: {
   data: BoardData;
 }) {
@@ -26,6 +26,12 @@ export function BoardView({
   // (作り直すとオフラインで入力した未保存分がキャッシュの内容で上書きされて失われる)。
   // 閲覧専用にするのは、最初からキャッシュでしか開けていないときだけ
   const liveRef = useRef(false);
+  // 板を開いたら先頭から見せる (ルーターのスクロールの復元から板を外しているので、スクロールしたページから移ってくると
+  // その高さのまま出る。src/app.tsx)。読み込み直しではこのコンポーネントは作り直されないので、そのときは動かさない。
+  // 描く前に動かす (useEffect だと、前のページの高さのまま一度描かれてから先頭へ飛ぶ)
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, []);
   if (!offline) liveRef.current = true;
   const readOnly = offline && !liveRef.current;
   return (
@@ -53,6 +59,7 @@ export function BoardView({
         key={`${userId}-${readOnly ? "offline" : "online"}`}
         sections={sections}
         revision={revision}
+        tags={tags}
         userId={userId}
         readOnly={readOnly}
       />

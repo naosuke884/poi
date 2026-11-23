@@ -79,6 +79,23 @@ describe.concurrent("sweepExpiredMemos", () => {
     ]);
   });
 
+  it("期限を過ぎた行はタグも消す (本文が空でタグだけ残っている行も)", async ({ db, memos }) => {
+    await memos.insert("tagged", "u1", NOW - DAY_MS);
+    await memos.insert("alive", "u1", NOW + DAY_MS);
+    await db.prepare("update memo set tag_id = 't-shopping'").run();
+    await memos.insert("only-tag", "u1", NOW - DAY_MS);
+    await db.prepare("update memo set content = '', tag_id = 't-home' where id = 'only-tag'").run();
+    expect(await sweep(db)).toEqual({ cleared: 2, deleted: 0 });
+    const { results } = await db
+      .prepare("select id, tag_id as tagId from memo order by id")
+      .all<{ id: string; tagId: string | null }>();
+    expect(results).toEqual([
+      { id: "alive", tagId: "t-shopping" },
+      { id: "only-tag", tagId: null },
+      { id: "tagged", tagId: null },
+    ]);
+  });
+
   it("中身を消した行は、次の実行では数えない", async ({ db, memos }) => {
     await memos.insert("expired", "u1", NOW - DAY_MS);
     await sweep(db);

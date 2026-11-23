@@ -1,77 +1,97 @@
 import { BOARD_MAX_LENGTH, SECTION_SEPARATOR } from "@shared/constants";
 import { describe, expect, it } from "vite-plus/test";
 
-import type { EditableSection } from "../data/board";
+import { type EditableSection, newSection } from "../data/board";
 import {
   appendSection,
-  canRestore,
   changeSection,
   mergeSections,
-  removeGroup,
   removeSection,
-  restoreSections,
+  restoreSection,
   sectionMaxLength,
 } from "./board-ops";
-import { organizeSections } from "./organized";
 
 const saved = (key: string, content: string): EditableSection => ({
   key,
   id: `id-${key}`,
   content,
+  tagId: null,
   createdAt: `created-${key}`,
   expiresAt: `exp-${key}`,
 });
 const contents = (sections: EditableSection[]) => sections.map((s) => s.content);
 
 describe("changeSection", () => {
-  it("区切りが無ければ内容だけ変える", () => {
-    const r = changeSection([saved("a", "x"), saved("b", "y")], "a", "x2", 2)!;
-    expect(contents(r.next)).toEqual(["x2", "y"]);
-    expect(r.focus).toBeNull();
-    expect(r.next[0]).toMatchObject({ key: "a", id: "id-a" });
+  it("内容だけ変え、key と id はそのまま", () => {
+    const next = changeSection([saved("a", "x"), saved("b", "y")], "a", "x2")!;
+    expect(contents(next)).toEqual(["x2", "y"]);
+    expect(next[0]).toMatchObject({ key: "a", id: "id-a" });
   });
 
-  it("区切りで分け、先頭が id を、カーソルのある部分が key を引き継ぐ", () => {
-    const r = changeSection([saved("a", "x"), saved("b", "y")], "a", "x\n\n\nz", 5)!;
-    expect(contents(r.next)).toEqual(["x", "z", "y"]);
-    const [first, second] = r.next;
-    expect(first).toMatchObject({ id: "id-a", createdAt: "created-a", expiresAt: "exp-a" });
-    expect(first!.key).not.toBe("a");
-    expect(second).toMatchObject({ key: "a", id: null, createdAt: null, expiresAt: null });
-    expect(r.focus).toEqual({ key: "a", offset: 1 });
-    expect(r.revealLast).toBe(false);
-  });
-
-  it("カーソルが先頭の部分に残るなら、先頭が key も id も持つ", () => {
-    const r = changeSection([saved("a", "x")], "a", "x\n\n\nz", 1)!;
-    expect(r.next[0]).toMatchObject({ key: "a", id: "id-a" });
-    expect(r.next[1]).toMatchObject({ id: null });
-  });
-
-  it("末尾のセクションを分けて新しい末尾へ移るなら revealLast", () => {
-    expect(changeSection([saved("a", "x")], "a", "x\n\n\n", 4)!.revealLast).toBe(true);
-    expect(changeSection([saved("a", "x"), saved("b", "y")], "a", "x\n\n\n", 4)!.revealLast).toBe(
-      false,
-    );
+  it("空行 2 つ (改行 3 つ) を書いても分けない", () => {
+    const next = changeSection([saved("a", "x"), saved("b", "y")], "a", "x\n\n\nz")!;
+    expect(contents(next)).toEqual(["x\n\n\nz", "y"]);
   });
 
   it("知らない key なら null", () => {
-    expect(changeSection([saved("a", "x")], "zz", "", 0)).toBeNull();
+    expect(changeSection([saved("a", "x")], "zz", "")).toBeNull();
   });
 });
 
 describe("mergeSections", () => {
+  /** 登録済みのタグの id */
+  const registered = new Set(["x", "y"]);
   it("前が id を、フォーカスのある方が key を保ち、カーソルはつなぎ目", () => {
-    const r = mergeSections([saved("a", "x"), saved("b", "yz"), saved("c", "w")], 0, "b")!;
+    const r = mergeSections(
+      [saved("a", "x"), saved("b", "yz"), saved("c", "w")],
+      0,
+      "b",
+      registered,
+    )!;
     expect(r.next).toEqual([
-      { key: "b", id: "id-a", createdAt: "created-a", expiresAt: "exp-a", content: "xyz" },
+      {
+        key: "b",
+        id: "id-a",
+        createdAt: "created-a",
+        expiresAt: "exp-a",
+        content: "xyz",
+        tagId: null,
+      },
       saved("c", "w"),
     ]);
     expect(r.focus).toEqual({ key: "b", offset: 1 });
   });
 
+  it("前がまだ保存していないセクションなら、後ろの id と期限を保つ (期限を延ばさない)", () => {
+    const r = mergeSections([newSection(""), saved("b", "y")], 0, "b", registered)!;
+    expect(r.next).toEqual([
+      {
+        key: "b",
+        id: "id-b",
+        createdAt: "created-b",
+        expiresAt: "exp-b",
+        content: "y",
+        tagId: null,
+      },
+    ]);
+  });
+
+  it("前のセクションのタグを残し、前に無ければ後ろのタグを付ける", () => {
+    const tagged = (key: string, tagId: string | null) => ({ ...saved(key, key), tagId });
+    expect(
+      mergeSections([tagged("a", "x"), tagged("b", "y")], 0, "a", registered)!.next[0]!.tagId,
+    ).toBe("x");
+    expect(
+      mergeSections([tagged("a", null), tagged("b", "y")], 0, "a", registered)!.next[0]!.tagId,
+    ).toBe("y");
+    // 前のタグが登録に無い (別の場所で登録を消された。画面ではタグなし) ときも、後ろのタグを付ける
+    expect(
+      mergeSections([tagged("a", "gone"), tagged("b", "y")], 0, "a", registered)!.next[0]!.tagId,
+    ).toBe("y");
+  });
+
   it("隣が無ければ null", () => {
-    expect(mergeSections([saved("a", "x")], 0, "a")).toBeNull();
+    expect(mergeSections([saved("a", "x")], 0, "a", registered)).toBeNull();
   });
 });
 
@@ -92,12 +112,12 @@ describe("appendSection", () => {
   });
 });
 
-describe("removeSection / restoreSections", () => {
+describe("removeSection / restoreSection", () => {
   it("取り除いて、戻すと元の位置に入る", () => {
     const cur = [saved("a", "x"), saved("b", "y"), saved("c", "z")];
     const r = removeSection(cur, "b")!;
     expect(contents(r.next)).toEqual(["x", "z"]);
-    expect(restoreSections(r.next, r.removed)).toEqual(cur);
+    expect(restoreSection(r.next, r.removed)).toEqual(cur);
   });
 
   it("最後の 1 つを消すと空のセクションが残り、戻すとそれを置き換える", () => {
@@ -105,42 +125,13 @@ describe("removeSection / restoreSections", () => {
     const r = removeSection(cur, "a")!;
     expect(r.next).toHaveLength(1);
     expect(r.next[0]).toMatchObject({ id: null, content: "" });
-    expect(restoreSections(r.next, r.removed)).toEqual(cur);
+    expect(restoreSection(r.next, r.removed)).toEqual(cur);
   });
 
   it("空のセクションに書き足していたら置き換えずに残す", () => {
     const r = removeSection([saved("a", "x")], "a")!;
     const typed = [{ ...r.next[0]!, content: "new" }];
-    expect(contents(restoreSections(typed, r.removed))).toEqual(["x", "new"]);
-  });
-});
-
-describe("removeGroup", () => {
-  it("まとめの範囲を各セクションから取り除き、空になったものは消す", () => {
-    const cur = [saved("a", "# A\n- 1"), saved("b", "- 前\n# A\n- 2"), saved("c", "# B\n- 3")];
-    const group = organizeSections(cur).find((g) => g.heading === "A")!;
-    const r = removeGroup(cur, group)!;
-    expect(contents(r.next)).toEqual(["- 前", "# B\n- 3"]);
-    expect(r.removed.map((d) => d.section.key)).toEqual(["a", "b"]);
-    // 戻すと一部だけ削ったものは差し替え、消えたものは元の位置へ
-    expect(restoreSections(r.next, r.removed)).toEqual(cur);
-  });
-
-  it("一部だけ削ったセクションを後から編集したら、戻せない", () => {
-    const cur = [saved("a", "# A\n- 1"), saved("b", "- 前\n# A\n- 2")];
-    const group = organizeSections(cur).find((g) => g.heading === "A")!;
-    const r = removeGroup(cur, group)!;
-    expect(canRestore(r.next, r.removed)).toBe(true);
-    const edited = r.next.map((s) => (s.key === "b" ? { ...s, content: "- 前\n- 追記" } : s));
-    expect(canRestore(edited, r.removed)).toBe(false);
-    // 丸ごと消えたセクションだけなら、他を編集していても戻せる
-    const whole = removeSection(cur, "a")!;
-    expect(canRestore(edited, whole.removed)).toBe(true);
-  });
-
-  it("どれにも当たらなければ null", () => {
-    const group = organizeSections([saved("z", "# Z")])[0]!;
-    expect(removeGroup([saved("a", "x")], group)).toBeNull();
+    expect(contents(restoreSection(typed, r.removed))).toEqual(["x", "new"]);
   });
 });
 

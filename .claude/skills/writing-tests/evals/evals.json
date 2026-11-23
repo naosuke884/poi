@@ -69,16 +69,16 @@
     },
     {
       "id": 4,
-      "name": "settings-ttl-no-revive",
-      "prompt": "PUT /api/settings で保持日数を延ばしても、もう期限切れで Cron の削除待ちになっているセクションは復活しない、というのをテストで保証したい。書いて。",
-      "expected_output": "Route test in worker/board/routes.test.ts using the per-test D1 fixture, mounting settingsRoutes, asserting response and rows.",
+      "name": "tag-delete-untags",
+      "prompt": "DELETE /api/tags でタグの登録を消したら、そのタグを付けていたセクションからも外れて、他のタグはそのまま、というのをテストで保証したい。書いて。",
+      "expected_output": "Route test in worker/board/routes.test.ts using the per-test D1 fixture, mounting tagRoutes, asserting response and rows.",
       "files": [],
       "assertions": [
         "The test is added to worker/board/routes.test.ts (or a sibling worker test) and uses the db fixture from worker/d1-test.ts (no getPlatformProxy in beforeAll, no beforeEach cleanup added)",
-        "D1 is not mocked; settingsRoutes is called through app.request (or worker.fetch) with the real local D1",
-        "Inserts an already-expired row and a still-visible row, then PUTs a longer memoTtlDays",
-        "Asserts the expired row's expires_at is unchanged (still in the past) and the visible row's expires_at moved to createdAt + new days, by reading rows back",
-        "Asserts the expired section is not returned by GET /api/board after the change",
+        "D1 is not mocked; tagRoutes is called through app.request (or worker.fetch) with the real local D1",
+        "Registers a tag, saves sections tagged with it (and one with another tag), then DELETEs the tag",
+        "Asserts by reading rows back that sections with the deleted tag now have tagId null and the others keep theirs",
+        "Asserts the deleted tag is no longer in GET /api/tags",
         "Test titles are in Japanese",
         "Ran the targeted test file and reports it passing",
         "Did not modify production code"

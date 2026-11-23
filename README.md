@@ -8,8 +8,11 @@ Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
 ## Features
 
-- **Every section is force-deleted after 30 days (the period is configurable)** — a memo that's 30 days old has served its purpose; if you ever need it again, just write it again
+- **Every section is force-deleted after 30 days** — a memo that's 30 days old has served its purpose; if you ever need it again, just write it again
 - **Structure with Markdown** — even a quick memo is easier to read with a little structure
+- **Formatting toolbar** — headings, lists and indent in one tap, handy on a phone
+- **Link titles** — a bare URL shows the linked page's title
+- **Tags** — register your tags, pick one per section, and filter the board down to one tag
 - **Per-section copy and screenshot** — sharing a memo takes one click
 - **One-click delete** — a memo you no longer care about is gone for good in one click
 - **PWA** — install it like a native app; the last board stays readable offline
