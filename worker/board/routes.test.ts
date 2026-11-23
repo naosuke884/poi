@@ -484,8 +484,17 @@ describe.concurrent("タグ", () => {
     expect(await board.tags.list()).toEqual([]);
   });
 
-  it("上限を超える登録は 409 TooManyTags で断る", async ({ board }) => {
-    for (let i = 0; i < TAG_MAX_REGISTERED; i++) await board.tags.add(`t${i}`);
+  it("上限を超える登録は 409 TooManyTags で断る", async ({ board, db }) => {
+    // 上限までのタグは D1 に 1 回でまとめて入れる。1 つずつ POST すると上限の数だけ往復し、CI では既定の 5 秒に
+    // 届きかけて時々落ちていた。確かめたいのは上限を超えた 1 件の扱いなので、それだけを API に送る
+    await db.batch(
+      Array.from({ length: TAG_MAX_REGISTERED }, (_, i) =>
+        db
+          .prepare("insert into tag (id, user_id, name, created_at) values (?, ?, ?, ?)")
+          .bind(`seed-${i}`, USER_ID, `t${i}`, i),
+      ),
+    );
+    expect(await board.tags.list()).toHaveLength(TAG_MAX_REGISTERED);
     const over = await board.tags.add("over");
     expect(over.status).toBe(409);
     expect(over.body).toEqual({ error: "TooManyTags" });
