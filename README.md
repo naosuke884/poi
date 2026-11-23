@@ -6,8 +6,6 @@
 **poi** is a note that disappears in 30 days.
 Sign in with Google at [poinote.app](https://poinote.app/) and start right away.
 
-https://github.com/user-attachments/assets/112d54a4-7a03-4376-b308-2a611e87d861
-
 ## Features
 
 - **Every section is force-deleted after 30 days (the period is configurable)** — a memo that's 30 days old has served its purpose; if you ever need it again, just write it again

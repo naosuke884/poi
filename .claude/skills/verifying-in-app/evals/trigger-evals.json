@@ -52,10 +52,6 @@
     "should_trigger": false
   },
   {
-    "query": "README のデモ動画を最新の画面で撮り直したい",
-    "should_trigger": false
-  },
-  {
     "query": "npm run build が型エラーで落ちるので直して",
     "should_trigger": false
   },
