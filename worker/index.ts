@@ -8,6 +8,7 @@ import { deleteExpiredAuthRecords } from "./auth/sweep";
 import { boardRoutes } from "./board/routes";
 import { sweepExpiredMemos } from "./board/sweep";
 import { createDb } from "./db";
+import { linkPreviewRoutes } from "./link-preview/routes";
 import { rateLimit } from "./rate-limit";
 import { servePage } from "./site/pages";
 import type { AppEnv } from "./types";
@@ -53,6 +54,15 @@ app.on(
     (c) => c.get("user")?.id,
   ),
 );
+// リンクのプレビューは、サーバから他のサイトを取りに行くので、ユーザーごとに数える
+app.on(
+  "POST",
+  "/api/link-preview",
+  rateLimit(
+    (env) => env.LINK_PREVIEW_RATE_LIMITER,
+    (c) => c.get("user")?.id,
+  ),
+);
 
 // Better Auth のエンドポイント (/api/auth/sign-in/social, /api/auth/get-session ...)。
 // ログアウト / アカウント削除で cookie を消すのは Better Auth の Set-Cookie と、端末のキャッシュは clearOfflineCaches に任せる。
@@ -60,7 +70,9 @@ app.on(
 app.all("/api/auth/*", (c) => c.get("auth").handler(c.req.raw));
 
 // RPC クライアント (src/lib/api.ts) に型を渡すため、ルートはメソッドチェーンで定義する
-const api = new Hono<AppEnv>().route("/board", boardRoutes);
+const api = new Hono<AppEnv>()
+  .route("/board", boardRoutes)
+  .route("/link-preview", linkPreviewRoutes);
 
 app.route("/api", api);
 

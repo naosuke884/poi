@@ -7,6 +7,7 @@ export const auth = createAuth(
     DB: {} as D1Database,
     ASSETS: {} as Fetcher,
     BOARD_RATE_LIMITER: {} as RateLimit,
+    LINK_PREVIEW_RATE_LIMITER: {} as RateLimit,
     AUTH_RATE_LIMITER: {} as RateLimit,
     BETTER_AUTH_SECRET: "dummy",
     GOOGLE_CLIENT_ID: "dummy",
