@@ -5,16 +5,20 @@
   --poi-color-page: var(--poi-color-desk);
 }
 
+/* 並びの間隔 (gap) は付けない: 絞り込みの行とカードの間は、行の下の余白 (TagFilterBar.module.css) だけで取る
+   (gap を足すと、行の上 (ヘッダーとの間) より下が広くなって揃わない) */
 .board {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--poi-space-xs);
 }
 /* 絞り込みの行 (TagFilterBar) がヘッダーの下に貼り付いているぶん。セクションへスクロールするときの
-   上の余白に足す (SectionRow.module.css)。TagFilterBar.module.css の行の高さと同じ値にする */
+   上の余白 (ヘッダー + ページの余白) に足す (SectionRow.module.css)。
+   行は本文の上の余白を打ち消して (margin-top) 上下にページの余白を持つので、足す量は帯 38px + ページの余白。
+   これで、スクロールして見せたセクションも先頭と同じく帯の下にページの余白を空けて止まる。
+   帯の高さや行の余白 (TagFilterBar.module.css) を変えるなら揃えて変える */
 .board[data-filter-bar] {
-  --board-bar-height: 48px;
+  --board-bar-height: calc(38px + var(--poi-page-padding));
 }
 
 /* タイムライン (セクションの並び)。最後のセクションより下の空きもクリックで書ける場所に見せる */
@@ -29,10 +33,13 @@
   cursor: text;
 }
 
-/* 絞り込みに当てはまるセクションが無いときの一言。本文と同じ位置に、控えめな色で出す */
+/* 絞り込みに当てはまるセクションが無いときの一言。控えめな色で、カードがあればその中の文字が来る位置に出す
+   (カードの内側の余白 + 枠 1px。SectionRow.module.css の .card)。カードの外側の端に揃えると、
+   上の帯のボタンや他の絞り込みで見えるカードの文字から左にずれて見えた */
 .empty {
   composes: md muted from "../../../../components/typography.module.css";
-  margin: var(--poi-space-md) 0 0;
+  margin: 0;
+  padding: calc(var(--poi-space-sm) + 1px) calc(var(--poi-space-lg) + 1px);
 }
 
 .endSpacer {
