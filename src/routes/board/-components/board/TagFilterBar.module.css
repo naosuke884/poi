@@ -16,12 +16,13 @@
      下をくぐる本文の真ん中に収まり、先頭ではカードとの間もヘッダーとの間と揃う。
      余白も背景で塗るので、貼り付いた後も上の余白に本文は透けない */
   padding: var(--poi-page-padding) 0;
-  /* 帯のまわりでも下をくぐる本文が透けないようにする。左右にページの余白ぶん背景を延ばして、カードの枠の端も隠す
+  /* 帯のまわりでも下をくぐる本文が透けないようにする。左右に本文の列の余白 (RootLayout の .container の 16px) ぶん
+     背景を延ばして、カードの外にはみ出す編集中のフォーカスの枠も隠す
      (上下には延ばさない: 下の本文の頭を隠してしまう)。色はページの地 (板では机の色) に揃える */
   background: var(--poi-color-page);
   box-shadow:
-    calc(-1 * var(--poi-page-padding)) 0 0 var(--poi-color-page),
-    var(--poi-page-padding) 0 0 var(--poi-color-page);
+    calc(-1 * var(--poi-space-md)) 0 0 var(--poi-color-page),
+    var(--poi-space-md) 0 0 var(--poi-color-page);
 }
 /* 白い帯。セクションのカードと同じ面・枠・角 (影は付けない)。幅はカードと揃う */
 .bar {

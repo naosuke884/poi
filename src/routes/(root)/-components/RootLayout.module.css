@@ -18,8 +18,8 @@
   flex-direction: column;
   min-height: 100dvh;
   padding-top: calc(var(--poi-header-height) + var(--poi-page-padding));
-  padding-inline-start: calc(var(--poi-page-padding) + env(safe-area-inset-left));
-  padding-inline-end: calc(var(--poi-page-padding) + env(safe-area-inset-right));
+  padding-inline-start: calc(var(--poi-page-padding-inline) + env(safe-area-inset-left));
+  padding-inline-end: calc(var(--poi-page-padding-inline) + env(safe-area-inset-right));
   padding-bottom: calc(var(--poi-page-padding) + env(safe-area-inset-bottom));
 }
 

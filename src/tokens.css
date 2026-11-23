@@ -24,6 +24,9 @@
   /* 上部固定のヘッダーの高さと、本文のまわりの余白。本文の上の余白やセクションへのスクロール位置もこれで決める */
   --poi-header-height: 3.5rem;
   --poi-page-padding: var(--poi-space-md);
+  /* 本文の左右に足す余白 (本文の列自身の左右 16px の外側)。既定はページの余白と同じ。
+     板では 0 にして、カードの端をヘッダーの中身 (ロゴやメニュー) の端に揃える (Board.module.css) */
+  --poi-page-padding-inline: var(--poi-page-padding);
 
   --poi-radius-sm: 0.25rem;
   --poi-radius-md: 0.5rem;
