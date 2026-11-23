@@ -717,19 +717,6 @@ describe.concurrent("保持日数 (30 日固定)", () => {
     expect(new Date(a.expiresAt).getTime() - new Date(a.createdAt).getTime()).toBe(30 * DAY_MS);
   });
 
-  it("保持日数を設定できた頃の設定が残っていても、新しく作るセクションの期限は作成から 30 日", async ({
-    db,
-    board,
-  }) => {
-    await db
-      .prepare("insert into user_setting (user_id, memo_ttl_days) values (?, ?)")
-      .bind(USER_ID, 7)
-      .run();
-    const created = await board.put([{ id: null, content: "a" }]);
-    const [a] = created.body.sections as (Section & { expiresAt: string })[];
-    expect(new Date(a.expiresAt).getTime() - new Date(a.createdAt).getTime()).toBe(30 * DAY_MS);
-  });
-
   it("板の取得は保持日数を返さない", async ({ board }) => {
     expect(await board.get()).not.toHaveProperty("ttlDays");
   });

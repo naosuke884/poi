@@ -1,4 +1,4 @@
-import { MEMO_TTL_DAYS, memoExpiresAt, type TagIcon } from "@shared/constants";
+import { memoExpiresAt, type TagIcon } from "@shared/constants";
 import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
@@ -70,26 +70,6 @@ export const tag = sqliteTable(
   },
   (table) => [uniqueIndex("tag_userId_name_idx").on(table.userId, table.name)],
 );
-
-// 保持日数をユーザーごとに変えられた頃の設定 (1 行 = 1 ユーザー)。今はどこからも読み書きしない。
-// このコードと同じ push でテーブルを落とさないのは、本番はマイグレーションを先に流すので、まだ動いている
-// 前の Worker がこのテーブルを読んで落ちるため (d1-schema-changes スキル)。次の push で落とす。
-// その migration では drizzle/0012 の UPDATE (期限を作成 + 30 日で頭打ちにする) をもう一度流す: 0012 を流してから
-// 新しい Worker に替わるまでの間に、前の Worker がこの設定 (31 日以上) で作った行が残っているため
-export const userSetting = sqliteTable("user_setting", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  // セクションを作成から何日で削除するか
-  memoTtlDays: integer("memo_ttl_days").notNull().default(MEMO_TTL_DAYS),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
 
 // 板ごとの版 (1 行 = 1 ユーザー)。PUT /api/board のたびに新しい値にし、古い版をもとにした保存を断る
 // (別の端末 / タブで保存された板を、それを知らない古い内容で上書きしないため。worker/board/routes.ts)。

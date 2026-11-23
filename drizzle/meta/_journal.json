@@ -92,6 +92,13 @@
       "when": 1795350247378,
       "tag": "0012_cap_memo_expiry_30_days",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1795405010566,
+      "tag": "0013_drop_user_setting",
+      "breakpoints": true
     }
   ]
 }

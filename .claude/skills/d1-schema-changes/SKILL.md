@@ -13,7 +13,7 @@ Getting this wrong breaks production for everyone, and a pushed migration cannot
 
 | File | What | Edit by hand? |
 |---|---|---|
-| `worker/board/schema.ts` | App tables: `memo` (one row per board section), `board`, `tag` (a user's registered tags: a stable `id`, and a name unique per user via `tag_userId_name_idx`; sections point at it by `memo.tag_id`, deliberately without a foreign key or `ON DELETE SET NULL` — `DELETE /api/tags` untags the rows itself and `PUT /api/board` only writes registered ids, so the route, not a schema side effect, says what happens), and `user_setting` (unused since the retention period became a fixed 30 days; kept until a later push drops it, per the contract rule below; that migration must also re-run 0012's cap `UPDATE`, because the previous Worker keeps creating rows with the old long periods between migrate and deploy) | Yes — put every app table here |
+| `worker/board/schema.ts` | App tables: `memo` (one row per board section), `board`, `tag` (a user's registered tags: a stable `id`, and a name unique per user via `tag_userId_name_idx`; sections point at it by `memo.tag_id`, deliberately without a foreign key or `ON DELETE SET NULL` — `DELETE /api/tags` untags the rows itself and `PUT /api/board` only writes registered ids, so the route, not a schema side effect, says what happens). (`user_setting`, the per-user retention period, was dropped in 0013 one push after the code stopped using it — the contract rule below — and 0013 re-ran 0012's cap `UPDATE` for rows the previous Worker created between migrate and deploy.) | Yes — put every app table here |
 | `worker/auth/schema.ts` | Better Auth tables (`user`, `session`, `account`, `verification`) | **No.** `npm run auth:schema` overwrites it (it is also excluded from lint and format in `vite.config.ts`) |
 | `drizzle.config.ts` | Points drizzle-kit at both schema files, output `./drizzle` | Rarely |
 | `drizzle/NNNN_<name>.sql` + `drizzle/meta/` | Generated migrations, snapshots, `_journal.json` | Only the `.sql`, only before it is pushed (see below) |
@@ -53,10 +53,10 @@ On top of that, installed PWAs keep sending requests shaped by the old client un
 
 So every migration must be **backward compatible with the currently deployed code** — expand/contract:
 
-- **Add** (expand): new tables, or nullable columns / columns with a constant `DEFAULT`. The old Worker ignores them, and its inserts still succeed because the default fills in. Examples: 0004 `position ... DEFAULT 0 NOT NULL`, 0005 `collapsed ... DEFAULT false NOT NULL`, 0007 `user_setting` with `memo_ttl_days DEFAULT 30`, 0008 new `board` table.
+- **Add** (expand): new tables, or nullable columns / columns with a constant `DEFAULT`. The old Worker ignores them, and its inserts still succeed because the default fills in. Examples: 0004 `position ... DEFAULT 0 NOT NULL`, 0005 `collapsed ... DEFAULT false NOT NULL`, 0007 `user_setting` (since dropped) with `memo_ttl_days DEFAULT 30`, 0008 new `board` table.
 - **Drop** (contract): first ship code that no longer reads or writes the column, let it deploy, then drop it in a **later** push.
   Drizzle selects list every column explicitly, so an old Worker whose schema still has the column fails with "no such column" the moment it is gone.
-  0003 and 0006 dropped columns in the same commit as the code removal; that was an error window during deploy, not a pattern to copy.
+  0003 and 0006 dropped columns in the same commit as the code removal; that was an error window during deploy, not a pattern to copy. 0013 (`drop_user_setting`) is the pattern: the code stopped using the table in one push, the drop came in the next.
 - **Rename / change type** — never a single `RENAME COLUMN` / `DROP`. Several pushes:
   1. Push 1 (expand): add the new column with a default, and in the **same migration** copy existing values (e.g. `UPDATE board SET version = revision;`, appended after a `--> statement-breakpoint`). Without the copy, every existing user silently gets the default once reads switch. Code reads the new column and **writes both**, so the old Worker still sees correct values during the deploy window.
   2. Push 2: re-copy (catches writes the old Worker made between migrate and deploy), stop writing the old column.
@@ -73,7 +73,7 @@ Deploys are serialized and never cancelled (`concurrency: deploy-production`) pr
   0002 (`account.issuer text NOT NULL`, from a Better Auth upgrade) is exactly this shape and fails on any table that has rows. Give the column a default or make it nullable, and add uniqueness with a separate `CREATE UNIQUE INDEX`.
 - `DROP COLUMN` and `RENAME COLUMN` work, but anything else (changing type, nullability, default, adding a foreign key) makes drizzle-kit emit a **table rebuild**: `PRAGMA foreign_keys=OFF` → `CREATE TABLE __new_x` → `INSERT ... SELECT` → `DROP TABLE x` → rename → `PRAGMA foreign_keys=ON`.
 - **D1 always enforces foreign keys; `PRAGMA foreign_keys=OFF` is silently ignored.** `DROP TABLE` on a parent table therefore fires `ON DELETE CASCADE` on every child, even with `PRAGMA defer_foreign_keys = on`.
-  Rebuilding `user` would delete every `memo`, `user_setting`, `board`, `session`, and `account` row. Never rebuild a table that other tables reference; use expand/contract with new columns instead.
+  Rebuilding `user` would delete every `memo`, `tag`, `board`, `session`, and `account` row. Never rebuild a table that other tables reference; use expand/contract with new columns instead.
   Rebuilding a child table (e.g. `memo`) keeps its rows.
 - Data backfills are fine as hand-written SQL appended to a generated migration (or `npm run db:generate -- --custom --name <name>` for an empty file). Separate statements with `--> statement-breakpoint` — the test harness splits on it and prepares each piece separately.
 - Queries: at most **100 bound parameters per statement** (`too many SQL variables`). PUT /api/board hit this with 100+ ids in `IN (...)`; it now binds one JSON array and expands it with `json_each` (`worker/board/routes.ts`). Do the same for anything whose parameter count grows with the data.
@@ -91,7 +91,7 @@ Deploys are serialized and never cancelled (`concurrency: deploy-production`) pr
 ## Code that must follow the schema
 
 - `worker/board/routes.ts`: the `insert(memo).select(...)` lists columns **in table-definition order** (a Drizzle constraint). Adding a `memo` column means adding it there in the same position.
-- `worker/board/sweep.ts` (hourly Cron, `triggers.crons` in `wrangler.jsonc`) clears the `content` of `memo` rows past `expires_at` (keeping the row so its id can't be recreated, HAY-60) and deletes them once `created_at` is older than the fixed retention (`MEMO_TTL_DAYS`, 30 days; `drizzle/0012` capped older rows' `expires_at` to `created_at` + 30 days); both rely on `memo_expiresAt_idx`. Keep that column and index, and remember that rows cascade from `user`, not from the sweep.
+- `worker/board/sweep.ts` (hourly Cron, `triggers.crons` in `wrangler.jsonc`) clears the `content` of `memo` rows past `expires_at` (keeping the row so its id can't be recreated, HAY-60) and deletes them once `created_at` is older than the fixed retention (`MEMO_TTL_DAYS`, 30 days; `drizzle/0012` and `0013` capped older rows' `expires_at` to `created_at` + 30 days); both rely on `memo_expiresAt_idx`. Keep that column and index, and remember that rows cascade from `user`, not from the sweep.
 - `expires_at` is computed in code (`memoExpiresAt` in `shared/constants.ts`: `created_at` + `MEMO_TTL_DAYS`). Values the API validates (`BOARD_MAX_SECTIONS`, `BOARD_MAX_LENGTH`, `TAG_MAX_REGISTERED`, `TAG_MAX_LENGTH`) live in `shared/constants.ts`, not in DB constraints; if a new column has limits, put them there so the API and UI share them.
 - `worker/board/routes.test.ts` seeds `user` rows with raw SQL (`insert into user (id, name, email)`); a new `NOT NULL` column without a default on a seeded table breaks it.
 
