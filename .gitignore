@@ -8,6 +8,10 @@ dist
 .DS_Store
 worker-configuration.d.ts
 .claude/worktrees
+# Claude Code の各自の設定 (*.local では settings.local.json に当たらない)
+.claude/settings.local.json
+# TanStack Router のプラグインがルートの生成中に置く一時ファイル
+.tanstack/
 
 # Playwright (npm run test:a11y)
 test-results
