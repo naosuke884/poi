@@ -1,9 +1,10 @@
 import type { TagIcon } from "@shared/constants";
 import { memo, type Ref, useEffect, useRef, useState } from "react";
 
+import { TagIconSvg } from "@/components/TagIcon";
+
 import type { Tag } from "../../-lib/data/tags";
 import { sameFilter, type TagFilter } from "../../-lib/tag-filter";
-import { TagIconSvg } from "./TagIcon";
 
 import classes from "./TagFilterBar.module.css";
 

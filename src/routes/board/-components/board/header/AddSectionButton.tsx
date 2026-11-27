@@ -1,7 +1,7 @@
 import { Button } from "@/components/Button";
+import { PlusIcon } from "@/components/TablerIcon";
 
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
-import { PlusIcon } from "../TablerIcon";
 
 import classes from "./AddSectionButton.module.css";
 

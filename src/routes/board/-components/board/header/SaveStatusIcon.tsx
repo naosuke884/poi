@@ -1,6 +1,7 @@
 import { type ReactNode, useRef } from "react";
 
 import { IconButton } from "@/components/IconButton";
+import { Svg } from "@/components/TablerIcon";
 import { Tooltip } from "@/components/Tooltip";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
 
@@ -9,7 +10,6 @@ import {
   nextSaveAnnouncement,
   type SaveState,
 } from "../../../-lib/sections/save-status";
-import { Svg } from "../TablerIcon";
 
 import classes from "./SaveStatusIcon.module.css";
 

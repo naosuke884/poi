@@ -2,12 +2,12 @@ import type { TagIcon } from "@shared/constants";
 import { type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 
 import { CloseButton, IconButton } from "@/components/IconButton";
+import { CheckIcon, Svg, XIcon } from "@/components/TablerIcon";
+import { TagIconSvg } from "@/components/TagIcon";
 import { Tooltip } from "@/components/Tooltip";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
 
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
-import { CheckIcon, Svg, XIcon } from "../TablerIcon";
-import { TagIconSvg } from "../TagIcon";
 
 import classes from "./SectionActions.module.css";
 

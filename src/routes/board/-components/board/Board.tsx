@@ -7,6 +7,7 @@ import { BottomLeftNotice } from "@/components/BottomLeftNotice";
 import { Button } from "@/components/Button";
 import { HeaderSlot } from "@/components/HeaderSlot";
 import { IconButton } from "@/components/IconButton";
+import { PlusIcon } from "@/components/TablerIcon";
 import { Tooltip } from "@/components/Tooltip";
 import { affixInset } from "@/lib/affix";
 
@@ -38,7 +39,6 @@ import { AddSectionButton } from "./header/AddSectionButton";
 import { SaveStatusIcon } from "./header/SaveStatusIcon";
 import type { EditAnchor } from "./section/SectionEditor";
 import { type SectionHandlers, type SectionRefs, SectionRow } from "./section/SectionRow";
-import { PlusIcon } from "./TablerIcon";
 import { TagFilterBar } from "./TagFilterBar";
 
 import classes from "./Board.module.css";

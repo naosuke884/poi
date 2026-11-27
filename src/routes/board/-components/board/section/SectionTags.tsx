@@ -10,12 +10,12 @@ import {
 } from "react";
 
 import { Button } from "@/components/Button";
+import { CheckIcon, PlusIcon, Svg, XIcon } from "@/components/TablerIcon";
+import { TagIconSvg } from "@/components/TagIcon";
 import { VisuallyHidden } from "@/components/VisuallyHidden";
 
 import type { Tag } from "../../../-lib/data/tags";
 import { BoardTagsContext } from "../../../-lib/use-board-tags";
-import { CheckIcon, PlusIcon, Svg, XIcon } from "../TablerIcon";
-import { TagIconSvg } from "../TagIcon";
 import type { SectionHandlers } from "./SectionRow";
 
 import classes from "./SectionTags.module.css";

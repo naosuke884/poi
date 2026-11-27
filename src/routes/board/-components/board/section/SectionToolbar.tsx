@@ -2,12 +2,12 @@ import { redo, undo } from "@codemirror/commands";
 import type { Command } from "@codemirror/view";
 import type { ReactNode } from "react";
 
+import { Svg } from "@/components/TablerIcon";
 import { Tooltip } from "@/components/Tooltip";
 
 import { toggleHeading, toggleList } from "../../../-lib/editor/format-commands";
 import { indentLess, indentMoreOrInsertTab } from "../../../-lib/editor/list-indent";
 import { keepEditorFocus } from "../../../-lib/keep-editor-focus";
-import { Svg } from "../TablerIcon";
 
 import classes from "./SectionToolbar.module.css";
 
