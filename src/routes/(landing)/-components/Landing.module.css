@@ -50,6 +50,13 @@
   word-break: auto-phrase;
 }
 
+/* 見出しの下の、何のためのアプリかを言う一文。見出しより一段控えて muted で */
+.lead {
+  composes: text;
+  composes: lg muted from "../../../components/typography.module.css";
+  word-break: auto-phrase;
+}
+
 /* ページを移ったときにフォーカスを受けるだけの見出し (#121)。操作できる物ではないので枠を出さない */
 .heroTitle:focus {
   outline: none;

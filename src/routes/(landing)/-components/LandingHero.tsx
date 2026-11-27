@@ -15,6 +15,9 @@ export function LandingHero() {
       <h1 className={classes.heroTitle} tabIndex={-1}>
         {MEMO_TTL_DAYS} 日で消えるメモ帳
       </h1>
+      <p className={classes.lead}>
+        一時的なメモを、後で消す手間をかけずに書いておくためのアプリです。
+      </p>
       {inAppBrowser && <OpenInBrowserNotice />}
     </div>
   );
