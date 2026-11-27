@@ -132,6 +132,20 @@ async function insertUser(db: D1Database, userId: string) {
     .run();
 }
 
+/**
+ * 上限までのタグを D1 に 1 回でまとめて入れる。1 つずつ POST すると上限の数だけ往復し、CI では既定の 5 秒に
+ * 届きかけて時々落ちていた。名前は t0, t1, … で、この順に一覧に並ぶ
+ */
+async function seedTagsToLimit(db: D1Database) {
+  await db.batch(
+    Array.from({ length: TAG_MAX_REGISTERED }, (_, i) =>
+      db
+        .prepare("insert into tag (id, user_id, name, created_at) values (?, ?, ?, ?)")
+        .bind(`seed-${i}`, USER_ID, `t${i}`, i),
+    ),
+  );
+}
+
 const it = test
   .extend("board", async ({ db }) => {
     await insertUser(db, USER_ID);
@@ -418,56 +432,60 @@ describe.concurrent("タグ", () => {
     expect((await board.get()).tags).toEqual(await board.tags.list());
   });
 
-  /**
-   * Jev の代わり (プロセスの外にあるので、ここだけ偽物にする)。タグの名前ごとの答え (無ければ other) を返し、
-   * 問い合わせのあったタグの名前を控える。ほかの URL (ローカルの D1 とのやり取り) は本物の fetch に渡す
-   */
-  function fakeJev(icons: Record<string, string> = {}) {
-    const realFetch = globalThis.fetch;
-    const asked: string[] = [];
-    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (new Request(input, init).url !== "https://api.typesafe.ai/v1/systemone") {
-        return realFetch(input, init);
-      }
-      const tagName = JSON.parse(init!.body as string).questions.icon.instructions.tag as string;
-      asked.push(tagName);
-      return Response.json({
-        answers: { icon: { type: "choice", choice: icons[tagName] ?? "other", confidence: 1 } },
+  // fetch を差し替える (vi.stubGlobal) テストどうしを並行に走らせると、先に終わった方が差し替えを戻し (unstubAllGlobals)、
+  // もう一方が本物の API に問い合わせて落ちる。差し替えるテストはこの中で一つずつ走らせる
+  describe("アイコンの問い合わせ", { concurrent: false }, () => {
+    /**
+     * Jev の代わり (プロセスの外にあるので、ここだけ偽物にする)。タグの名前ごとの答え (無ければ other) を返し、
+     * 問い合わせのあったタグの名前を控える。ほかの URL (ローカルの D1 とのやり取り) は本物の fetch に渡す
+     */
+    function fakeJev(icons: Record<string, string> = {}) {
+      const realFetch = globalThis.fetch;
+      const asked: string[] = [];
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (new Request(input, init).url !== "https://api.typesafe.ai/v1/systemone") {
+          return realFetch(input, init);
+        }
+        const tagName = JSON.parse(init!.body as string).questions.icon.instructions.tag as string;
+        asked.push(tagName);
+        return Response.json({
+          answers: { icon: { type: "choice", choice: icons[tagName] ?? "other", confidence: 1 } },
+        });
       });
+      return asked;
+    }
+
+    it("名前を変えると、id はそのままで、新しい名前でアイコンを選び直す", async ({ board }) => {
+      fakeJev({ 買い物: "shopping", 献立: "food" });
+      try {
+        board.tagEnv.TYPESAFE_API_KEY = "key";
+        const id = await board.tags.addId("買い物");
+        expect((await board.tags.list())[0]!.icon).toBe("shopping");
+        expect((await board.tags.rename(id, "献立")).body.tags).toEqual([
+          { id, name: "献立", icon: "food" },
+        ]);
+        expect((await board.get()).tags).toEqual([{ id, name: "献立", icon: "food" }]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
     });
-    return asked;
-  }
 
-  it("名前を変えると、id はそのままで、新しい名前でアイコンを選び直す", async ({ board }) => {
-    fakeJev({ 買い物: "shopping", 献立: "food" });
-    try {
-      board.tagEnv.TYPESAFE_API_KEY = "key";
-      const id = await board.tags.addId("買い物");
-      expect((await board.tags.list())[0]!.icon).toBe("shopping");
-      expect((await board.tags.rename(id, "献立")).body.tags).toEqual([
-        { id, name: "献立", icon: "food" },
-      ]);
-      expect((await board.get()).tags).toEqual([{ id, name: "献立", icon: "food" }]);
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("登録も名前の変更もできないときは、アイコンを問い合わせずに返す", async ({ board }) => {
-    for (let i = 0; i < TAG_MAX_REGISTERED; i++) await board.tags.add(`t${i}`);
-    const [t0] = await board.tags.list();
-    const asked = fakeJev();
-    try {
-      board.tagEnv.TYPESAFE_API_KEY = "key";
-      expect((await board.tags.add("t0")).status).toBe(200);
-      expect((await board.tags.add("over")).status).toBe(409);
-      expect((await board.tags.rename(t0!.id, "t1")).status).toBe(409);
-      expect((await board.tags.rename(t0!.id, "t0")).status).toBe(200);
-      expect((await board.tags.rename("無い", "新しい")).status).toBe(404);
-      expect(asked).toEqual([]);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    it("登録も名前の変更もできないときは、アイコンを問い合わせずに返す", async ({ board, db }) => {
+      await seedTagsToLimit(db);
+      const [t0] = await board.tags.list();
+      const asked = fakeJev();
+      try {
+        board.tagEnv.TYPESAFE_API_KEY = "key";
+        expect((await board.tags.add("t0")).status).toBe(200);
+        expect((await board.tags.add("over")).status).toBe(409);
+        expect((await board.tags.rename(t0!.id, "t1")).status).toBe(409);
+        expect((await board.tags.rename(t0!.id, "t0")).status).toBe(200);
+        expect((await board.tags.rename("無い", "新しい")).status).toBe(404);
+        expect(asked).toEqual([]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
   });
 
   it("登録済みの名前をもう一度登録しても、一覧は変わらない (同じ id のまま)", async ({ board }) => {
@@ -485,15 +503,7 @@ describe.concurrent("タグ", () => {
   });
 
   it("上限を超える登録は 409 TooManyTags で断る", async ({ board, db }) => {
-    // 上限までのタグは D1 に 1 回でまとめて入れる。1 つずつ POST すると上限の数だけ往復し、CI では既定の 5 秒に
-    // 届きかけて時々落ちていた。確かめたいのは上限を超えた 1 件の扱いなので、それだけを API に送る
-    await db.batch(
-      Array.from({ length: TAG_MAX_REGISTERED }, (_, i) =>
-        db
-          .prepare("insert into tag (id, user_id, name, created_at) values (?, ?, ?, ?)")
-          .bind(`seed-${i}`, USER_ID, `t${i}`, i),
-      ),
-    );
+    await seedTagsToLimit(db);
     expect(await board.tags.list()).toHaveLength(TAG_MAX_REGISTERED);
     const over = await board.tags.add("over");
     expect(over.status).toBe(409);
