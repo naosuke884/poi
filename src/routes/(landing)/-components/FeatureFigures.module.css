@@ -1,0 +1,568 @@
+/* 特徴の図 (FeatureFigures)。色は tokens.css の変数だけを使い、ダーク配色に追従させる。
+   動きは prefers-reduced-motion: no-preference の中だけに書き、外では「起きた後」の止まった絵を見せる。
+   どの図も、順番が来て見えたら 1 回だけ (2〜3 秒) 動き、起きた後の絵で止まる (止まった絵は動きを減らす設定のときと同じ)。
+   長さは動きが終わるところまでにする (後ろに止まった間があると、次の図がその分だけ待たされる)。
+   繰り返さないのは、5 秒を超えて勝手に動き続けるものには止める手段が要る (WCAG 2.2.2) うえ、
+   4 つの図が揃って点滅し続けるとうるさいため */
+
+/* ---- 台と場面 ---- */
+
+/* 図の入れ物。机の色の台は、見出しと一緒に節 (Landing.module.css の .feature) が敷く */
+.frame {
+  --play: paused;
+}
+
+.frame[data-playing] {
+  --play: running;
+}
+
+/* カードを縦に積む図 (消える・絞り込み)。動きで位置を動かすので、カードの高さと間隔を決めておく */
+.stack {
+  --card-h: 3.75rem;
+  --gap: 0.5rem;
+  display: grid;
+  gap: var(--gap);
+}
+
+.stack > .card {
+  height: var(--card-h);
+}
+
+/* 図ごとの長さ。0.3〜0.4 秒で動き出す */
+.expiryScene {
+  --duration: 2s;
+}
+.tagsScene {
+  --duration: 2.2s;
+}
+.devices {
+  --duration: 3s;
+}
+
+/* ---- 縮めたカード (MiniCard) ---- */
+
+.card {
+  position: relative;
+  min-width: 0;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-md);
+  background: var(--poi-color-bg);
+  color: var(--poi-color-text);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 1.125rem;
+  margin-bottom: 0.25rem;
+}
+
+/* 残り日数 (板の「あと N 日」) の代わりの短い線。残り 1 日は板と同じ橙 */
+.life,
+.lifeSoon {
+  width: 2.75rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--poi-color-border);
+}
+
+.lifeSoon {
+  background: var(--poi-color-warning-text);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.tagIcon {
+  display: inline-flex;
+  color: var(--poi-color-text);
+}
+
+/* 本文の行を線で描く (何が書いてあるかではなく、そこにメモがあることだけを見せる) */
+.body {
+  display: grid;
+  gap: 0.375rem;
+  padding-top: 0.125rem;
+}
+
+.line {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--poi-color-text-muted);
+}
+
+.w70 {
+  width: 70%;
+}
+.w55 {
+  width: 55%;
+}
+.w40 {
+  width: 40%;
+}
+
+/* ---- 消える ---- */
+
+/* 止まった絵では、消えかけの姿 (薄い点線) で見せる */
+.expiring {
+  border-style: dashed;
+  opacity: 0.4;
+}
+
+/* ---- 絞り込み ---- */
+
+/* 板の絞り込みの帯と同じ白い帯と札 */
+.filterBar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0.25rem;
+  padding: 4px;
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-md);
+  background: var(--poi-color-bg);
+  overflow: hidden;
+}
+
+.pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 1.625rem;
+  padding: 0 10px;
+  border-radius: var(--poi-radius-sm);
+  color: var(--poi-color-text-muted);
+}
+
+/* 札の名前の代わりの線。札の文字の色 (選ぶと濃くなる) をそのまま使う */
+.pillLine {
+  width: 1.75rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* 止まった絵では「仕事」で絞り込んだ後を見せる */
+.pillWork {
+  background: var(--poi-tag-bg);
+  color: var(--poi-tag-text);
+}
+
+.filteredOut {
+  display: none;
+}
+
+/* ---- どこでも ---- */
+
+/* パソコンとスマホを並べ、間に同期の矢印を置く */
+.devices {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(3rem, 5rem) 5.5rem;
+  align-items: end;
+}
+
+.laptop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+/* 画面の縁 */
+.laptopLid {
+  position: relative;
+  width: 88%;
+  padding: 0.5rem;
+  border: 2px solid var(--poi-color-text-muted);
+  border-bottom: 0;
+  border-radius: 0.75rem 0.75rem 0 0;
+  background: var(--poi-color-bg);
+}
+
+/* 画面の縦横比は最低限の大きさで、中身 (カード) が収まらなければ縦に伸ばす (狭い画面でカードが見切れないように) */
+.laptopScreen {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--poi-color-border);
+  border-radius: var(--poi-radius-sm);
+}
+
+.laptopScreen > .app {
+  border-radius: calc(var(--poi-radius-sm) - 1px);
+}
+
+/* キーボード側の縁。画面より左右に少し広い */
+.laptopBase {
+  width: 100%;
+  height: 0.625rem;
+  border: 2px solid var(--poi-color-text-muted);
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: var(--poi-color-bg);
+}
+
+.phone {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 9 / 16;
+  padding: 0.375rem;
+  border: 2px solid var(--poi-color-text-muted);
+  border-radius: 1.25rem;
+  background: var(--poi-color-bg);
+}
+
+.phoneScreen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  border: 1px solid var(--poi-color-border);
+  border-radius: 0.875rem;
+}
+
+.phoneScreen > .app {
+  border-radius: calc(0.875rem - 1px);
+}
+
+/* 画面の中の板 (ヘッダーと机とカード)。両方の端末で同じ絵にして、同じメモだと分かるようにする */
+.app {
+  display: flex;
+  /* 縮めない (overflow: hidden の flex 子は中身より小さく縮み、カードが切れる) */
+  flex: 1 0 auto;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--poi-color-desk);
+}
+
+.appHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.125rem;
+  padding: 0 0.375rem;
+  border-bottom: 1px solid var(--poi-color-divider);
+  background: var(--poi-color-bg);
+}
+
+.appLogo {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 2px;
+  background: var(--poi-color-primary);
+}
+
+.appAvatar {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--poi-color-border);
+}
+
+.appDesk {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  padding: 0.375rem;
+}
+
+.app .card {
+  padding: 0.25rem 0.375rem;
+  border-radius: var(--poi-radius-sm);
+}
+
+.app .topRow {
+  height: 0.375rem;
+  margin-bottom: 0.1875rem;
+}
+
+.app .life,
+.app .lifeSoon {
+  width: 1.25rem;
+  height: 0.1875rem;
+}
+
+.app .body {
+  gap: 0.1875rem;
+  padding-top: 0;
+}
+
+.app .line {
+  height: 0.25rem;
+}
+
+/* 打つ文の語ごとの線。狭いスマホでは折り返す */
+.typed,
+.received {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1875rem 0.125rem;
+}
+
+.word {
+  composes: line;
+}
+.word:nth-child(1) {
+  width: 0.875rem;
+}
+.word:nth-child(2) {
+  width: 1.25rem;
+}
+.word:nth-child(3) {
+  width: 0.625rem;
+}
+.word:nth-child(4) {
+  width: 1rem;
+}
+
+/* 端末の間の矢印。灰色の点線の上に、同期するときだけ藍の線を引く */
+.syncArrow {
+  align-self: center;
+  width: 100%;
+  height: auto;
+  color: var(--poi-color-border);
+}
+
+/* 藍で引く線。止まった絵では出さない (pathLength = 1 なので、dashoffset 1 で消え、0 で引き終わる) */
+.sync {
+  stroke: var(--poi-color-primary);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+/* 狭い画面では、パソコンに幅を回す */
+@media (max-width: 35.99em) {
+  .devices {
+    grid-template-columns: minmax(0, 1fr) 3rem 5rem;
+  }
+}
+
+/* ---- 動き ---- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .expiring,
+  .pillAll,
+  .pillWork,
+  .filteredOut,
+  .moveUp,
+  .writingCard,
+  .sync,
+  .receivingCard,
+  .received {
+    animation-duration: var(--duration);
+    animation-fill-mode: both;
+    animation-play-state: var(--play);
+  }
+
+  /* 消える: 溶けるように (ぼけながら薄れて、少し沈む) */
+  .expiring {
+    border-style: solid;
+    animation-name: expire;
+  }
+
+  /* 絞り込み: 札が「すべて」から「仕事」に替わり、買い物のカードが消えてから、下のカードが詰まる */
+  .pillAll {
+    animation-name: pill-off;
+  }
+  .pillWork {
+    animation-name: pill-on;
+  }
+  .filteredOut {
+    display: block;
+    animation-name: filter-out;
+  }
+  .moveUp {
+    animation-name: move-up;
+  }
+
+  /* どこでも: パソコンで打ち終えると矢印が引かれ、スマホに同じ文が出る */
+  .writingCard {
+    animation-name: writing;
+  }
+  .sync {
+    animation-name: sync;
+  }
+  .receivingCard {
+    animation-name: receiving;
+  }
+  .received {
+    animation-name: receive;
+  }
+  /* 語を一つずつ出す (幅で少しずつ見せると、語の途中で切れて見える) */
+  .typed > .word {
+    animation: type-word 1ms both;
+    animation-play-state: var(--play);
+  }
+  .typed > .word:nth-child(1) {
+    animation-delay: 0.4s;
+  }
+  .typed > .word:nth-child(2) {
+    animation-delay: 0.8s;
+  }
+  .typed > .word:nth-child(3) {
+    animation-delay: 1.2s;
+  }
+  .typed > .word:nth-child(4) {
+    animation-delay: 1.6s;
+  }
+}
+
+@keyframes expire {
+  0%,
+  20% {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  }
+  95%,
+  100% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+@keyframes pill-off {
+  0%,
+  14% {
+    background: var(--poi-tag-bg);
+    color: var(--poi-tag-text);
+  }
+  27%,
+  100% {
+    background: transparent;
+    color: var(--poi-color-text-muted);
+  }
+}
+
+@keyframes pill-on {
+  0%,
+  14% {
+    background: transparent;
+    color: var(--poi-color-text-muted);
+  }
+  27%,
+  100% {
+    background: var(--poi-tag-bg);
+    color: var(--poi-tag-text);
+  }
+}
+
+@keyframes filter-out {
+  0%,
+  32% {
+    opacity: 1;
+    transform: none;
+  }
+  59%,
+  100% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes move-up {
+  0%,
+  59% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  95%,
+  100% {
+    transform: translateY(calc(-1 * (var(--card-h) + var(--gap))));
+  }
+}
+
+/* 書いている間は、板の編集中のカードと同じ藍の枠 */
+@keyframes writing {
+  0%,
+  8% {
+    border-color: var(--poi-color-border);
+  }
+  9%,
+  55% {
+    border-color: var(--poi-color-primary);
+  }
+  60%,
+  100% {
+    border-color: var(--poi-color-border);
+  }
+}
+
+@keyframes type-word {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 打ち終えて (1.6 秒) 矢印が引かれ (1.7〜2.2 秒)、スマホに文が出る。引いた線は最後に薄れて点線に戻す */
+@keyframes sync {
+  0%,
+  57% {
+    stroke-dashoffset: 1;
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  74%,
+  88% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes receiving {
+  0%,
+  73% {
+    border-color: var(--poi-color-border);
+  }
+  75%,
+  94% {
+    border-color: var(--poi-color-primary);
+  }
+  100% {
+    border-color: var(--poi-color-border);
+  }
+}
+
+@keyframes receive {
+  0%,
+  73% {
+    opacity: 0;
+  }
+  80%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ---- 強制カラー (Windows のハイコントラスト) ---- */
+
+/* 面の塗りは Canvas に塗り替えられるので、選んでいる札は枠で示す */
+@media (forced-colors: active) {
+  /* 文字の代わりの線は面で描いているので、塗り替えられないよう文字の色で塗る */
+  .line,
+  .life,
+  .lifeSoon,
+  .pillLine,
+  .appLogo,
+  .appAvatar {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .pill {
+    border: 1px solid transparent;
+  }
+  .pillWork {
+    border-color: CanvasText;
+  }
+}

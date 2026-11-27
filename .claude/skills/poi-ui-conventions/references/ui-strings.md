@@ -68,7 +68,7 @@ Note: sentence-final `。` is inconsistent today — the errors from `useAccount
 ## Titles and fixed text
 
 - Modals: `ホーム画面に追加`; the delete confirm has no title: `アカウントを削除しますか？` / `メモした内容はすべて消え、元に戻せません。`
-- Landing: `<n> 日で消えるメモ帳`; section heading `とくちょう`; features `書いてから <n> 日で、ひとつずつ消える`, `タグで絞り込んで、読み返せる`, `残したいものは、ワンクリックで持ち出せる`, `ホーム画面から、すぐ書ける`
+- Landing: `<n> 日で消えるメモ帳`; one section per feature (`FeatureSections`, heading + an animated figure (`FeatureFigures`, aria-hidden, text drawn as abstract lines, no words) instead of body text, no umbrella heading): `ひとつずつ消える`, `タグで絞り込める`, `どの端末でも開ける`
 - Document titles (`useDocumentTitle`): `poi` (top), `使い方とよくある質問 | poi`, `利用規約 | poi`, `プライバシーポリシー | poi`, `ページが見つかりません | poi`, `エラーが発生しました | poi` / `オフラインです | poi`
 - Legal: `最終更新日: <yyyy> 年 <m> 月 <d> 日`
 - Footer (`SiteFooter`, landing and text pages), one row in this order: `ドキュメント` (`/docs/guide`) / `利用規約` / `プライバシーポリシー` / `問い合わせ` (mailto, `ContactLink`). No copyright line
